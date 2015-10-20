@@ -1,0 +1,13 @@
+var point = ee.Geometry.Point(-106.9395, 39.6855)
+var start = ee.Date('2014-06-01');
+var finish = ee.Date('2014-07-01');
+var filteredCollection = ee.ImageCollection('LANDSAT/LC8_L1T')
+  .filterBounds(point)
+  .filterDate(start, finish)
+  .sort('CLOUD_COVER', true);
+print(filteredCollection)
+
+Map.addLayer(filteredCollection);
+
+
+
