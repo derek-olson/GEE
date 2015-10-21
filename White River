@@ -1,8 +1,9 @@
-Map.addLayer(ee.ImageCollection('LANDSAT/LC8_L1T')
-    .filterDate('2015-07-01', '2015-10-31')
-    .median(),
-    {'bands': ['B5', 'B4', 'B3'], 'min': 5000, 'max': 18000});
-Map.setCenter(-106.9629, 39.6467, 9);
+Map.addLayer(ee.Image('LC8_L1T/LC80340332015282LGN00'))
+Map.addLayer(ee.Image('LC8_L1T/LC80340322015282LGN00'))
+Map.addLayer(ee.Image('LC8_L1T/LC80350322015289LGN00'))
+Map.addLayer(ee.Image('LC8_L1T/LC80350332015289LGN00'))
+
+Map.setCenter(-106.9629, 39.6467, 7);
 
 var WRNF = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
   
