@@ -1,6 +1,6 @@
-Map.addLayer(ee.Image('LC8_L1T/LC80360322015184LGN00'),
+Map.addLayer(ee.Image('LC8_L1T/LC80340332015218LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
-Map.addLayer(ee.Image('LC8_L1T/LC80360332015184LGN00'),
+Map.addLayer(ee.Image('LC8_L1T/LC80340322015218LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
 Map.addLayer(ee.Image('LC8_L1T/LC80350332015209LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
