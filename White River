@@ -1,6 +1,5 @@
 Map.addLayer(ee.Image('LC8_L1T/LC80340332015282LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B5', 'B4', 'B3']});
-  
 Map.addLayer(ee.Image('LC8_L1T/LC80340322015282LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B5', 'B4', 'B3']});
 Map.addLayer(ee.Image('LC8_L1T/LC80350322015289LGN00'),
