@@ -7,7 +7,7 @@ Map.addLayer(ee.Image('LC8_L1T/LC80350322015289LGN00'),
 Map.addLayer(ee.Image('LC8_L1T/LC80350332015289LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
 
-Map.setCenter(-106.9629, 39.6467, 7);
+Map.setCenter(-106.9629, 39.6467, 9);
 
 var WRNF = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
   
