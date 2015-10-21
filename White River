@@ -4,5 +4,7 @@ Map.addLayer(ee.ImageCollection('LANDSAT/LC8_L1T')
     {'bands': ['B5', 'B4', 'B3'], 'min': 5000, 'max': 18000});
 Map.setCenter(-106.9629, 39.6467, 9);
 
-var WRNF = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID');
-Map.addLayer(WRNF, {color: 'FF0000'}, 'colored');      
+var WRNF = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+  
+Map.addLayer(WRNF);
+     
