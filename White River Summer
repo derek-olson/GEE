@@ -31,7 +31,21 @@ Map.setCenter(-106.9629, 39.6467, 9);
 ///var WRNF = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 var WRNFbuff = ee.FeatureCollection('ft:1aDMzELemj7OXNh5gK1k95sqdj_jTuw_a-So_kI4Y', 'geometry');  
 ///Map.addLayer(WRNF);
-Map.addLayer(WRNFbuff);     
+Map.addLayer(WRNFbuff);
 
-////var mosaic = ee.ImageCollection([corrected1,pr3834,corrected2]).qualityMosaic("priority");
-////var exportMosaic = mosaic.toUint16().select(Out_Names);
+var outImage = "WRNFpath34"
+// Create image collection from path 34
+var mosaic34 = ee.ImageCollection.fromImages([ee.Image('LC8_L1T/LC80340332014183LGN00'), ee.Image('LC8_L1T/LC80340322014183LGN00')]);
+print('mosaic34: ', mosaic34);
+
+// Mosaic Path 34. Last layer is on top.
+var mosaicPath34 = mosaic34.mosaic();
+
+Map.addLayer(mosaicPath34, {}, 'mosaicPath34');
+
+exportImage(mosaicPath34, outImage,
+      {'maxPixels': 2e9,
+        'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
+        'crs': 'EPSG:26913',
+        'scale': 30
+      });   
