@@ -41,14 +41,14 @@ print('mosaic34: ', mosaic34);
 // Mosaic Path 34. Last layer is on top.
 var mosaicPath34 = mosaic34.mosaic();
 
-Map.addLayer(mosaicPath34, {}, 'mosaicPath34');
+Map.addLayer(mosaicPath34, {'min': 6000, 'max' : 34000, 'bands': ['B5', 'B4', 'B3']}, 'mosaicPath34');
 
-exportImage(mosaicPath34, outImage,
-      {'maxPixels': 2e9,
-        'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
-        'crs': 'EPSG:26913',
-        'scale': 30
-      });
+//exportImage(mosaicPath34, outImage,
+//      {'maxPixels': 2e9,
+//        'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
+//        'crs': 'EPSG:26913',
+//        'scale': 30
+//      });
       
 var outImage2 = "WRNFpath35"
 // Create image collection from path 35
@@ -58,11 +58,11 @@ print('mosaic35: ', mosaic35);
 // Mosaic Path 35. Last layer is on top.
 var mosaicPath35 = mosaic35.mosaic();
 
-Map.addLayer(mosaicPath35, {}, 'mosaicPath35');
+Map.addLayer(mosaicPath35, {'min': 6000, 'max' : 34000, 'bands': ['B5', 'B4', 'B3']}, 'mosaicPath35');
 
-exportImage(mosaicPath35, outImage2,
-      {'maxPixels': 2e9,
-        'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
-        'crs': 'EPSG:26913',
-        'scale': 30
-      });
+//exportImage(mosaicPath35, outImage2,
+//      {'maxPixels': 2e9,
+//        'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
+//        'crs': 'EPSG:26913',
+//        'scale': 30
+//      });
