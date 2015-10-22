@@ -15,17 +15,17 @@
 ////  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});  
 
 ///July 2, 2014  
-var Jul2_34_33 = Map.addLayer(ee.Image('LC8_L1T/LC80340332014183LGN00'),
-  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']},"Jul2_34_33");
+//var Jul2_34_33 = Map.addLayer(ee.Image('LC8_L1T/LC80340332014183LGN00'),
+//  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']},"Jul2_34_33");
 ///July 2, 2014  
-var Jul2_34_32 = Map.addLayer(ee.Image('LC8_L1T/LC80340322014183LGN00'),
-  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']},"Jul2_34_32");
+//var Jul2_34_32 = Map.addLayer(ee.Image('LC8_L1T/LC80340322014183LGN00'),
+//  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']},"Jul2_34_32");
 ///July 28, 2015
-var Jul28_35_33 = Map.addLayer(ee.Image('LC8_L1T/LC80350332015209LGN00'),
-  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']}, "Jul28_35_33");
+//var Jul28_35_33 = Map.addLayer(ee.Image('LC8_L1T/LC80350332015209LGN00'),
+ // {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']}, "Jul28_35_33");
 ///July 28, 2015  
-var Jul28_35_32 = Map.addLayer(ee.Image('LC8_L1T/LC80350322015209LGN00'),
-  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']}, "Jul28_35_32");
+//var Jul28_35_32 = Map.addLayer(ee.Image('LC8_L1T/LC80350322015209LGN00'),
+//  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']}, "Jul28_35_32");
 Map.setCenter(-106.9629, 39.6467, 9);
 
 ///var WRNF = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
@@ -48,4 +48,21 @@ exportImage(mosaicPath34, outImage,
         'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
         'crs': 'EPSG:26913',
         'scale': 30
-      });   
+      });
+      
+var outImage2 = "WRNFpath35"
+// Create image collection from path 35
+var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LC8_L1T/LC80350332015209LGN00'), ee.Image('LC8_L1T/LC80350322015209LGN00')]);
+print('mosaic35: ', mosaic35);
+
+// Mosaic Path 35. Last layer is on top.
+var mosaicPath35 = mosaic35.mosaic();
+
+Map.addLayer(mosaicPath35, {}, 'mosaicPath35');
+
+exportImage(mosaicPath35, outImage2,
+      {'maxPixels': 2e9,
+        'region': WRNFbuff.geometry().bounds().getInfo().coordinates[0],
+        'crs': 'EPSG:26913',
+        'scale': 30
+      });
