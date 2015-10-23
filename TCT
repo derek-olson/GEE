@@ -1,0 +1,48 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var image = ee.Image("users/thinkbetween/WRNF_2014_2015");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+///////////////////////// Tasseled Cap 
+
+// Define an Array of Tasseled Cap coefficients
+//Baig 2014 coeffs - TOA refl (http://www.tandfonline.com/doi/pdf/10.1080/2150704X.2014.915434)
+var coefficients = ee.Array([
+  [0.3029, 0.2786, 0.4733, 0.5599, 0.508, 0.1872],
+  [-0.2941, -0.243, -0.5424, 0.7276, 0.0713, -0.1608],
+  [ 0.1511, 0.1973, 0.3283, 0.3407, -0.7117, -0.4559],
+  [-0.8239, 0.0849, 0.4396, -0.058, 0.2013, -0.2773],
+  [-0.3280, 0.0549, 0.1075, 0.1855, -0.4357, 0.8085],
+  [0.1079, -0.9023, 0.4119, 0.0575, -0.0259, 0.0252]
+]);
+
+// var image = ee.Image("LANDSAT/LC8_L1T_TOA/LC80350342013171LGN00").select(['B2', 'B3', 'B4', 'B5', 'B6','B7']);
+image = image.select(['b2', 'b3', 'b4', 'b5', 'b6','b7']);
+
+// make an Array Image, with a 1-D Array per pixel
+var arrayImage1D = image.toArray();
+// make an Array Image with a 2-D Array per pixel, 6x1
+var arrayImage2D = arrayImage1D.toArray(1);
+
+// do a matrix multiplication: 6x6 times 6x1
+var componentsImage = ee.Image(coefficients)
+  .matrixMultiply(arrayImage2D)
+  .arrayProject([0]) // get rid of the extra dimensions
+  .arrayFlatten([
+    ['brightness', 'greenness', 'wetness', 'fourth', 'fifth', 'sixth']
+]);
+
+// display the first three bands of the result
+var vizParams = {
+  bands: ['brightness', 'greenness', 'wetness'], 
+  min: -0.1, max: [0.5, 0.1, 0.1]
+};
+print (vizParams)
+
+// Map.centerObject(image);
+Map.addLayer(componentsImage, vizParams, 'TCT');
+
+//exportImage(componentsImage.select([0,1,2]).float(), OutImageName+'_tct',
+//      {'maxPixels': 3e9,
+//        'region': FB_buff.geometry().bounds().getInfo().coordinates[0],
+//        'crs':  'EPSG:26913',
+//        'scale': 30
+//      });
