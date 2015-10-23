@@ -1,2 +1,4 @@
 var clouds = ee.FeatureCollection('ft:1BFul8Soc6g9hcB65RWFyMQ3g9kuOE9AZIZJ0SxV2', 'geometry');  
 Map.addLayer(clouds);
+var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+Map.addLayer(ForestBound)
