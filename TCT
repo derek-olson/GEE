@@ -14,7 +14,6 @@ var coefficients = ee.Array([
   [0.1079, -0.9023, 0.4119, 0.0575, -0.0259, 0.0252]
 ]);
 
-// var image = ee.Image("LANDSAT/LC8_L1T_TOA/LC80350342013171LGN00").select(['B2', 'B3', 'B4', 'B5', 'B6','B7']);
 image = image.select(['b2', 'b3', 'b4', 'b5', 'b6','b7']);
 
 // make an Array Image, with a 1-D Array per pixel
