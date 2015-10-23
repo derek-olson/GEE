@@ -4,6 +4,9 @@ Map.addLayer(ee.Image('LC8_L1T/LC80340332015218LGN00'),
 //June 19, 2015  
 Map.addLayer(ee.Image('LC8_L1T/LC80340332015170LGN00'),
  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
+ //June 19, 2015  
+Map.addLayer(ee.Image('LC8_L1T/LC80340322015170LGN00'),
+ {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
 //September 23, 2015  
 Map.addLayer(ee.Image('LC8_L1T/LC80340332015266LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});  
@@ -25,6 +28,9 @@ Map.addLayer(ee.Image('LC8_L1T/LC80350332015209LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
 //July 28, 2015  
 Map.addLayer(ee.Image('LC8_L1T/LC80350322015209LGN00'),
+  {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
+//July 12, 2015  
+Map.addLayer(ee.Image('LC8_L1T/LC80350322015193LGN00'),
   {'min' : 6000, 'max' : 28000, 'bands' : ['B7', 'B5', 'B4']});
   
 var clouds = ee.FeatureCollection('ft:1BFul8Soc6g9hcB65RWFyMQ3g9kuOE9AZIZJ0SxV2', 'geometry');  
