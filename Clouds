@@ -1,0 +1,2 @@
+var clouds = ee.FeatureCollection('ft:1BFul8Soc6g9hcB65RWFyMQ3g9kuOE9AZIZJ0SxV2', 'geometry');  
+Map.addLayer(clouds);
