@@ -1,5 +1,5 @@
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
-var start = ee.Date('1995-010-01');
+var start = ee.Date('1995-10-01');
 var finish = ee.Date('2015-10-01');
 
 // This function masks the input with a threshold on the simple cloud score.
