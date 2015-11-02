@@ -1,4 +1,6 @@
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+var start = ee.Date('1995-010-01');
+var finish = ee.Date('2015-10-01');
 
 // This function masks the input with a threshold on the simple cloud score.
 var cloudMask = function(img) {
@@ -8,8 +10,8 @@ var cloudMask = function(img) {
 
 // Load a Landsat 5 image collection.
 var collection = ee.ImageCollection('LANDSAT/LT5_L1T_TOA')
-  // Filter to get only two years of data.
-  .filterDate('1992-09-01', '2015-09-01')
+  // Filter to get data.
+  .filterDate(start, finish)
   // Filter to get only imagery at a point of interest.
   .filterBounds(ForestBound)
   // Mask clouds by mapping the cloudMask function over the collection.
@@ -60,3 +62,7 @@ var coefficientsImage = coefficients3
   .arrayFlatten([
     ['constant', 'trend', 'sin', 'cos']
 ]);
+
+addToMap(coefficientsImage.select(['constant', 'trend', 'sin', 'cos']),{},"coeffs");
+
+addToMap(ForestBound)
