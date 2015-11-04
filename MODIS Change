@@ -1,6 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var NAIP = ee.ImageCollection("USDA/NAIP/DOQQ");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+Map.addLayer(ForestBound)
+
 //Region 2 NDVI change
 //Script for showing the changes that have taken place across the region:
 var hansen = ee.Image('UMD/hansen/global_forest_change_2014')
@@ -34,4 +37,5 @@ var N = NAIP
 print(N)
               
 
-addToMap(N)
+//addToMap(N)
+
