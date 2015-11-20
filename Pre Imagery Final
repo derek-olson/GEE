@@ -1,3 +1,11 @@
+//Path 34 Row 32
+//August 31, 1995
+Map.addLayer(ee.Image('LT5/LT50340321995243XXX02'),
+  {'min' : 18, 'max' : 83, 'bands' : ['B4', 'B3', 'B2']});
+//August 15, 1995
+Map.addLayer(ee.Image('LT5/LT50340321995227AAA02'),
+  {'min' : 18, 'max' : 83, 'bands' : ['B4', 'B3', 'B2']});
+
 //Path 34 Row 33
 //August 31, 1995
 Map.addLayer(ee.Image('LT5/LT50340331995243XXX02'),
@@ -6,10 +14,13 @@ Map.addLayer(ee.Image('LT5/LT50340331995243XXX02'),
 Map.addLayer(ee.Image('LT5/LT50340331995227AAA02'),
   {'min' : 18, 'max' : 83, 'bands' : ['B4', 'B3', 'B2']});
   
-//Path 34 Row 32
-//August 31, 1995
-Map.addLayer(ee.Image('LT5/LT50340321995243XXX02'),
+//Path 35 Row 32
+//June 16, 1994
+Map.addLayer(ee.Image('LT5/LT50350321994167XXX02'),
   {'min' : 18, 'max' : 83, 'bands' : ['B4', 'B3', 'B2']});
-//August 15, 1995
-Map.addLayer(ee.Image('LT5/LT50340321995227AAA02'),
+//August 11, 1991
+Map.addLayer(ee.Image('LT5/LT50350321991223XXX03'),
+  {'min' : 18, 'max' : 83, 'bands' : ['B4', 'B3', 'B2']});
+//June 24, 1991
+Map.addLayer(ee.Image('LT5/LT50350321991223XXX03'),
   {'min' : 18, 'max' : 83, 'bands' : ['B4', 'B3', 'B2']});  
