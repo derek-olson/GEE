@@ -59,7 +59,7 @@ function getPIFsPair(img1, img2, bandsPIF)
       var bandname = bandsPIF[i];
       //compute the mean/stdDev value for the band
       var StdDev = ee.Image.constant(all_bandsDiff.select(bandname).reduceRegion(calcParamsStdDev).get(bandname));
-      var StdDevTH = StdDev.divide(2);
+      var StdDevTH = StdDev.divide(1);
       var diffMean = ee.Image.constant(all_bandsDiff.select(bandname).reduceRegion(calcParamsMean).get(bandname));
       var THupper = diffMean.add(StdDevTH);
       var THlower = diffMean.subtract(StdDevTH);
