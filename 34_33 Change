@@ -1,0 +1,27 @@
+// Load landsat 5 images.
+var landsat1987 = ee.Image('LT5/LT50340331987205XXX09');
+var landsat1995 = ee.Image('LT5/LT50340331995243XXX02');
+
+// Compute NDVI the easy way.
+var ndvi1995 = landsat1995.normalizedDifference(['B4', 'B3']);
+var ndvi1987 = landsat1987.normalizedDifference(['B4', 'B3']);
+Map.addLayer(ndvi1995)
+Map.addLayer(ndvi1987)
+
+var ndviDiff = ndvi1995.subtract(ndvi1987)
+Map.addLayer(ndviDiff)
+
+// Compute the multi-band difference image.
+var diff = landsat1995.subtract(landsat1987);
+Map.addLayer(diff,
+             {bands: ['B4', 'B3', 'B2'], min: -32, max: 32},
+             'difference');
+
+// Compute the squared difference in each band.
+var squaredDifference = diff.pow(2);
+Map.addLayer(squaredDifference,
+             {bands: ['B4', 'B3', 'B2'], max: 1000},
+             'squared diff.');
+
+var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+Map.addLayer(ForestBound) 
