@@ -6,8 +6,8 @@ var boundBox = /* color: d63000 */ee.Geometry.Polygon(
           [-105.5072021484375, 40.43022363450859]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
-var STD_NAMES = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','BQA'];
-var Out_Names = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','BQA', 'Year', 'Julian'];
+var STD_NAMES = ['B1','B2','B3','B4','B5','B6','B7'];
+var Out_Names = ['B1','B2','B3','B4','B5','B6','B7','Year', 'Julian'];
 var OutImageName = "WRNF_preDisturbance";
 
 var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50350321986209XXX05'), ee.Image('LT5/LT50350331986209XXX13')]);
@@ -136,14 +136,14 @@ var addJulianBand = function(img1, img2) {
     var epoch = new Date("2008/01/01 GMT").getTime();
     var timestamp = img1.metadata('system:time_start');
     timestamp =  timestamp.subtract(epoch).mod(365*msecPerDay).divide(msecPerDay).subtract(1).toInt();
-    timestamp = timestamp.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)).or(img1.select([8]).gte(0)).or(img1.select([9]).gte(0)).or(img1.select([9]).gte(10))); 
+    timestamp = timestamp.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0))); 
     return img2.addBands(timestamp.select([0],["Julian"]));
   };
 
 var addYearBand = function(img1, img2){
   var i =img1.metadata('system:time_start').divide(365).divide(3600).divide(24).divide(1000);
   i = i.add(1970).toInt();
-  i = i.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)).or(img1.select([8]).gte(0)).or(img1.select([9]).gte(0)).or(img1.select([9]).gte(10)));
+  i = i.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)));
   return img2.addBands(i.select([0],['Year']));
 };
 
@@ -152,7 +152,7 @@ var addYearBand = function(img1, img2){
 var addPriority = function(img1, constant){
   var C = ee.Image.constant(constant).toInt();
   var outImage = img1.addBands(C.select([0],['priority']));
-  outImage = outImage.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)).or(img1.select([8]).gte(0)).or(img1.select([9]).gte(0)).or(img1.select([9]).gte(10)));
+  outImage = outImage.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)));
   return outImage;
 };
 
@@ -160,8 +160,8 @@ var addPriority = function(img1, constant){
 var PIFS1 = getPIFsPair(path34,path35,['B2','B3','B4','B5']);
 addToMap(PIFS1,{},"PIFS")
 var corrected1 = imgNormalizer(path34, path35, PIFS1);
-corrected1 = addYearBand(ee.Image('LC8_L1T/LC80340332014183LGN00'),corrected1);
-corrected1 = addJulianBand(ee.Image('LC8_L1T/LC80340332014183LGN00'),corrected1);
+corrected1 = addYearBand(ee.Image('LT5/LT50340321995243XXX02'),corrected1);
+corrected1 = addJulianBand(ee.Image('LT5/LT50340331995243XXX02'),corrected1);
 corrected1 = addPriority(corrected1,1);
 
 //var PIFS2 = getPIFsPair(pr3734,pr3834,['B2','B3','B4','B5']);
@@ -170,8 +170,8 @@ corrected1 = addPriority(corrected1,1);
 //corrected2 = addJulianBand(pr3734,corrected2);
 //corrected2 = addPriority(corrected2,1);
 
-path35 = addYearBand(ee.Image('LC8_L1T/LC80350332015209LGN00'),path35);
-path35 = addJulianBand(ee.Image('LC8_L1T/LC80350332015209LGN00'),path35);
+path35 = addYearBand(ee.Image('LT5/LT50350321986209XXX05'),path35);
+path35 = addJulianBand(ee.Image('LT5/LT50350331986209XXX13'),path35);
 path35 = addPriority(path35,3);
 addToMap(corrected1,{},'correct')
 
