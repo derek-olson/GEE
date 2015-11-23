@@ -8,7 +8,7 @@ var boundBox = /* color: d63000 */ee.Geometry.Polygon(
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 var STD_NAMES = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','BQA'];
 var Out_Names = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','BQA', 'Year', 'Julian'];
-var OutImageName = "WRNF_2014_2015";
+var OutImageName = "WRNF_preDisturbance";
 
 var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50350321986209XXX05'), ee.Image('LT5/LT50350331986209XXX13')]);
 // Mosaic Path 35. Last layer is on top.
@@ -69,7 +69,7 @@ function getPIFsPair(img1, img2, bandsPIF)
       //add up the values in the the specified bands
       masked = masked.add(maskedTemp2);
     }
-  //Find the pixels that are have low variance in all the given bands and clip this image to the region to avoid extrapolation 
+  //Find the pixels that have low variance in all the given bands and clip this image to the region to avoid extrapolation 
   var potentialPIFs = masked.eq(bandsPIF.length).clip(region);
   //Return these locations -Value of 1 with non PIFs masked out
   return potentialPIFs.mask(potentialPIFs);
