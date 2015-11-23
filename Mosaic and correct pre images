@@ -136,14 +136,14 @@ var addJulianBand = function(img1, img2) {
     var epoch = new Date("2008/01/01 GMT").getTime();
     var timestamp = img1.metadata('system:time_start');
     timestamp =  timestamp.subtract(epoch).mod(365*msecPerDay).divide(msecPerDay).subtract(1).toInt();
-    timestamp = timestamp.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0))); 
+    timestamp = timestamp.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0))); 
     return img2.addBands(timestamp.select([0],["Julian"]));
   };
 
 var addYearBand = function(img1, img2){
   var i =img1.metadata('system:time_start').divide(365).divide(3600).divide(24).divide(1000);
   i = i.add(1970).toInt();
-  i = i.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)));
+  i = i.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)));
   return img2.addBands(i.select([0],['Year']));
 };
 
@@ -152,7 +152,7 @@ var addYearBand = function(img1, img2){
 var addPriority = function(img1, constant){
   var C = ee.Image.constant(constant).toInt();
   var outImage = img1.addBands(C.select([0],['priority']));
-  outImage = outImage.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)).or(img1.select([7]).gte(0)));
+  outImage = outImage.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)));
   return outImage;
 };
 
