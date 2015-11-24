@@ -1,0 +1,7 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var image = ee.Image("users/thinkbetween/WRNF_2014_2015");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+Map.addLayer(image);
+
+var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+Map.addLayer(ForestBound)
