@@ -3,20 +3,22 @@ var boundBox = /* color: d63000 */ee.Geometry.Polygon(
         [[[-108.34716796875, 40.375843776960124],
           [-108.3856201171875, 38.77121637244273],
           [-105.4412841796875, 38.71980474264239],
-          [-105.5072021484375, 40.43022363450859]]]);
+          [-105.5072021484375, 40.43022363450859]]]),
+    image = ee.Image("users/thinkbetween/WRNF_preDisturbance_final");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 var STD_NAMES = ['B1','B2','B3','B4','B5','B6','B7'];
 var Out_Names = ['B1','B2','B3','B4','B5','B6','B7','Year', 'Julian'];
-var OutImageName = "WRNF_preDisturbance_final";
+var OutImageName = "WRNF_cloudReplace_pre_normal";
 
-var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50350321986209XXX05'), ee.Image('LT5/LT50350331986209XXX13')]);
-// Mosaic Path 35. Last layer is on top.
-var path35 = mosaic35.mosaic().clip(boundBox);
+// var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50350321986209XXX05'), ee.Image('LT5/LT50350331986209XXX13')]);
+// // Mosaic Path 35. Last layer is on top.
+// var path35 = mosaic35.mosaic().clip(boundBox);
 
-var mosaic34 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50340331987205XXX09'), ee.Image('LT5/LT50340321987205XXX03')]);
-// Mosaic Path 34. Last layer is on top.
-var path34 = mosaic34.mosaic().clip(boundBox);
+// var mosaic34 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50340331987205XXX09'), ee.Image('LT5/LT50340321987205XXX03')]);
+// // Mosaic Path 34. Last layer is on top.
+// var path34 = mosaic34.mosaic().clip(boundBox);
+
 // Specify zone
 var zone = 12;
 
@@ -157,7 +159,7 @@ var addPriority = function(img1, constant){
 };
 
 //Use functions
-var PIFS1 = getPIFsPair(path34,path35,['B2','B3','B4','B5']);
+var PIFS1 = getPIFsPair(image,image2,['B2','B3','B4','B5']);
 addToMap(PIFS1,{},"PIFS")
 var corrected1 = imgNormalizer(path34, path35, PIFS1);
 corrected1 = addYearBand(ee.Image('LT5/LT50340321995243XXX02'),corrected1);
