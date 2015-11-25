@@ -3,7 +3,9 @@ var boundBox = /* color: d63000 */ee.Geometry.Polygon(
         [[[-108.34716796875, 40.375843776960124],
           [-108.3856201171875, 38.77121637244273],
           [-105.4412841796875, 38.71980474264239],
-          [-105.5072021484375, 40.43022363450859]]]);
+          [-105.5072021484375, 40.43022363450859]]]),
+    image = ee.Image("users/thinkbetween/WRNF_postDisturbance"),
+    image2 = ee.Image("users/thinkbetween/cloudReplace_postDisturbance");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 var STD_NAMES = ['b1','b2','b3','b4','b5','b6','b7'];
