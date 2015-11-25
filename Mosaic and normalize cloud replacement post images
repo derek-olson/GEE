@@ -8,7 +8,7 @@ var boundBox = /* color: 0B4A8B */ee.Geometry.Polygon(
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 var STD_NAMES = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','BQA'];
 var Out_Names = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','BQA', 'Year', 'Julian'];
-var OutImageName = "WRNF_2014_2015";
+var OutImageName = "WRNF_CloudReplacePostImages";
 
 var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LC8_L1T/LC80350332013171LGN00'), ee.Image('LC8_L1T/LC80350322013171LGN00')]);
 // Mosaic Path 35. Last layer is on top.
