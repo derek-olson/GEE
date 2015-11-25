@@ -21,7 +21,7 @@ var OutImageName = "WRNF_cloudReplace_pre_normal";
 // var path34 = mosaic34.mosaic().clip(boundBox);
 
 // Specify zone
-var zone = 12;
+var zone = 13;
 
 //Function for getting the PIFs (returns like pixels)
 function getPIFsPair(img1, img2, bandsPIF)
@@ -134,38 +134,38 @@ var imgNormalizer = function(slave, master, PIFpixels)
 ////////////////////////////////////////////////////////////////////////////////
 // Get Julian Date Map And Year
 // Add Time Stamp band (julian date)
-var addJulianBand = function(img1, img2) {
-    var msecPerDay = 24*60*60*1000;
-    var epoch = new Date("2008/01/01 GMT").getTime();
-    var timestamp = img1.metadata('system:time_start');
-    timestamp =  timestamp.subtract(epoch).mod(365*msecPerDay).divide(msecPerDay).subtract(1).toInt();
-    timestamp = timestamp.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0))); 
-    return img2.addBands(timestamp.select([0],["Julian"]));
-  };
+// var addJulianBand = function(img1, img2) {
+//     var msecPerDay = 24*60*60*1000;
+//     var epoch = new Date("2008/01/01 GMT").getTime();
+//     var timestamp = img1.metadata('system:time_start');
+//     timestamp =  timestamp.subtract(epoch).mod(365*msecPerDay).divide(msecPerDay).subtract(1).toInt();
+//     timestamp = timestamp.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0))); 
+//     return img2.addBands(timestamp.select([0],["Julian"]));
+//   };
 
-var addYearBand = function(img1, img2){
-  var i =img1.metadata('system:time_start').divide(365).divide(3600).divide(24).divide(1000);
-  i = i.add(1970).toInt();
-  i = i.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)));
-  return img2.addBands(i.select([0],['Year']));
-};
+// var addYearBand = function(img1, img2){
+//   var i =img1.metadata('system:time_start').divide(365).divide(3600).divide(24).divide(1000);
+//   i = i.add(1970).toInt();
+//   i = i.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)));
+//   return img2.addBands(i.select([0],['Year']));
+// };
 
-////////////////////////////////////////////////////////////////////////////////
-//Add order of mosaicking. Highest number is goes on top
-var addPriority = function(img1, constant){
-  var C = ee.Image.constant(constant).toInt();
-  var outImage = img1.addBands(C.select([0],['priority']));
-  outImage = outImage.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)));
-  return outImage;
-};
+// ////////////////////////////////////////////////////////////////////////////////
+// //Add order of mosaicking. Highest number is goes on top
+// var addPriority = function(img1, constant){
+//   var C = ee.Image.constant(constant).toInt();
+//   var outImage = img1.addBands(C.select([0],['priority']));
+//   outImage = outImage.mask(img1.select([0]).gte(0).or(img1.select([1]).gte(0)).or(img1.select([2]).gte(0)).or(img1.select([3]).gte(0)).or(img1.select([4]).gte(0)).or(img1.select([5]).gte(0)).or(img1.select([6]).gte(0)));
+//   return outImage;
+// };
 
 //Use functions
-var PIFS1 = getPIFsPair(image,image2,['B2','B3','B4','B5']);
+var PIFS1 = getPIFsPair(image,image2,['b2','b3','b4','b5']);
 addToMap(PIFS1,{},"PIFS")
-var corrected1 = imgNormalizer(image, image2, PIFS1);
+var corrected1 = imgNormalizer(image2, image, PIFS1);
 // corrected1 = addYearBand(ee.Image('LT5/LT50340321995243XXX02'),corrected1);
 // corrected1 = addJulianBand(ee.Image('LT5/LT50340331995243XXX02'),corrected1);
-corrected1 = addPriority(corrected1,1);
+// corrected1 = addPriority(corrected1,1);
 
 //var PIFS2 = getPIFsPair(pr3734,pr3834,['B2','B3','B4','B5']);
 //var corrected2 = imgNormalizer(pr3734, pr3834, PIFS2);
@@ -173,15 +173,15 @@ corrected1 = addPriority(corrected1,1);
 //corrected2 = addJulianBand(pr3734,corrected2);
 //corrected2 = addPriority(corrected2,1);
 
-path35 = addYearBand(ee.Image('LT5/LT50350321986209XXX05'),path35);
-path35 = addJulianBand(ee.Image('LT5/LT50350331986209XXX13'),path35);
-path35 = addPriority(path35,3);
+// path35 = addYearBand(ee.Image('LT5/LT50350321986209XXX05'),path35);
+// path35 = addJulianBand(ee.Image('LT5/LT50350331986209XXX13'),path35);
+// image2 = addPriority(image2,3);
 addToMap(corrected1,{},'correct')
 
 //var imageList = ee.List([corrected1,pr3834,corrected2]);
-var mosaic = ee.ImageCollection([corrected1,path35]).qualityMosaic("priority");
-addToMap(mosaic,{'bands': ['B5', 'B4', 'B3'],'min':1000,'max':34000},"mosaic");
-var mosaic = mosaic.toUint16().select(Out_Names);
+// var mosaic = ee.ImageCollection([corrected1,image2]).qualityMosaic("priority");
+// addToMap(mosaic,{'bands': ['B5', 'B4', 'B3'],'min':1000,'max':34000},"mosaic");
+// var mosaic = mosaic.toUint16().select(Out_Names);
 //addToMap(mosaic.select(['b5','b4','b3']),{min:"7000",max:"25000"},"mosaic");
 //addToMap(mosaic.select(['priority']),{min:"0",max:"10"},"mosaicdate");
 //addToMap(corrected1.select(['B5','B4','B3']),{min:"7000",max:"25000"},"pr3934corrected",false);
@@ -191,8 +191,7 @@ var mosaic = mosaic.toUint16().select(Out_Names);
 //addToMap(pr3834,{min:"7000",max:"25000"},"pr3834",false);
 addToMap(ForestBound,{},"WR");
 
-print(mosaic)
- exportImage(mosaic, OutImageName,
+print(corrected1, OutImageName,
        {'maxPixels': 2e9,
          'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
          'crs':  'EPSG:26913',
