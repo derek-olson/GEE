@@ -10,7 +10,7 @@ var boundBox = /* color: d63000 */ee.Geometry.Polygon(
 var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 var STD_NAMES = ['b1','b2','b3','b4','b5','b6','b7'];
 var Out_Names = ['b1','b2','b3','b4','b5','b6','b7'];
-var OutImageName = "WRNF_cloudReplace_pre_normal";
+var OutImageName = "WRNF_cloudReplace_post_normal";
 
 // var mosaic35 = ee.ImageCollection.fromImages([ee.Image('LT5/LT50350321986209XXX05'), ee.Image('LT5/LT50350331986209XXX13')]);
 // // Mosaic Path 35. Last layer is on top.
