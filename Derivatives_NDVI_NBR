@@ -1,7 +1,7 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var image = ee.Image("users/thinkbetween/WRNF_2014_2015"),
-    image2 = ee.Image("users/thinkbetween/WRNF_preDisturbance_final"),
-    naip = ee.ImageCollection("USDA/NAIP/DOQQ");
+var naip = ee.ImageCollection("USDA/NAIP/DOQQ"),
+    image = ee.Image("users/thinkbetween/wrnf_post_clouds_replaced2"),
+    image2 = ee.Image("users/thinkbetween/wrnf_pre_clouds_replaced");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 // Map.addLayer(image);
 // Map.addLayer(image2)
@@ -11,11 +11,12 @@ var ndvipost = image.normalizedDifference(['b5', 'b4']);
 var ndvipre = image2.normalizedDifference(['b4', 'b3']);
 // print(ndvipost);
 // print(ndvipre);
-
+Map.addLayer(ndvipost)
+Map.addLayer(ndvipre)
 //Map.addLayer(ndvipost);
 //Map.addLayer(ndvipre);
-var ndviDiff = ndvipost.subtract(ndvipre);
-Map.addLayer(ndviDiff,{"min":-0.2,"max":0.2},"ndvi");
+// var ndviDiff = ndvipost.subtract(ndvipre);
+// Map.addLayer(ndviDiff,{"min":-0.2,"max":0.2},"ndvi");
 
 // Compute NBR.
 var nbrpre = image2.select('b3').subtract(image2.select("b7")).divide
@@ -23,8 +24,8 @@ var nbrpre = image2.select('b3').subtract(image2.select("b7")).divide
 
 var nbrpost = image.select('b4').subtract(image.select("b7")).divide
               (image.select('b4').add(image.select("b7")));
-var nbrdiff = nbrpost.subtract(nbrpre)
-Map.addLayer(nbrdiff,{"min":-0.2,"max":0.2},"nbr")
+// var nbrdiff = nbrpost.subtract(nbrpre)
+// Map.addLayer(nbrdiff,{"min":-0.2,"max":0.2},"nbr")
 
 // Map.addLayer(nbr1987, 'NBR1987');
 // Map.addLayer(nbr1995, 'NBR1995');
@@ -41,8 +42,8 @@ Map.addLayer(nbrdiff,{"min":-0.2,"max":0.2},"nbr")
 
 
 
-naip = naip.filterDate(new Date("01/01/2012"),new Date("12/31/2013")).median();
-addToMap(naip.select(['N','R','G']),{},"naip");
+// naip = naip.filterDate(new Date("01/01/2012"),new Date("12/31/2013")).median();
+// addToMap(naip.select(['N','R','G']),{},"naip");
 
 
 
