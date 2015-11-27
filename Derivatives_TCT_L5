@@ -4,17 +4,17 @@ var image = ee.Image("users/thinkbetween/wrnf_pre_clouds_replaced");
 ///////////////////////// Tasseled Cap 
 
 // Define an Array of Tasseled Cap coefficients
-//Baig 2014 coeffs - TOA refl (http://www.tandfonline.com/doi/pdf/10.1080/2150704X.2014.915434)
+// Landsat 5 tasseled cap coefficients (Crist and Cicone 1984)
 var coefficients = ee.Array([
-  [0.3029, 0.2786, 0.4733, 0.5599, 0.508, 0.1872],
-  [-0.2941, -0.243, -0.5424, 0.7276, 0.0713, -0.1608],
-  [ 0.1511, 0.1973, 0.3283, 0.3407, -0.7117, -0.4559],
-  [-0.8239, 0.0849, 0.4396, -0.058, 0.2013, -0.2773],
+  [0.3037, 0.2793, 0.4743, 0.5585, 0.5082, 0.1863],
+  [-0.2848, -0.2435, -0.5436, 0.7243, 0.0840, -0.1800],
+  [0.1509, 0.1973, 0.3279, 0.3406, -0.7112, -0.4572],
+  [-0.8242, 0.0849, 0.4392, -0.0580, 0.2012, -0.2768],
   [-0.3280, 0.0549, 0.1075, 0.1855, -0.4357, 0.8085],
-  [0.1079, -0.9023, 0.4119, 0.0575, -0.0259, 0.0252]
+  [0.1084, -0.9022, 0.4120, 0.0573, -0.0251, 0.0238]
 ]);
 
-image = image.select(['b2', 'b3', 'b4', 'b5', 'b6','b7']);
+image = image.select(['b1', 'b2', 'b3', 'b4', 'b5','b7']);
 
 // make an Array Image, with a 1-D Array per pixel
 var arrayImage1D = image.toArray();
