@@ -1,8 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var image = ee.Image("users/thinkbetween/WRNF_2014_2015");
+var image = ee.Image("users/thinkbetween/wrnf_post_clouds_replaced2");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 ///////////////////////// Tasseled Cap 
-
+var OutImageName = "postDisturbance"
+var FB_buff = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 // Define an Array of Tasseled Cap coefficients
 //Baig 2014 coeffs - TOA refl (http://www.tandfonline.com/doi/pdf/10.1080/2150704X.2014.915434)
 var coefficients = ee.Array([
@@ -39,9 +40,9 @@ print (vizParams)
 // Map.centerObject(image);
 Map.addLayer(componentsImage, vizParams, 'TCT');
 
-//exportImage(componentsImage.select([0,1,2]).float(), OutImageName+'_tct',
-//      {'maxPixels': 3e9,
-//        'region': FB_buff.geometry().bounds().getInfo().coordinates[0],
-//        'crs':  'EPSG:26913',
-//        'scale': 30
-//      });
+exportImage(componentsImage.select([0,1,2]).float(), OutImageName+'_tct',
+      {'maxPixels': 3e9,
+        'region': FB_buff.geometry().bounds().getInfo().coordinates[0],
+        'crs':  'EPSG:26913',
+        'scale': 30
+      });
