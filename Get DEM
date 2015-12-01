@@ -1,0 +1,21 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var BoundPoly = /* color: d63000 */ee.Geometry.Polygon(
+        [[[-108.5614013671875, 40.321419995934384],
+          [-108.5888671875, 38.843986129756615],
+          [-105.3369140625, 38.843986129756615],
+          [-105.3973388671875, 40.34654412118006]]]),
+    image = ee.Image("USGS/SRTMGL1_003");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var FB_buff = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+var regionJSON = JSON.stringify(BoundPoly.getInfo());
+
+var dem = ee.Image('USGS/NED');
+dem = dem.clip(BoundPoly);
+var m = dem.mask();
+dem = dem.mask(ee.Image(1));
+dem = dem.where(m.not(),9999)
+addToMap(dem,{'min':3500,'max':4000},'DEM');
+
+var info = dem.getInfo().bands[0]
+print(info)
+Export.image(dem,'WRNF_DEM',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, crs_transform:JSON.stringify(info.crs_transform)});
