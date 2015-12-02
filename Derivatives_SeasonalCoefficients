@@ -52,11 +52,13 @@ var array = collection.map(makeVariables).toArray();
 var predictors = array.arraySlice(bandAxis, 0, 4);
 var response = array.arraySlice(bandAxis, 4);
 
-// Compute coefficients.
-var coefficients3 = predictors.matrixSolve(response);
+// Compute coefficients the hard way.
+var coefficients1 = predictors.arrayTranspose().matrixMultiply(predictors)
+  .matrixInverse().matrixMultiply(predictors.arrayTranspose())
+    .matrixMultiply(response);;
 
 // Turn the results into a multi-band image.
-var coefficientsImage = coefficients3
+var coefficientsImage = coefficients1
   // Get rid of the extra dimensions.
   .arrayProject([0])
   .arrayFlatten([
@@ -65,11 +67,11 @@ var coefficientsImage = coefficients3
 
 addToMap(coefficientsImage.select(['constant', 'trend', 'sin', 'cos']),{},"coeffs");
 
-addToMap(FB_buff)
+// addToMap(FB_buff)
 
-exportImage(coefficientsImage.float(), OutImageName+'_sc',
-      {'maxPixels': 3e9,
-        'region': FB_buff.geometry().bounds().getInfo().coordinates[0],
-        'crs':  'EPSG:26913',
-        'scale': 30
-      });
+// exportImage(coefficientsImage.float(), OutImageName+'_sc',
+//       {'maxPixels': 3e9,
+//         'region': FB_buff.geometry().bounds().getInfo().coordinates[0],
+//         'crs':  'EPSG:26913',
+//         'scale': 30
+//       });
