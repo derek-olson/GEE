@@ -31,11 +31,12 @@ var makeVariables = function(image) {
   var season = year.mod(1).multiply(2 * Math.PI);
   // Return an image of the predictors followed by the response.
   return image.select()
-    .addBands(ee.Image(1))                  // 0. constant term
-    .addBands(year)                         // 1. linear change
-    .addBands(season.sin())                 // 2. seasonal change
-    .addBands(season.cos())                 // 3. seasonal change
-    .addBands(image.normalizedDifference()) // 4. response variable
+    .addBands(ee.Image(1))                        // 0. constant term
+    .addBands(year)                               // 1. linear change
+    .addBands(season.sin())                       // 2. seasonal change
+    .addBands(season.cos())                       // 3. seasonal change
+    .addBands(season.sin().multiply(season.cos()))// 4. sin x cos
+    .addBands(image.normalizedDifference())       // 5. response variable
     .toFloat();
 };
 
@@ -47,8 +48,8 @@ var bandAxis = 1;
 var array = collection.map(makeVariables).toArray();
 
 // Get slices of the array according to positions along the band axis.
-var predictors = array.arraySlice(bandAxis, 0, 4);
-var response = array.arraySlice(bandAxis, 4);
+var predictors = array.arraySlice(bandAxis, 0, 5);
+var response = array.arraySlice(bandAxis, 5);
 
 // Compute coefficients the hard way.
 var coefficients1 = predictors.arrayTranspose().matrixMultiply(predictors)
@@ -60,10 +61,10 @@ var coefficientsImage = coefficients1
   // Get rid of the extra dimensions.
   .arrayProject([0])
   .arrayFlatten([
-    ['constant', 'trend', 'sin', 'cos']
+    ['constant', 'trend', 'sin', 'cos', 'sincos']
 ]);
-Map.addLayer(coefficientsImage.select([1,2,3]),{'min':-0.2,'max':0.3},'coeffs')
-
+Map.addLayer(coefficientsImage.select([1,2,3,4]),{'min':-0.2,'max':0.3},'coeffs')
+print(coefficientsImage)
 // exportImage(coefficientsImage.float(), OutImageName+'_sc',
 //       {'maxPixels': 3e9,
 //         'region': FB_buff.geometry().bounds().getInfo().coordinates[0],
