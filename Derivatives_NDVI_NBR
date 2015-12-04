@@ -5,27 +5,66 @@ var naip = ee.ImageCollection("USDA/NAIP/DOQQ"),
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 // Map.addLayer(image);
 // Map.addLayer(image2)
-
+var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 // Compute NDVI.
 var ndvipost = image.normalizedDifference(['b5', 'b4']);
 var ndvipre = image2.normalizedDifference(['b4', 'b3']);
 // print(ndvipost);
 // print(ndvipre);
-Map.addLayer(ndvipost)
-Map.addLayer(ndvipre)
+// Map.addLayer(ndvipost)
+// Map.addLayer(ndvipre)
 //Map.addLayer(ndvipost);
 //Map.addLayer(ndvipre);
-// var ndviDiff = ndvipost.subtract(ndvipre);
-// Map.addLayer(ndviDiff,{"min":-0.2,"max":0.2},"ndvi");
+var ndviDiff = ndvipost.subtract(ndvipre);
+Map.addLayer(ndviDiff,{"min":-0.2,"max":0.2},"ndvi");
 
+exportImage(ndviDiff, "ndviDiff",
+       {'maxPixels': 2e9,
+         'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });
+
+exportImage(ndvipre, "ndvipre",
+       {'maxPixels': 2e9,
+         'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });
+
+exportImage(ndvipost, "ndvipost",
+       {'maxPixels': 2e9,
+         'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });       
 // Compute NBR.
 var nbrpre = image2.select('b3').subtract(image2.select("b7")).divide
               (image2.select('b3').add(image2.select("b7")));
 
 var nbrpost = image.select('b4').subtract(image.select("b7")).divide
               (image.select('b4').add(image.select("b7")));
-// var nbrdiff = nbrpost.subtract(nbrpre)
-// Map.addLayer(nbrdiff,{"min":-0.2,"max":0.2},"nbr")
+var nbrdiff = nbrpost.subtract(nbrpre)
+Map.addLayer(nbrdiff,{"min":-0.2,"max":0.2},"nbr")
+
+exportImage(nbrdiff, "nbrdiff",
+       {'maxPixels': 2e9,
+         'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });
+exportImage(nbrpre, "nbrpre",
+       {'maxPixels': 2e9,
+         'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });
+exportImage(nbrpost, "nbrpost",
+       {'maxPixels': 2e9,
+         'region': ForestBound.geometry().bounds().getInfo().coordinates[0],
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });
 
 // Map.addLayer(nbr1987, 'NBR1987');
 // Map.addLayer(nbr1995, 'NBR1995');
@@ -47,6 +86,6 @@ var nbrpost = image.select('b4').subtract(image.select("b7")).divide
 
 
 
-var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
+
 Map.addLayer(ForestBound);
 
