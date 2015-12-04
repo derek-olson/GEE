@@ -317,17 +317,17 @@ function simpleCloudShadowFreeImages(startDate,endDate,startJulian,endJulian){
         .map(bustClouds)
         .select(sensor_band_dict.get('L5'),bandNames)
         
-  var l7 = ee.ImageCollection('LE7_L1T_TOA')
-        .filterDate(startDate,endDate)
-        .filter(ee.Filter.calendarRange(startJulian,endJulian))
-        .filterBounds(sa)
-        if(runDefringe === true){
-          print('Running defringe on L7')
-          l7 = l7.map(defringeLandsat);
-        }
-        l7 = l7
-        .map(bustClouds)
-        .select(sensor_band_dict.get('L7'),bandNames)
+  // var l7 = ee.ImageCollection('LE7_L1T_TOA')
+  //       .filterDate(startDate,endDate)
+  //       .filter(ee.Filter.calendarRange(startJulian,endJulian))
+  //       .filterBounds(sa)
+  //       if(runDefringe === true){
+  //         print('Running defringe on L7')
+  //         l7 = l7.map(defringeLandsat);
+  //       }
+  //       l7 = l7
+  //       .map(bustClouds)
+  //       .select(sensor_band_dict.get('L7'),bandNames)
         
   var l8 = ee.ImageCollection('LC8_L1T_TOA')
         .filterDate(startDate,endDate)
@@ -336,7 +336,7 @@ function simpleCloudShadowFreeImages(startDate,endDate,startJulian,endJulian){
         .map(bustClouds)
         .select(sensor_band_dict.get('L8'),bandNames)
         
-  var ls = ee.ImageCollection(l5.merge(l7).merge(l8));
+  var ls = ee.ImageCollection(l5.merge(l8));
   
   if(shouldMaskSnow === true){
     print('Masking snow');
@@ -581,13 +581,13 @@ addToMap(predicted,{},'predicted')
 /////////////////////////////////////////////////////
 //Parameters
 var startDate = ee.Date.fromYMD(2013,1,1);
-var endDate = ee.Date.fromYMD(2015,12,31);
+var endDate = ee.Date.fromYMD(2015,11,30);
 // var startJulian = 190;
 // var endJulian = 250;
 var cloudThresh = 20;//Threshold for cloud masking (lower number masks more clouds)
 
 var runTDOM = true;//Whether to run TDOM cloud shadow masking
-var runDefringe = true;//Whether to run defringe algorithm on L5 and L7
+var runDefringe = false;//Whether to run defringe algorithm on L5 and L7
 var zShadowThresh = -1.2//Threshold for cloud shadow masking- lower number masks out less
 var minNumberObservationsNeeded = 1;//Min number of observations needed for pixel to be included in analysis
 var shouldMaskSnow = false;
@@ -596,7 +596,7 @@ var waterThresh = 0.05;//Lower number masks more out  (0-1)
 var snowThresh = 0.05;//Lower number masks more out (0-1)
 
 var crs = 'EPSG:26913'//Projection info for export
-var indexNames = ['Angle'];//Which bands to perform harmonic regression for
+var indexNames = ['Angle', 'NDVI'];//Which bands to perform harmonic regression for
 
 //Get all images and cloud and shadow mask them
 var allImages = simpleCloudShadowFreeImages(startDate,endDate,0,365);
@@ -617,15 +617,15 @@ var withHarmonics = getHarmonics2(allIndices,'year',[2])
 
 //Fit a linear fit model
 var coeffs = newRobustMultipleLinear2(withHarmonics)
-addToMap(coeffs.select([1,2,3]),{'min':-0.2,'max':0.3},'coeffs');
+addToMap(coeffs,{'min':-0.2,'max':0.3},'coeffs');
 
 var forExport = coeffs;
 var m = forExport.mask();//Get current null values
 forExport = forExport.mask(ee.Image(1));//Get rid of all null values
 forExport = forExport.where(m.not(),-9999);//Reset null values to no data value
   
-Export.image(forExport,'CoeffsTest',{'crs':crs,'region':regionJSON,'scale':30,'maxPixels':1e13})
+Export.image(forExport,'NDVI_Angle_sc',{'crs':crs,'region':regionJSON,'scale':30,'maxPixels':1e13})
 newPredict(coeffs,withHarmonics)
-// print(coeffs,withHarmonics)
+print(coeffs,withHarmonics)
 
 // addToMap(withHarmonics.select([0,2,3]),{},'withHarmonics')
