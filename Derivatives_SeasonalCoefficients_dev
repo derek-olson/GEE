@@ -1,0 +1,628 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+        [[[-120.22201538085937, 39.51781418588603],
+          [-120.23025512695312, 38.88355020746342],
+          [-119.26895141601562, 38.872859384572244],
+          [-119.25933837890625, 39.579231826349016],
+          [-120.22750854492187, 39.547470868779406]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//Simple Landsat cloud busting script
+// var sa = ee.FeatureCollection('ft:1anv7U1hkQoxn-ejlJ9TAvjymkKJblHrPGcN5P45p').geometry()
+///
+//Convert geometry to geoJSON for downloading
+var regionJSON = sa.toGeoJSONString();
+///////////////////////////////////////////////////////////////////
+//Some visualization parameters for stretching the bands
+var peruM = [ 0.1180300,0.2614512,0.04743784];
+var peruS = [0.0312486, 0.0527525, 0.0099494];
+var n1 = 5;
+var n2 = 5;
+var mins = [peruM[0] -peruS[0]*n1,peruM[1] -peruS[1]*n1,peruM[2] -peruS[2]*n1];
+var maxes = [peruM[0] +peruS[0]*n2,peruM[1] +peruS[1]*n2,peruM[2] +peruS[2]*n2];
+var vizParamsPeru = {'min': mins,'max':maxes,   'bands':'swir1,nir,red'};
+
+var vizParamsCO1 = {'min': 0.05,'max': [.3,0.4,.4],   'bands':'swir1,nir,red'};
+var vizParamsCO2 = {'min': 0.15,'max': [.35,.8,.4],   'bands':'swir1,nir,red', 'gamma': 1.6};
+//var vizParams = vizParamsPeru;
+var vizParamsCO3 = {'min': 0.05,'max': [.3,0.4,.4],   'bands':'swir1,nir,red', 'gamma':1.6};
+var vizParamsFalse = {'min': 0.1,'max': [.3,0.3,.3],   'bands':'nir,swir1,red'};
+var vizParamsViz = {'min': 0.05, 'max': 0.3,'bands': 'red,green,blue', 'gamma': 1.6};
+
+//Choose which visualization parameter to use
+var vizParams = vizParamsCO3
+
+
+///////////////////////////////////////////////////////////////////////////////
+//Common band names
+var bandNames = ee.List(['blue','green','red','nir','swir1','temp','swir2']);
+var bandNumbers = [0,1,2,3,4,5,6];
+//////////////////////////////////////////////////////////////
+//Band combinations for each sensor corresponding to final selected corresponding bands                        
+  var sensor_band_dict =ee.Dictionary({L8 : ee.List([1,2,3,4,5,9,6]),
+                        L7 : ee.List([0,1,2,3,4,5,7]),
+                        L5 : ee.List([0,1,2,3,4,5,6]),
+                        L4 : ee.List([0,1,2,3,4,5,6])
+  });
+////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+function rescale(img, exp, thresholds) {
+    return img.expression(exp, {img: img})
+        .subtract(thresholds[0]).divide(thresholds[1] - thresholds[0]);
+  };
+/////////////////////////////////////////////////////////////
+function snowScore(img){
+      // Compute several indicators of snowyness and take the minimum of them.
+      var score = ee.Image(1.0);
+      // Snow is reasonably bright in the blue band.
+      score = score.min(rescale(img, 'img.blue', [0.1, 0.3]));
+    
+      // Snow is reasonably bright in all visible bands.
+      score = score.min(rescale(img, 'img.red + img.green + img.blue', [0.2, 0.8]));
+    
+      // // Excluded this for snow reasonably bright in all infrared bands.
+      // score = score.min(
+      //     rescale(img, 'img.nir + img.swir1 + img.swir2', [0.3, 0.8]));
+    
+      // Snow is reasonably cool in temperature.
+      //Changed from [300,290] to [290,275] for AK
+      score = score.min(rescale(img, 'img.temp', [300, 285]));
+      
+      
+       // Snow is high in ndsi.
+      var ndsi = img.normalizedDifference(['green', 'swir1']);
+      ndsi = rescale(ndsi, 'img', [0.5, 0.7]);
+      score = score.min(ndsi);
+      
+      return score.clamp(0,1)
+      
+      }
+//////////////////////////////////////////////////////      
+function waterScore(img){
+      // Compute several indicators of water and take the minimum of them.
+      var score = ee.Image(1.0);
+      
+      
+      //Set up some params
+      var darkBands = ['green','red','nir','swir2','swir1'];//,'nir','swir1','swir2'];
+      var brightBand = 'blue';
+      var shadowSumBands = ['nir','swir1','swir2'];
+      //Water tends to be dark
+      var sum = img.select(shadowSumBands).reduce(ee.Reducer.sum());
+      var sum = rescale(sum,'img',[0.35,0.2]).clamp(0,1)
+      score = score.min(sum)
+      
+      //It also tends to be relatively bright in the blue band
+      var mean = img.select(darkBands).reduce(ee.Reducer.mean());
+      var std = img.select(darkBands).reduce(ee.Reducer.stdDev());
+      var z = (img.select([brightBand]).subtract(std)).divide(mean)
+      z = rescale(z,'img',[0,1]).clamp(0,1)
+      score = score.min(z)
+      
+
+      // // Water is at or above freezing
+      
+      score = score.min(rescale(img, 'img.temp', [273, 275]));
+      
+      
+      // // Water is nigh in ndsi (aka mndwi)
+      var ndsi = img.normalizedDifference(['green', 'swir1']);
+      ndsi = rescale(ndsi, 'img', [0.3, 0.8]);
+      
+      
+      score = score.min(ndsi);
+      
+      return score.clamp(0,1)
+      
+      }
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function maskSnow(img){
+  var ss = snowScore(img)
+  return img.mask(img.mask().and(ss.lt(snowThresh)))
+}
+//////////////////////////////////////////////////////////////////
+function maskWater(img){
+  var ws = waterScore(img)
+  return img.mask(img.mask().and(ws.lt(waterThresh)))
+}
+/////////////////////////////////////////////////////////////////
+//Basic cloud busting function
+function bustClouds(img){
+    var t = img
+    var cs = ee.Algorithms.Landsat.simpleCloudScore(img).select('cloud')
+    var out = img.mask(img.mask().and(cs.lt(cloudThresh)))
+    return out.copyProperties(t)
+}
+////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//Function to handle empty collections that will cause subsequent processes to fail
+//If the collection is empty, will fill it with an empty image
+function fillEmptyCollections(inCollection,dummyImage){                       
+  var dummyCollection = ee.ImageCollection([dummyImage.mask(ee.Image(0))])
+  var imageCount = inCollection.toList(1).length()
+  return ee.ImageCollection(ee.Algorithms.If(imageCount.gt(0),inCollection,dummyCollection))
+
+}
+//////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//var bandNumbers = [0,1,2,3,4,5,6];
+var tcBandNumbers = [0,1,2,3,4,6];
+
+////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
+//Functions for computing tasseled cap transform
+//Author:  Ian Housman
+/////////////////////////////////////////////////////////////////////////
+//Baig 2014 coeffs - TOA refl (http://www.tandfonline.com/doi/pdf/10.1080/2150704X.2014.915434)
+var l8_tc_coeffs = [ee.Image([0.3029, 0.2786, 0.4733, 0.5599, 0.508, 0.1872]),
+                    ee.Image([-0.2941, -0.243, -0.5424, 0.7276, 0.0713, -0.1608]),
+                    ee.Image([ 0.1511, 0.1973, 0.3283, 0.3407, -0.7117, -0.4559])
+                    // ee.Image([-0.8239, 0.0849, 0.4396, -0.058, 0.2013, -0.2773]),
+                    // ee.Image([-0.3294, 0.0557, 0.1056, 0.1855, -0.4349, 0.8085]),
+                    // ee.Image([0.1079, -0.9023, 0.4119, 0.0575, -0.0259, 0.0252])
+                    ];
+//Huang 2002 coeffs - TOA refl (http://landcover.usgs.gov/pdf/tasseled.pdf)
+var l7_tc_coeffs = [ee.Image([0.3561, 0.3972, 0.3904, 0.6966, 0.2286, 0.1596]),
+                    ee.Image([-0.3344, -0.3544, -0.4556, 0.6966, -0.0242, -0.2630]),
+                    ee.Image([0.2626, 0.2141, 0.0926, 0.0656, -0.7629, -0.5388])
+                    // ee.Image([0.0805, -0.0498, 0.1950, -0.1327, 0.5752, -0.7775]),
+                    // ee.Image([-0.7252, -0.0202, 0.6683, 0.0631, -0.1494, -0.0274]),
+                    // ee.Image([0.4000, -0.8172, 0.3832, 0.0602, -0.1095, 0.0985])
+                    ];
+
+//Crist 1985 coeffs - TOA refl (http://www.gis.usu.edu/~doug/RS5750/assign/OLD/RSE(17)-301.pdf)
+var l5_tc_coeffs = [ee.Image([0.2043, 0.4158, 0.5524, 0.5741, 0.3124, 0.2303]),
+                    ee.Image([-0.1603, -0.2819, -0.4934, 0.7940, -0.0002, -0.1446]),
+                    ee.Image([0.0315, 0.2021, 0.3102, 0.1594, -0.6806, -0.6109])
+                    // ee.Image([-0.2117, -0.0284, 0.1302, -0.1007, 0.6529, -0.7078]),
+                    // ee.Image([-0.8669, -0.1835, 0.3856, 0.0408, -0.1132, 0.2272]),
+                    // ee.Image([0.3677, -0.8200, 0.4354, 0.0518, -0.0066, -0.0104])
+                    ];
+/////////////////////////////////////////////////////////////////////////////////                    
+var tc_coeff_dict = {L5: l5_tc_coeffs,L7: l7_tc_coeffs, L8: l8_tc_coeffs};
+var tc_names = ['Brightness','Greenness', 'Wetness'];//, 'TCT4','TCT5','TCT6'];
+var tc_names_a = ['Brightness','Greenness', 'Wetness','Angle'];//, 'TCT4','TCT5','TCT6','Angle'];
+/////////////////////////////////////////////////////////////////////////////////
+//Function to compute tc transformation using the coeffs above
+var tc = function(image, sensor){
+  //Nested function to do the multiplication and addition
+  var mult_sum = function(matrix){
+    return image.multiply(matrix).reduce(ee.call("Reducer.sum"));
+    };
+  //Find the coeffs
+  var coeffs = tc_coeff_dict[sensor];
+  
+  //Compute the tc transformation and give it useful names
+  var tco = ee.Image(coeffs.map(mult_sum)).select([0,1,2], tc_names);
+  
+  
+  //From: http://www.fs.fed.us/rm/pubs_other/rmrs_2010_powell_s001.pdf
+  var angle = tco.select('Greenness').divide(tco.select('Brightness')).atan();
+  tco = tco.addBands(angle).select([0,1,2,3],tc_names_a);
+  
+  return tco;
+};
+/////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////
+//Function for adding common indices
+function addIndices(in_image){
+
+  
+    //in_image = in_image.select(bandNumbers,bandNames);
+    in_image = in_image.addBands(in_image.normalizedDifference(['nir', 'red']).select([0],['NDVI']));
+    in_image = in_image.addBands(in_image.normalizedDifference(['nir', 'swir2']).select([0],['NBR']));
+    in_image = in_image.addBands(in_image.normalizedDifference(['nir', 'swir1']).select([0],['NDMI']));
+    // in_image = in_image.addBands(in_image.normalizedDifference(['green', 'red']).select([0],['VIG']));
+    in_image = in_image.addBands(in_image.normalizedDifference(['green', 'swir1']).select([0],['NDSI']));
+    // in_image = in_image.addBands(in_image.normalizedDifference(['red', 'blue']).select([0],['NDWFI']));
+    
+    //EVI algorithm taken from: http://landsat.usgs.gov/documents/si_product_guide.pdf
+    //EVI = (Band 4 – Band 3) / (Band 4 + 6 * Band 3 – 7.5 * Band 1 + 1)
+    var nir = in_image.select(['nir']).multiply(10000);
+    var red = in_image.select(['red']).multiply(10000);
+    var evi = (nir.subtract(red)).divide((nir))
+    in_image = in_image.addBands(tc(in_image.select(tcBandNumbers),'L5'));
+    
+    //Algorithm from Vincent2004 to estimate phycocyanin content (PC) from a linear combination of LANDSAT bands
+    //in_image = in_image.addBands(in_image.expression("47.7-9.21*b('red')/b('blue')+29.7 * b('nir')/b('blue')-118*b('nir')/b('red')-6.81*b('swir1')/b('red')+41.9*b('swir2')/b('red')-14.7*b('swir2')/b('nir')").select([0],['PC']));
+    
+    return in_image;
+  
+};
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+//Adds the float year with julian proportion to image
+function addDateBand(img){
+
+  var d = ee.Date(img.get('system:time_start'))
+  var y = d.get('year')
+  var d = y.add(d.getFraction('year'))
+  // var pt = ee.PixelType('float',1950,2100)
+  var db = ee.Image.constant(d).select([0],['year']).float()
+  return img.addBands(db)
+  .copyProperties(img)
+}
+///////////////////////////////////////////////////
+var k = ee.Kernel.fixed(41, 41, 
+[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+);
+
+function defringeLandsat(img){
+  //Find any pixel without
+  var m = img.mask().reduce(ee.Reducer.min());
+  var sum = m.reduceNeighborhood(ee.Reducer.sum(), k, 'kernel')
+  // addToMap(img,vizParams,'with fringes')
+  // addToMap(sum,{'min':20,'max':100},'sum41',false)
+  sum = sum.gte(100)
+  img = img.mask(img.mask().and(sum))
+  // addToMap(img,vizParams,'defringed')
+  return img;
+}
+////////////////////////////////////////////////////////////////
+function simpleCloudShadowFreeImages(startDate,endDate,startJulian,endJulian){
+  var l5 = ee.ImageCollection('LT5_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        
+        if(runDefringe === true){
+          print('Running defringe on L5')
+          l5 = l5.map(defringeLandsat);
+        }
+        l5 = l5
+        .map(bustClouds)
+        .select(sensor_band_dict.get('L5'),bandNames)
+        
+  // var l7 = ee.ImageCollection('LE7_L1T_TOA')
+  //       .filterDate(startDate,endDate)
+  //       .filter(ee.Filter.calendarRange(startJulian,endJulian))
+  //       .filterBounds(sa)
+  //       if(runDefringe === true){
+  //         print('Running defringe on L7')
+  //         l7 = l7.map(defringeLandsat);
+  //       }
+  //       l7 = l7
+  //       .map(bustClouds)
+  //       .select(sensor_band_dict.get('L7'),bandNames)
+        
+  var l8 = ee.ImageCollection('LC8_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        .map(bustClouds)
+        .select(sensor_band_dict.get('L8'),bandNames)
+        
+  var ls = ee.ImageCollection(l5.merge(l8));
+  
+  if(shouldMaskSnow === true){
+    print('Masking snow');
+    ls = ls.map(maskSnow);
+  }
+  if(shouldMaskWater === true){
+    print('Masking water');
+    ls = ls.map(maskWater);
+  }
+  // addToMap(ls.reduce(ee.Reducer.percentile([5])).select(bandNumbers,bandNames),vizParams,'5thPercentileCompositeBeforeShadowBusting');
+  // addToMap(ee.Image(ls.first()),vizParams,'FirstImageBeforeShadowMasking')
+  //Temporal Dark Outlier Mask (TDOM)
+  //Z-score based cloud shadow removal
+  if(runTDOM === true){
+    var shadowSumBands = ['nir','swir1','swir2'];
+    print('Running TDOM')
+    
+    //Add shadow sum band to collection
+    ls = ls.map(function(img){
+      var shadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],['shadowSum'])
+      return img.addBands(shadowSum);
+    })
+    
+    //Fun first cut of dark masking- all very dark pixels are masked
+    // ls = ls.map(function(img){
+    //   return img.mask(img.mask().and(img.select(['shadowSum']).gt(0.1)))
+    // })
+    
+    
+    var obsCount = ls.select([0]).count();
+    var obsMask = obsCount.gt(minNumberObservationsNeeded);
+    addToMap(obsCount,{'min':15,'max':100},'ObsCount',false)
+    
+    //Find mean and stdDev of shadow sum band
+    var shadowMean = ls.select(['shadowSum']).mean();
+    shadowMean = shadowMean.mask(shadowMean.mask().and(obsMask))
+    var shadowStdDev = ls.select(['shadowSum']).reduce(ee.Reducer.stdDev());
+    
+    //Find dark outliers using the z score
+    ls = ls.map(function(img){
+      var zScore = img.select(['shadowSum']).subtract(shadowMean).divide(shadowStdDev).select([0],['zShadow']);
+      return img.mask(img.mask().and(zScore.gt(zShadowThresh))).addBands(zScore);
+    });
+  // addToMap(ls.reduce(ee.Reducer.percentile([5])).select(bandNumbers,bandNames),vizParams,'5thPercentileCompositeAfterShadowBusting');
+  // addToMap(ee.Image(ls.first()),vizParams,'FirstImageAfterShadowMasking')
+  // addToMap(ee.Image(ls.first()).select('zShadow'),{'min':-3,'max':0},'FirstImageZShadow')
+  
+  // addToMap(ls.select(['nir']),{},'NIR-TimeSeries')
+  // addToMap(ls.median(),vizParams,'MedianCompositeAfterShadowBusting');
+  
+  }
+  ls = ls.map(addIndices);
+  return ls
+}
+function exportLandsatComposite(composite,name,res,crs,noData){
+  // var composite =simpleCloudShadowFreeImages(startDate,endDate,startJulian,endJulian).median();
+  addToMap(composite,vizParams,name)
+  
+  var forExport = composite.select([0,1,2,3,4,6]).multiply(10000);//Multiply refl bands by 10k to reduce to 16 bit
+  forExport = forExport.addBands(composite.select([5])).select([0,1,2,3,4,6,5]).int16();//Add thermal back in and cast to 16 bit
+  var m = forExport.mask();//Get current null values
+  forExport = forExport.mask(ee.Image(1));//Get rid of all null values
+  forExport = forExport.where(m.not(),noData);//Reset null values to no data value
+  
+  Export.image(forExport,name,{'crs':crs,'region':regionJSON,'scale':res,'maxPixels':1e13})
+  
+  var exportViz = forExport.float().divide(10000).clip(sa).visualize(vizParams);
+  addToMap(exportViz,{},name+'-8-bit',false)
+  //Get URL for PNG 
+  // var url =exportViz.getThumbURL({'dimensions':1500,'region':regionJSON,'format':'png'})
+  // print(url)
+}
+/////////////////////////////////////////////////////////////////////////////////
+//Function to give year.dd image and harmonics list (e.g. [1,2,3,...])
+function getHarmonicList(yearDateImg,transformBandName,harmonicList){
+    var t= yearDateImg.select([transformBandName])
+    var selectBands = ee.List.sequence(0,harmonicList.length-1);
+    
+    var sinNames = harmonicList.map(function(h){
+      var ht = h*100
+      return ee.String('sin_').cat(ht.toString()).cat('_').cat(transformBandName)
+    })
+    var cosNames = harmonicList.map(function(h){
+      var ht =h*100
+      return ee.String('cos_').cat(ht.toString()).cat('_').cat(transformBandName)
+    })
+    
+    var sinCosNames = harmonicList.map(function(h){
+      var ht =h*100
+      return ee.String('sin_x_cos_').cat(ht.toString()).cat('_').cat(transformBandName)
+    })
+    
+    var multipliers = ee.Image(harmonicList).multiply(ee.Number(Math.PI).float()) 
+    var sinInd = (t.multiply(ee.Image(multipliers))).sin().select(selectBands,sinNames).float()
+    var cosInd = (t.multiply(ee.Image(multipliers))).cos().select(selectBands,cosNames).float()
+    var sinCosInd = sinInd.multiply(cosInd).select(selectBands,sinCosNames);
+    
+    return yearDateImg.addBands(sinInd.addBands(cosInd)).addBands(sinCosInd)
+  }
+//////////////////////////////////////////////////////
+//Takes a dependent and independent variable and returns the dependent, 
+// sin of ind, and cos of ind
+//Intended for harmonic regression
+function getHarmonics2(collection,transformBandName,harmonicList){
+  var depBandNames = ee.Image(collection.first()).bandNames().remove(transformBandName)
+  var depBandNumbers = depBandNames.map(function(dbn){
+    return depBandNames.indexOf(dbn)
+  })
+  
+  var out = collection.map(function(img){
+    var outT = getHarmonicList(img,transformBandName,harmonicList)
+    .copyProperties(img,['system:time_start','system:time_end'])
+    return outT
+  })
+ 
+
+  var indBandNames = ee.Image(out.first()).bandNames().removeAll(depBandNames);
+  var indBandNumbers = indBandNames.map(function(ind){
+    return ee.Image(out.first()).bandNames().indexOf(ind)
+  })
+  
+  out = out.set({'indBandNames':indBandNames,'depBandNames':depBandNames,
+                'indBandNumbers':indBandNumbers,'depBandNumbers':depBandNumbers
+  })
+  
+  return out
+}
+////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+//Simplifies the use of the robust linear regression reducer
+//Assumes the dependent is the first band and all subsequent bands are independents
+function newRobustMultipleLinear2(dependentsIndependents){//,dependentBands,independentBands){
+  //Set up the band names
+
+  var dependentBands = ee.List(dependentsIndependents.get('depBandNumbers'));
+  var independentBands = ee.List(dependentsIndependents.get('indBandNumbers'));
+  var bns = ee.Image(dependentsIndependents.first()).bandNames();
+  var dependents = ee.List(dependentsIndependents.get('depBandNames'));
+  var independents = ee.List(dependentsIndependents.get('indBandNames'));
+  
+  // var dependent = bns.slice(0,1);
+  // var independents = bns.slice(1,null)
+  var noIndependents = independents.length().add(1);
+  var noDependents = dependents.length();
+  
+  var outNames = ee.List(['intercept']).cat(independents)
+ 
+  //Add constant band for intercept and reorder for 
+  //syntax: constant, ind1,ind2,ind3,indn,dependent
+  var forFit = dependentsIndependents.map(function(img){
+    var out = img.addBands(ee.Image(1).select([0],['constant']))
+    out = out.select(ee.List(['constant',independents]).flatten())
+    return out.addBands(img.select(dependents))
+  })
+  
+  //Apply reducer, and convert back to image with respective bandNames
+  var reducerOut = forFit.reduce(ee.Reducer.linearRegression(noIndependents,noDependents))
+  // var test = forFit.reduce(ee.Reducer.robustLinearRegression(noIndependents,noDependents,0.2))
+  // var resids = test
+  // .select([1],['residuals']).arrayFlatten([dependents]);
+  // addToMap(resids,{},'residsImage');
+  // addToMap(reducerOut.select([0]),{},'coefficients');
+  // addToMap(test.select([1]),{},'tresiduals');
+  // addToMap(reducerOut.select([1]),{},'roresiduals');
+  reducerOut = reducerOut
+  .select([0],['coefficients']).arrayTranspose().arrayFlatten([dependents,outNames])
+  reducerOut = reducerOut
+  .set({'noDependents':ee.Number(noDependents),
+  'modelLength':ee.Number(noIndependents)
+    
+  })
+  
+  return reducerOut
+}
+/////////////////////////////////////////////////////
+function collectionToImage(collection){
+  collection = ee.ImageCollection(collection);
+  var i = collection.toArray();
+  var bns2 = ee.Image(collection.first()).bandNames();
+  var il = ee.List(collection.toList(100000));
+  var bns1 = ee.List.sequence(1,il.length())
+  .map(function(bn){return ee.String(ee.Number(bn).int16())});
+  
+  var o = i
+  // .arrayProject([0])
+  .arrayFlatten([bns1,bns2]);
+  return o
+}
+
+
+/////////////////////////////////////////////////////
+function newPredict(coeffs,harmonics){
+  
+  var bandNames = coeffs.bandNames();
+  var bandNumber = bandNames.length();
+  var noDependents = ee.Number(coeffs.get('noDependents'));
+  var modelLength = ee.Number(coeffs.get('modelLength'));
+  var interceptBands = ee.List.sequence(0,bandNumber.subtract(1),modelLength);
+  var timeBand = ee.List(harmonics.get('indBandNames')).get(0);
+  var actualBands = harmonics.get('depBandNumbers');
+  var indBands = harmonics.get('indBandNumbers');
+  var indBandNames = ee.List(harmonics.get('indBandNames'));
+  var depBandNames = ee.List(harmonics.get('depBandNames'));
+  var predictedBandNames = depBandNames.map(function(depbnms){return ee.String(depbnms).cat('_predicted')})
+  var predictedBandNumbers = ee.List.sequence(0,predictedBandNames.length().subtract(1));
+
+  var models = ee.List.sequence(0,noDependents.subtract(1));
+  var parsedModel =models.map(function(mn){
+    mn = ee.Number(mn);
+    return bandNames.slice(mn.multiply(modelLength),mn.multiply(modelLength).add(modelLength))
+  });
+  print(parsedModel);
+  var predicted =harmonics.map(function(img){
+    var time = img.select(timeBand);
+    var actual = img.select(actualBands).float();
+    var predictorBands = img.select(indBandNames);
+    
+    // var predicted = img.select(interceptBands)
+    var predictedList =parsedModel.map(function(pm){
+      pm = ee.List(pm);
+      var modelCoeffs = coeffs.select(pm);
+      var outName = ee.String(pm.get(1)).cat('_predicted')
+      var intercept = modelCoeffs.select(modelCoeffs.bandNames().slice(0,1));
+      var others = modelCoeffs.select(modelCoeffs.bandNames().slice(1,null));
+    
+      predicted = predictorBands.multiply(others).reduce(ee.Reducer.sum()).add(intercept).float();
+      return predicted.float()
+    
+    })
+    predictedList = ee.ImageCollection.fromImages(predictedList);
+    var predictedImage = collectionToImage(predictedList).select(predictedBandNumbers,predictedBandNames);
+    // var predicted =
+    // parsedModel.map(function(pm){
+      
+    // return predictorBands
+    return actual.addBands(predictedImage.float())
+  })
+ 
+addToMap(predicted,{},'predicted')
+}
+//////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+//Parameters
+var startDate = ee.Date.fromYMD(2013,1,1);
+var endDate = ee.Date.fromYMD(2015,11,30);
+// var startJulian = 190;
+// var endJulian = 250;
+var cloudThresh = 20;//Threshold for cloud masking (lower number masks more clouds)
+
+var runTDOM = true;//Whether to run TDOM cloud shadow masking
+var runDefringe = false;//Whether to run defringe algorithm on L5 and L7
+var zShadowThresh = -1.2//Threshold for cloud shadow masking- lower number masks out less
+var minNumberObservationsNeeded = 1;//Min number of observations needed for pixel to be included in analysis
+var shouldMaskSnow = false;
+var shouldMaskWater = false;
+var waterThresh = 0.05;//Lower number masks more out  (0-1)
+var snowThresh = 0.05;//Lower number masks more out (0-1)
+
+var crs = 'EPSG:26911'//Projection info for export
+var indexNames = ['NDVI'];//Which bands to perform harmonic regression for
+
+//Get all images and cloud and shadow mask them
+var allImages = simpleCloudShadowFreeImages(startDate,endDate,0,365);
+// var springComposite = allImages.filter(ee.Filter.calendarRange(90,166)).median();
+var summerComposite = allImages.filter(ee.Filter.calendarRange(166,258)).median();
+// var fallComposite = allImages.filter(ee.Filter.calendarRange(258,305)).median();
+addToMap(summerComposite,vizParams,'SummerComposite');
+// exportLandsatComposite(springComposite,'R1TestSpringComposite_2010_2015',30,crs,-9999)
+// exportLandsatComposite(summerComposite,'R1TestSummerComposite_2010_2015',30,crs,-9999)
+// exportLandsatComposite(fallComposite,'R1TestFallComposite_2010_2015',30,crs,-9999)
+
+//Select desired bands
+var allIndices = allImages.select(indexNames);
+allIndices = allIndices.map(addDateBand);
+
+//Add independent predictors (harmonics)
+var withHarmonics = getHarmonics2(allIndices,'year',[2])
+
+//Fit a linear fit model
+var coeffs = newRobustMultipleLinear2(withHarmonics)
+addToMap(coeffs,{'min':-0.2,'max':0.3},'coeffs');
+
+var forExport = coeffs;
+var m = forExport.mask();//Get current null values
+forExport = forExport.mask(ee.Image(1));//Get rid of all null values
+forExport = forExport.where(m.not(),-9999);//Reset null values to no data value
+  
+Export.image(forExport,'NDVI_Angle_sc',{'crs':crs,'region':regionJSON,'scale':30,'maxPixels':1e13})
+newPredict(coeffs,withHarmonics)
+print(coeffs,withHarmonics)
+
+// addToMap(withHarmonics.select([0,2,3]),{},'withHarmonics')
