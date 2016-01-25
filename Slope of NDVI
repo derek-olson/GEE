@@ -1,0 +1,26 @@
+//Create time band
+var createTimeBand = function(image) 
+{
+  return image.addBands(image.metadata('system:time_start').divide(1e9));
+};
+
+//Load image collection
+var MODIS = ee.ImageCollection('MODIS/MOD13Q1')
+  .filterDate(ee.Date('2000-01-01'),ee.Date('2015-12-01'))
+  .filter(ee.Filter.calendarRange(182,273))
+  .select(['NDVI'])
+  .map(createTimeBand);
+
+// Get scale.
+var scale = ee.Image(MODIS.first())
+  .select(['NDVI']).projection().nominalScale();
+
+// Reduce the collection with the linear fit reducer.
+// Independent variable are followed by dependent variables.
+var linearFit = MODIS.select(['system:time_start', 'NDVI'])
+  .reduce(ee.Reducer.linearFit());
+
+// Display the results.
+Map.setCenter(-103.0023, 42.8317, 8);
+Map.addLayer(linearFit,
+  {min: 0, max: [-0.9, 8e-5, 1], bands: ['scale', 'offset', 'scale']}, 'fit');
