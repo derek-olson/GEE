@@ -218,7 +218,7 @@ function addIndices(in_image){
     in_image = in_image.addBands(in_image.normalizedDifference(['nir', 'swir1']).select([0],['NDWI']));
     in_image = in_image.addBands(in_image.normalizedDifference(['nir', 'swir2']).select([0],['NDII7']));
     in_image = in_image.addBands(in_image.normalizedDifference(['swir1', 'red']).select([0],['NDCI']));
-    in_image = in_image.addBands(in_image.normalizedDifference(['swir1', 'green']).select([0],['NDMI']));
+    in_image = in_image.addBands(in_image.normalizedDifference(['swir1', 'green']).select([0],['NCI']));
     // in_image = in_image.addBands(in_image.normalizedDifference(['green', 'red']).select([0],['VIG']));
     in_image = in_image.addBands(in_image.normalizedDifference(['green', 'swir1']).select([0],['NDSI']));
     // in_image = in_image.addBands(in_image.normalizedDifference(['red', 'blue']).select([0],['NDWFI']));
