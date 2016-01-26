@@ -8,12 +8,8 @@ var createTimeBand = function(image)
   var year = d.get('year');
   var proportion = d.getFraction('year');
   var yearProportion = ee.Image(year.add(proportion)).float();
-  
   return image.addBands(yearProportion.select([0],['year']))
-  
-  
- 
-};
+ };
 
 //Load image collection
 var MODIS = ee.ImageCollection('MODIS/MOD13Q1')
@@ -21,10 +17,6 @@ var MODIS = ee.ImageCollection('MODIS/MOD13Q1')
   .filter(ee.Filter.calendarRange(182,273))
   .select(['NDVI'])
   .map(createTimeBand);
-
-// // Get scale.
-// var scale = ee.Image(MODIS.first())
-//   .select(['NDVI']).projection().nominalScale();
 
 // Reduce the collection with the linear fit reducer.
 // Independent variable are followed by dependent variables.
@@ -36,6 +28,7 @@ Map.setCenter(-103.0023, 42.8317, 8);
 Map.addLayer(linearFit,
   {min: -150, max: 150, bands: ['scale', 'offset', 'scale']}, 'fit');
 
+//Map Actual vs Predicted
 var actualPredicted = MODIS.map(function(img){
   var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDVI']);
   var actual = img.select(['NDVI']).select([0],['actualNDVI']);
