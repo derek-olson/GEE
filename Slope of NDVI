@@ -1,7 +1,18 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var visParams = {"opacity":1,"bands":["scale"],"min":-1.963112783154707,"max":3.890996210803308,"gamma":1};
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Create time band
 var createTimeBand = function(image) 
 {
-  return image.addBands(image.metadata('system:time_start').divide(1e9));
+  var d = ee.Date(image.get('system:time_start'));
+  var year = d.get('year');
+  var proportion = d.getFraction('year');
+  var yearProportion = ee.Image(year.add(proportion)).float();
+  
+  return image.addBands(yearProportion.select([0],['year']))
+  
+  
+ 
 };
 
 //Load image collection
@@ -11,16 +22,26 @@ var MODIS = ee.ImageCollection('MODIS/MOD13Q1')
   .select(['NDVI'])
   .map(createTimeBand);
 
-// Get scale.
-var scale = ee.Image(MODIS.first())
-  .select(['NDVI']).projection().nominalScale();
+// // Get scale.
+// var scale = ee.Image(MODIS.first())
+//   .select(['NDVI']).projection().nominalScale();
 
 // Reduce the collection with the linear fit reducer.
 // Independent variable are followed by dependent variables.
-var linearFit = MODIS.select(['system:time_start', 'NDVI'])
+var linearFit = MODIS.select(['year', 'NDVI'])
   .reduce(ee.Reducer.linearFit());
 
 // Display the results.
 Map.setCenter(-103.0023, 42.8317, 8);
 Map.addLayer(linearFit,
-  {min: 0, max: [-0.9, 8e-5, 1], bands: ['scale', 'offset', 'scale']}, 'fit');
+  {min: -150, max: 150, bands: ['scale', 'offset', 'scale']}, 'fit');
+
+var actualPredicted = MODIS.map(function(img){
+  var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDVI']);
+  var actual = img.select(['NDVI']).select([0],['actualNDVI']);
+  return actual.addBands(predicted)
+})
+Map.addLayer(actualPredicted);
+
+
+
