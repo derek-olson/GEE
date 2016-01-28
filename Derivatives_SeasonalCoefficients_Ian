@@ -10,8 +10,7 @@ var sa = /* color: d63000 */ee.Geometry.Polygon(
           [-105.6884765625, 40.396764305572056]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Simple Landsat cloud busting script
-// var sa = ee.FeatureCollection('ft:1anv7U1hkQoxn-ejlJ9TAvjymkKJblHrPGcN5P45p').geometry()
-///
+
 //Convert geometry to geoJSON for downloading
 var regionJSON = sa.toGeoJSONString();
 ///////////////////////////////////////////////////////////////////
@@ -219,9 +218,7 @@ function addIndices(in_image){
     in_image = in_image.addBands(in_image.normalizedDifference(['nir', 'swir2']).select([0],['NDII7']));
     in_image = in_image.addBands(in_image.normalizedDifference(['swir1', 'red']).select([0],['NDCI']));
     in_image = in_image.addBands(in_image.normalizedDifference(['swir1', 'green']).select([0],['NCI']));
-    // in_image = in_image.addBands(in_image.normalizedDifference(['green', 'red']).select([0],['VIG']));
     in_image = in_image.addBands(in_image.normalizedDifference(['green', 'swir1']).select([0],['NDSI']));
-    // in_image = in_image.addBands(in_image.normalizedDifference(['red', 'blue']).select([0],['NDWFI']));
     
     //EVI algorithm taken from: http://landsat.usgs.gov/documents/si_product_guide.pdf
     //EVI = (Band 4 – Band 3) / (Band 4 + 6 * Band 3 – 7.5 * Band 1 + 1)
@@ -229,6 +226,9 @@ function addIndices(in_image){
     var red = in_image.select(['red']).multiply(10000);
     var evi = (nir.subtract(red)).divide((nir))
     in_image = in_image.addBands(tc(in_image.select(tcBandNumbers),'L5'));
+    var RDVI = in_image.select('nir').subtract(in_image.select('red')).divide(in_image.select('nir').add(in_image.select('red').sqrt())).select([0],['RDVI']);
+    var sevenFour = in_image.select('swir2').divide(in_image.select('nir'));
+    var RCI = in_image.select('swir1').divide(in_image.select('red'));
     
     //Algorithm from Vincent2004 to estimate phycocyanin content (PC) from a linear combination of LANDSAT bands
     //in_image = in_image.addBands(in_image.expression("47.7-9.21*b('red')/b('blue')+29.7 * b('nir')/b('blue')-118*b('nir')/b('red')-6.81*b('swir1')/b('red')+41.9*b('swir2')/b('red')-14.7*b('swir2')/b('nir')").select([0],['PC']));
