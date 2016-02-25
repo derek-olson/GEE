@@ -1,0 +1,69 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var boundbox = /* color: d63000 */ee.Geometry.Polygon(
+        [[[-103.49945068359375, 42.924251753870685],
+          [-103.48846435546875, 42.8215952943695],
+          [-103.33740234375, 42.8215952943695],
+          [-103.3538818359375, 42.91419494510531]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//Get the bands right
+var sensor_band_dict =ee.Dictionary({L8 : ee.List([1,2,3,4,5,9,6]),
+                        L7 : ee.List([0,1,2,3,4,5,7]),
+                        L5 : ee.List([0,1,2,3,4,5,6]),
+                        L4 : ee.List([0,1,2,3,4,5,6])
+  });
+  
+var bandNames = ee.List(['blue','green','red','nir','swir1','temp','swir2']);
+
+
+
+//cloud busting function
+var bust_clouds = function(image) {
+  
+  image = ee.Algorithms.Landsat.simpleCloudScore(image);
+  var quality = image.select('cloud');
+  var cloud01 = quality.gt(10);
+  var maskedImage = image.mask().and(cloud01.not());
+  image = image.mask(maskedImage);
+  return image;
+};
+
+//modular TDOM
+function simpleTDOM(collection,zShadowThresh,maskAllDarkPixels){
+      var shadowSumBands = ['nir','swir1','swir2']
+      var sSName = 'shadowSum'
+      var startBandNames = ee.Image(collection.first()).bandNames();
+      var collection = collection.map(function(img){
+        var shadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],[sSName])
+        return img.addBands(shadowSum);
+      })
+      
+      if(maskAllDarkPixels === true){
+        collection = collection.map(function(img){
+          return img.mask(img.mask().and(img.select([sSName]).gt(200)))
+        })
+      }
+      var shadowStd = collection.select(sSName).reduce(ee.Reducer.stdDev());
+      var shadowMean = collection.select(sSName).mean();
+     
+      collection = collection.map(function(img){
+        var tShadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],['shadowSumT']);
+        var zScore = tShadowSum.subtract(shadowMean).divide(shadowStd).select([0],['zShadow']);
+        var m = zScore.gt(zShadowThresh);
+        return img.mask(img.mask().and(m)).select(startBandNames);
+      })
+      return collection;
+    } 
+
+var l5Col = ee.ImageCollection('LT5_L1T_TOA')
+              .filterDate(new Date('01/01/2000'),new Date('12/31/2011'))
+              .filter(ee.Filter.calendarRange(150, 270))
+              .filterBounds(boundbox)
+              .map(bust_clouds)
+              .select(sensor_band_dict.get('L5'),bandNames);
+
+addToMap(l5Col.median().select([4,3,2]),{'min':0.05,'max':0.3},'no_clouds');
+
+
+//mask out shadows
+l5Col = simpleTDOM(l5Col,-1,false);
+addToMap(l5Col.median().select([4,3,2]),{'min':0.05,'max':0.3},'no_clouds_or_shadows');
