@@ -1,0 +1,14 @@
+//Create L5 and L8 merged collection
+var l5Col
+var l8Col
+
+//selected and renamed bands for both collections
+var allCol = ee.ImageCollection(l5Col.merge(l8Col));
+
+//Mask out clouds and cloud shadows
+
+//add Julian data band
+
+//add index
+
+//linear reducer
