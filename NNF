@@ -70,12 +70,12 @@ var createTimeBand = function(image)
 //add index band
 var NDVI = function(image)
 {
-  var index = image.normalizedDiffernece('nir', 'red')
+  var index = image.normalizedDifference('nir', 'red')
   return image.addBands(index.select([0],['NDVI']))
 }
 
 //Create L5 and L8 merged collection
-var l5 = ee.ImageCollection('LT5_L1T_TOA')
+var L5 = ee.ImageCollection('LT5_L1T_TOA')
         .filterDate(startDate,endDate)
         .filter(ee.Filter.calendarRange(startJulian,endJulian))
         .filterBounds(sa)
@@ -86,7 +86,7 @@ var L8 = ee.ImageCollection('LC8_L1T_TOA')
         .filterDate(startDate,endDate)
         .filter(ee.Filter.calendarRange(startJulian,endJulian))
         .filterBounds(sa)
-        .map(bustClouds)
+        .map(bust_clouds)
         .select(sensor_band_dict.get('L8'),bandNames)
 
 //selected and renamed bands for both collections
