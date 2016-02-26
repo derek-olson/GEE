@@ -70,7 +70,7 @@ var createTimeBand = function(image)
 //add index band
 var NDVI = function(image)
 {
-  var index = image.normalizedDifference('nir', 'red')
+  var index = image.normalizedDifference(['nir', 'red'])
   return image.addBands(index.select([0],['NDVI']))
 }
 
