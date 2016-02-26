@@ -1,9 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: d63000 */ee.Geometry.Polygon(
-        [[[-100.39306640625, 44.221583765457964],
-          [-104.21630859375, 44.25306865928177],
-          [-104.1943359375, 41.7631174470059],
-          [-100.030517578125, 41.672911819602085]]]);
+var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+        [[[-99.942626953125, 44.30812668488613],
+          [-104.205322265625, 44.276671273775186],
+          [-104.21630859375, 41.40977583200956],
+          [-99.66796875, 41.50857729743936]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
@@ -81,6 +81,13 @@ var L5 = ee.ImageCollection('LT5_L1T_TOA')
         .filterBounds(sa)
         .map(bust_clouds)
         .select(sensor_band_dict.get('L5'),bandNames)
+        
+var L7 = ee.ImageCollection('LE7_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        .map(bust_clouds)
+        .select(sensor_band_dict.get('L7'),bandNames)
 
 var L8 = ee.ImageCollection('LC8_L1T_TOA')
         .filterDate(startDate,endDate)
@@ -90,7 +97,7 @@ var L8 = ee.ImageCollection('LC8_L1T_TOA')
         .select(sensor_band_dict.get('L8'),bandNames)
 
 //selected and renamed bands for both collections
-var Imagery = ee.ImageCollection(L5.merge(L8));
+var Imagery = ee.ImageCollection(L5.merge(L7).merge(L8));
 
 Imagery = simpleTDOM(Imagery,-1,false)
 Imagery = Imagery.map(NDVI)
