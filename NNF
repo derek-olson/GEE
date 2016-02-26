@@ -6,8 +6,8 @@ var sa = /* color: d63000 */ee.Geometry.Polygon(
           [-100.030517578125, 41.672911819602085]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
-var startDate = 1990
-var endDate = 2015
+var startDate = new Date('01/01/1990')
+var endDate = new Date('12/31/2015')
 var startJulian = 121
 var endJulian = 273
 
