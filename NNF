@@ -103,9 +103,9 @@ var linearFit = Imagery.select(['year', 'NDVI'])
   .reduce(ee.Reducer.linearFit());
 
 // Display the results.
-Map.setCenter(-103.0023, 42.8317, 8);
-Map.addLayer(linearFit,
-  {min: -150, max: 150, bands: ['scale', 'offset', 'scale']}, 'fit');
+//Map.setCenter(-103.0023, 42.8317, 8);
+Map.addLayer(linearFit.select(['scale']),
+  {min: -0.01, max: 0.01}, 'fit');
 
 //Map Actual vs Predicted
 var actualPredicted = Imagery.map(function(img){
