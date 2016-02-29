@@ -132,7 +132,7 @@ Map.addLayer(linearFit.select(['scale']),
 
 //Map Actual vs Predicted
 var actualPredicted = Imagery.map(function(img){
-  var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDVI']);
+  var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDII7']);
   var actual = img.select(['NDII7']).select([0],['actualNDII7']);
   return actual.addBands(predicted)
 })
