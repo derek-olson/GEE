@@ -122,7 +122,7 @@ Imagery = Imagery.map(createTimeBand)
 //linear reducer
 // Reduce the collection with the linear fit reducer.
 // Independent variable are followed by dependent variables.
-var linearFit = Imagery.select(['year', 'NDWI'])
+var linearFit = Imagery.select(['year', 'NDII7'])
   .reduce(ee.Reducer.linearFit());
 
 // Display the results.
@@ -133,7 +133,7 @@ Map.addLayer(linearFit.select(['scale']),
 //Map Actual vs Predicted
 var actualPredicted = Imagery.map(function(img){
   var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDVI']);
-  var actual = img.select(['NDWI']).select([0],['actualNDWI']);
+  var actual = img.select(['NDII7']).select([0],['actualNDII7']);
   return actual.addBands(predicted)
 })
 Map.addLayer(actualPredicted);
