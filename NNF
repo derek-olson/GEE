@@ -1,5 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+var sa = /* color: d63000 */ee.Geometry.Polygon(
         [[[-99.942626953125, 44.30812668488613],
           [-104.205322265625, 44.276671273775186],
           [-104.21630859375, 41.40977583200956],
@@ -67,11 +67,25 @@ var createTimeBand = function(image)
   var yearProportion = ee.Image(year.add(proportion)).float();
   return image.addBands(yearProportion.select([0],['year']))
  };
-//add index band
+//add NDVI band
 var NDVI = function(image)
 {
   var index = image.normalizedDifference(['nir', 'red'])
   return image.addBands(index.select([0],['NDVI']))
+}
+
+//add NDWI band
+var NDWI = funtion(image)
+{
+  var WI = image.normalizedDifference(['nir', 'swir1'])
+  return image.addBands(index.select([0],['NDWI']))
+}
+
+//add NDII7 band
+var NDII7 = function(image)
+{
+  var II7 = image.normalizedDifference(['nir', 'swir2'])
+  return image.addBands(index.select([0],['NDII7']))
 }
 
 //Create L5 and L8 merged collection
@@ -101,12 +115,14 @@ var Imagery = ee.ImageCollection(L5.merge(L7).merge(L8));
 
 Imagery = simpleTDOM(Imagery,-1,false)
 Imagery = Imagery.map(NDVI)
+Imagery = Imagery.map(NDWI)
+Imagery = Imagery.map(NDII7)
 Imagery = Imagery.map(createTimeBand)
 
 //linear reducer
 // Reduce the collection with the linear fit reducer.
 // Independent variable are followed by dependent variables.
-var linearFit = Imagery.select(['year', 'NDVI'])
+var linearFit = Imagery.select(['year', 'NDWI'])
   .reduce(ee.Reducer.linearFit());
 
 // Display the results.
@@ -117,7 +133,7 @@ Map.addLayer(linearFit.select(['scale']),
 //Map Actual vs Predicted
 var actualPredicted = Imagery.map(function(img){
   var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDVI']);
-  var actual = img.select(['NDVI']).select([0],['actualNDVI']);
+  var actual = img.select(['NDWI']).select([0],['actualNDWI']);
   return actual.addBands(predicted)
 })
 Map.addLayer(actualPredicted);
