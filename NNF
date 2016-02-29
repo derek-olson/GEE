@@ -75,17 +75,17 @@ var NDVI = function(image)
 }
 
 //add NDWI band
-var NDWI = funtion(image)
+var NDWI = function(image)
 {
   var WI = image.normalizedDifference(['nir', 'swir1'])
-  return image.addBands(index.select([0],['NDWI']))
+  return image.addBands(WI.select([0],['NDWI']))
 }
 
 //add NDII7 band
 var NDII7 = function(image)
 {
   var II7 = image.normalizedDifference(['nir', 'swir2'])
-  return image.addBands(index.select([0],['NDII7']))
+  return image.addBands(II7.select([0],['NDII7']))
 }
 
 //Create L5 and L8 merged collection
