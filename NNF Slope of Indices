@@ -139,8 +139,8 @@ Map.addLayer(linearFit.select(['scale']),
 
 //Map Actual vs Predicted
 var actualPredicted = Imagery.map(function(img){
-  var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedIndex']);
-  var actual = img.select([index]).select([0],['actualIndex']);
+  var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predicted' + index]);
+  var actual = img.select([index]).select([0],['actual' + index]);
   return actual.addBands(predicted)
 })
 Map.addLayer(actualPredicted);
@@ -152,10 +152,10 @@ Map.addLayer(ForestBound)
 // var info = linearFit.getInfo()
 // Export.image(linearFit,'BHNFscale',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, 'scale':30, crs_transform:JSON.stringify(info.crs_transform)});
 
-// exportImage(linearFit, "BHNFscale",
-//       {'maxPixels': 2e9,
-//         'region': regionJSON.geometry().bounds().getInfo().coordinates[0],
-//         'crs':  'EPSG:26913',
-//         'scale': 30
-//       });
+exportImage(linearFit, "BHNFscale",
+      {'maxPixels': 2e9,
+        'region': sa.bounds().getInfo().coordinates[0],
+        'crs':  'EPSG:26913',
+        'scale': 30
+      });
        
