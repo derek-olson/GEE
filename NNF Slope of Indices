@@ -93,6 +93,7 @@ var NDII7 = function(image)
 var EVI = function(image)
 {
   var evi = ('nir'+'red')/('nir'+'swir1'*'red'-7.5*'blue'+1)
+  return image.addBands(evi.select([0],['EVI']))
 }
 
 //Create L5 and L8 merged collection
@@ -124,10 +125,11 @@ Imagery = simpleTDOM(Imagery,-1,false)
 Imagery = Imagery.map(NDVI)
 Imagery = Imagery.map(NDWI)
 Imagery = Imagery.map(NDII7)
+Imagery = Imagery.map(EVI)
 Imagery = Imagery.map(createTimeBand)
 
 //choose index
-var index = 'NDVI'
+var index = 'EVI'
 
 //linear reducer
 // Reduce the collection with the linear fit reducer.
@@ -155,10 +157,10 @@ Map.addLayer(ForestBound)
 // var info = linearFit.getInfo()
 // Export.image(linearFit,'BHNFscale',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, 'scale':30, crs_transform:JSON.stringify(info.crs_transform)});
 
-exportImage(linearFit, "BHNFscale",
-      {'maxPixels': 2e9,
-        'region': sa.bounds().getInfo().coordinates[0],
-        'crs':  'EPSG:26913',
-        'scale': 30
-      });
+// exportImage(linearFit, "BHNFscale",
+//       {'maxPixels': 2e9,
+//         'region': sa.bounds().getInfo().coordinates[0],
+//         'crs':  'EPSG:26913',
+//         'scale': 30
+//       });
        
