@@ -1,0 +1,148 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: d63000 */ee.Geometry.Polygon(
+        [[[-99.942626953125, 44.30812668488613],
+          [-104.205322265625, 44.276671273775186],
+          [-104.21630859375, 41.40977583200956],
+          [-99.66796875, 41.50857729743936]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//Get time variables
+var startDate = new Date('01/01/1990')
+var endDate = new Date('12/31/2015')
+var startJulian = 121
+var endJulian = 273
+
+//Get the bands right
+var sensor_band_dict =ee.Dictionary({L8 : ee.List([1,2,3,4,5,9,6]),
+                        L7 : ee.List([0,1,2,3,4,5,7]),
+                        L5 : ee.List([0,1,2,3,4,5,6]),
+                        L4 : ee.List([0,1,2,3,4,5,6])
+  });
+  
+var bandNames = ee.List(['blue','green','red','nir','swir1','temp','swir2']);
+
+//Mask out clouds and cloud shadows
+//cloud busting function
+var bust_clouds = function(image) {
+  
+  image = ee.Algorithms.Landsat.simpleCloudScore(image);
+  var quality = image.select('cloud');
+  var cloud01 = quality.gt(10);
+  var maskedImage = image.mask().and(cloud01.not());
+  image = image.mask(maskedImage);
+  return image;
+};
+
+//modular TDOM
+function simpleTDOM(collection,zShadowThresh,maskAllDarkPixels){
+      var shadowSumBands = ['nir','swir1','swir2']
+      var sSName = 'shadowSum'
+      var startBandNames = ee.Image(collection.first()).bandNames();
+      var collection = collection.map(function(img){
+        var shadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],[sSName])
+        return img.addBands(shadowSum);
+      })
+      
+      if(maskAllDarkPixels === true){
+        collection = collection.map(function(img){
+          return img.mask(img.mask().and(img.select([sSName]).gt(200)))
+        })
+      }
+      var shadowStd = collection.select(sSName).reduce(ee.Reducer.stdDev());
+      var shadowMean = collection.select(sSName).mean();
+     
+      collection = collection.map(function(img){
+        var tShadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],['shadowSumT']);
+        var zScore = tShadowSum.subtract(shadowMean).divide(shadowStd).select([0],['zShadow']);
+        var m = zScore.gt(zShadowThresh);
+        return img.mask(img.mask().and(m)).select(startBandNames);
+      })
+      return collection;
+    } 
+//add Julian data band
+var createTimeBand = function(image) 
+{
+  var d = ee.Date(image.get('system:time_start'));
+  var year = d.get('year');
+  var proportion = d.getFraction('year');
+  var yearProportion = ee.Image(year.add(proportion)).float();
+  return image.addBands(yearProportion.select([0],['year']))
+ };
+//add NDVI band
+var NDVI = function(image)
+{
+  var index = image.normalizedDifference(['nir', 'red'])
+  return image.addBands(index.select([0],['NDVI']))
+}
+
+//add NDWI band
+var NDWI = function(image)
+{
+  var WI = image.normalizedDifference(['nir', 'swir1'])
+  return image.addBands(WI.select([0],['NDWI']))
+}
+
+//add NDII7 band
+var NDII7 = function(image)
+{
+  var II7 = image.normalizedDifference(['nir', 'swir2'])
+  return image.addBands(II7.select([0],['NDII7']))
+}
+
+//Create L5 and L8 merged collection
+var L5 = ee.ImageCollection('LT5_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        .map(bust_clouds)
+        .select(sensor_band_dict.get('L5'),bandNames)
+        
+var L7 = ee.ImageCollection('LE7_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        .map(bust_clouds)
+        .select(sensor_band_dict.get('L7'),bandNames)
+
+var L8 = ee.ImageCollection('LC8_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        .map(bust_clouds)
+        .select(sensor_band_dict.get('L8'),bandNames)
+
+//selected and renamed bands for both collections
+var Imagery = ee.ImageCollection(L5.merge(L7).merge(L8));
+
+Imagery = simpleTDOM(Imagery,-1,false)
+Imagery = Imagery.map(NDVI)
+Imagery = Imagery.map(NDWI)
+Imagery = Imagery.map(NDII7)
+Imagery = Imagery.map(createTimeBand)
+
+//linear reducer
+// Reduce the collection with the linear fit reducer.
+// Independent variable are followed by dependent variables.
+var linearFit = Imagery.select(['year', 'NDII7'])
+  .reduce(ee.Reducer.linearFit());
+
+// Display the results.
+//Map.setCenter(-103.0023, 42.8317, 8);
+Map.addLayer(linearFit.select(['scale']),
+  {min: -0.01, max: 0.01}, 'fit');
+
+//Map Actual vs Predicted
+var actualPredicted = Imagery.map(function(img){
+  var predicted = img.select(['year']).multiply(linearFit.select('scale')).add(linearFit.select('offset')).select([0],['predictedNDII7']);
+  var actual = img.select(['NDII7']).select([0],['actualNDII7']);
+  return actual.addBands(predicted)
+})
+Map.addLayer(actualPredicted);
+
+var ForestBound = ee.FeatureCollection('ft:1G8Ksi499F13l7SpOTDn2VelzLILW-EDdAx9y2G0C', 'geometry');
+Map.addLayer(ForestBound)
+
+exportImage(linearFit, "scale",
+       {'maxPixels': 2e9,
+         'crs':  'EPSG:26913',
+         'scale': 30
+       });
