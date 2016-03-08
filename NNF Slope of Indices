@@ -1,13 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: ffc82d */ee.Geometry.Polygon(
-        [[[-108.424072265625, 44.999767019181306],
-          [-107.64404296875, 43.82263823180498],
-          [-106.76513671875, 43.874138181474734],
-          [-106.2652587890625, 44.18220395771566],
-          [-106.973876953125, 45.034714778688624],
-          [-107.40234375, 45.13943008146791],
-          [-107.64404296875, 45.16267407976457],
-          [-108.0450439453125, 45.13555516012535]]]);
+var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+        [[[-104.2822265625, 41.582579601430346],
+          [-100.83251953125, 41.46742831254426],
+          [-99.876708984375, 41.74672584176937],
+          [-100.2392578125, 44.071800467511565],
+          [-104.183349609375, 44.1743248375189]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
@@ -90,6 +87,12 @@ var NDII7 = function(image)
 {
   var II7 = image.normalizedDifference(['nir', 'swir2'])
   return image.addBands(II7.select([0],['NDII7']))
+}
+
+//add EVI band
+var EVI = function(image)
+{
+  var evi = ('nir'+'red')/('nir'+'swir1'*'red'-7.5*'blue'+1)
 }
 
 //Create L5 and L8 merged collection
