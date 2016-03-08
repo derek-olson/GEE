@@ -10,9 +10,9 @@ var sa = /* color: 0B4A8B */ee.Geometry.Polygon(
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
-var endDate = new Date('12/31/2015')
-var startJulian = 121
-var endJulian = 273
+var endDate = new Date('3/7/2016')
+var startJulian = 32
+var endJulian = 181
 
 //Get the bands right
 var sensor_band_dict =ee.Dictionary({L8 : ee.List([1,2,3,4,5,9,6]),
