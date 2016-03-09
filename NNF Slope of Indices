@@ -1,5 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+var sa = /* color: d63000 */ee.Geometry.Polygon(
         [[[-104.2822265625, 41.582579601430346],
           [-100.83251953125, 41.46742831254426],
           [-99.876708984375, 41.74672584176937],
@@ -92,7 +92,7 @@ var NDII7 = function(image)
 //add EVI band
 var EVI = function(image)
 {
-  var evi = ('nir'+'red')/('nir'+'swir1'*'red'-7.5*'blue'+1)
+  var evi = (image.select(['nir']).add(image.select(['red']))).divide(image.select(['nir']).add(image.select(['swir1']).multiply(image.select(['red']).subtract(7.5).multiply(image.select(['blue']).add(1)
   return image.addBands(evi.select([0],['EVI']))
 }
 
