@@ -92,11 +92,11 @@ var NDII7 = function(image)
 //add EVI band
 var EVI = function(image)
 {
-  var num = (image.select(['nir']).subtract(image.select(['red'])))
-  var den = (6).multiply(image.select(['red']))
-  var den2 = (7.5).multiply(image.select(['blue']))
+  var num = image.select(['nir']).subtract(image.select(['red']))
+  var den = image.select(['red']).multiply(6)
+  var den2 = image.select(['blue']).multiply(7.5)
   var den3 = image.select(['nir']).add(den)
-  var den4 = den3-den2
+  var den4 = den3.subtract(den2)
   var den5 = den4.add(1)
   var evi = num.divide(den5)
   return image.addBands(evi.select([0],['EVI']))
