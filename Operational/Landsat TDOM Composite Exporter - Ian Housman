@@ -1,5 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+var sa = /* color: d63000 */ee.Geometry.Polygon(
         [[[-99.73388671875, 44.35527821160296],
           [-104.1943359375, 44.39454219215587],
           [-104.21630859375, 42.342305278572816],
@@ -516,8 +516,8 @@ function exportLandsatComposite(composite,name,res,crs,noData){
 //Parameters
 var startYear = 2010;
 var endYear = 2015;
-var startJulian = 244;
-var endJulian = 304;
+var startJulian = 172;
+var endJulian = 243;
 var cloudThresh = 20;//Threshold for cloud masking (lower number masks more clouds)
 
 var runTDOM = true;//Whether to run TDOM cloud shadow masking
@@ -538,7 +538,7 @@ var snowThresh = 0.05;//Lower number masks more out (0-1)
 
 var crs = 'EPSG:26913'//Projection info for export
 var outNoData = -9999//Null value on export
-var outputName = 'NNF_Fall_EC';//Descriptive name for export
+var outputName = 'NNF_Summer_EC';//Descriptive name for export
 ////////////////////////////////////////////////////////////////////
 //Get all images and cloud and shadow mask them
 var startDate = ee.Date.fromYMD(startYear,1,1);
@@ -579,7 +579,7 @@ exportBands = exportBands.select(exportBandNames)
 //Export the composite
 exportLandsatComposite(exportBands,outputName,30,crs,outNoData)
 
-exportImage(median.float(), "NNF_Fall", {'maxPixels': 2e9,
+exportImage(median.float(), "NNF_Summer_IH", {'maxPixels': 2e9,
         'region': sa.bounds().getInfo().coordinates[0],
         'crs':  'EPSG:26913',
         'scale': 30
