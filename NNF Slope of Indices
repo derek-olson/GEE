@@ -1,10 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: d63000 */ee.Geometry.Polygon(
-        [[[-104.2822265625, 41.582579601430346],
-          [-100.83251953125, 41.46742831254426],
-          [-99.876708984375, 41.74672584176937],
-          [-100.2392578125, 44.071800467511565],
-          [-104.183349609375, 44.1743248375189]]]);
+var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+        [[[-104.23828125, 44.55916341529184],
+          [-104.2822265625, 41.68932225997044],
+          [-100.04150390625, 41.70572851523752],
+          [-99.7998046875, 44.44946753600694]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
@@ -136,7 +135,7 @@ Imagery = Imagery.map(EVI)
 Imagery = Imagery.map(createTimeBand)
 
 //choose index
-var index = 'EVI'
+var index = 'NDVI'
 
 //linear reducer
 // Reduce the collection with the linear fit reducer.
@@ -164,10 +163,10 @@ Map.addLayer(ForestBound)
 // var info = linearFit.getInfo()
 // Export.image(linearFit,'BHNFscale',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, 'scale':30, crs_transform:JSON.stringify(info.crs_transform)});
 
-// exportImage(linearFit, "BHNFscale",
-//       {'maxPixels': 2e9,
-//         'region': sa.bounds().getInfo().coordinates[0],
-//         'crs':  'EPSG:26913',
-//         'scale': 30
-//       });
+exportImage(linearFit, "NNF_Slope_NDVI",
+      {'maxPixels': 2e9,
+        'region': sa.bounds().getInfo().coordinates[0],
+        'crs':  'EPSG:26913',
+        'scale': 30
+      });
        
