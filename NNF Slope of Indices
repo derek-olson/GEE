@@ -1,5 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+var sa = /* color: d63000 */ee.Geometry.Polygon(
         [[[-104.23828125, 44.55916341529184],
           [-104.2822265625, 41.68932225997044],
           [-100.04150390625, 41.70572851523752],
@@ -33,31 +33,53 @@ var bust_clouds = function(image) {
 };
 
 //modular TDOM
-function simpleTDOM(collection,zShadowThresh,maskAllDarkPixels){
-      var shadowSumBands = ['nir','swir1','swir2']
-      var sSName = 'shadowSum'
-      var startBandNames = ee.Image(collection.first()).bandNames();
-      var collection = collection.map(function(img){
-        var shadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],[sSName])
-        return img.addBands(shadowSum);
-      })
+// function simpleTDOM(collection,zShadowThresh,maskAllDarkPixels){
+//       var shadowSumBands = ['nir','swir1','swir2']
+//       var sSName = 'shadowSum'
+//       var startBandNames = ee.Image(collection.first()).bandNames();
+//       var collection = collection.map(function(img){
+//         var shadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],[sSName])
+//         return img.addBands(shadowSum);
+//       })
       
-      if(maskAllDarkPixels === true){
-        collection = collection.map(function(img){
-          return img.mask(img.mask().and(img.select([sSName]).gt(200)))
-        })
-      }
-      var shadowStd = collection.select(sSName).reduce(ee.Reducer.stdDev());
-      var shadowMean = collection.select(sSName).mean();
+//       if(maskAllDarkPixels === true){
+//         collection = collection.map(function(img){
+//           return img.mask(img.mask().and(img.select([sSName]).gt(200)))
+//         })
+//       }
+//       var shadowStd = collection.select(sSName).reduce(ee.Reducer.stdDev());
+//       var shadowMean = collection.select(sSName).mean();
      
-      collection = collection.map(function(img){
-        var tShadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],['shadowSumT']);
-        var zScore = tShadowSum.subtract(shadowMean).divide(shadowStd).select([0],['zShadow']);
-        var m = zScore.gt(zShadowThresh);
-        return img.mask(img.mask().and(m)).select(startBandNames);
-      })
-      return collection;
-    } 
+//       collection = collection.map(function(img){
+//         var tShadowSum = img.select(shadowSumBands).reduce(ee.Reducer.sum()).select([0],['shadowSumT']);
+//         var zScore = tShadowSum.subtract(shadowMean).divide(shadowStd).select([0],['zShadow']);
+//         var m = zScore.gt(zShadowThresh);
+//         return img.mask(img.mask().and(m)).select(startBandNames);
+//       })
+//       return collection;
+//     } 
+    
+//////////////////////////////////////////////////////////////////////////
+function simpleTDOM2(c){
+  var shadowSumBands = ['nir','swir1'];
+
+  var irStdDev = c.select(shadowSumBands).reduce(ee.Reducer.stdDev());
+  var irMean = c.select(shadowSumBands).mean();
+  
+  c = c.map(function(img){
+    var z = img.select(shadowSumBands).subtract(irMean).divide(irStdDev);
+    var irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum())
+    var m = z.lt(-1).reduce(ee.Reducer.sum()).eq(2).and(irSum.lt(0.4)).not();
+    
+    // m = m.and(darkMask.eq(0))
+    return img.updateMask(img.mask().and(m));
+  })
+  
+  return c.select(bandNames)
+}
+
+////////////////////////////////////////////////////////////////
+
 //add Julian data band
 var createTimeBand = function(image) 
 {
@@ -125,9 +147,9 @@ var L8 = ee.ImageCollection('LC8_L1T_TOA')
         .select(sensor_band_dict.get('L8'),bandNames)
 
 //selected and renamed bands for both collections
-var Imagery = ee.ImageCollection(L5.merge(L7).merge(L8));
+var ls = ee.ImageCollection(L5.merge(L7).merge(L8));
 
-Imagery = simpleTDOM(Imagery,-1,false)
+var Imagery = simpleTDOM2(ls)
 Imagery = Imagery.map(NDVI)
 Imagery = Imagery.map(NDWI)
 Imagery = Imagery.map(NDII7)
@@ -163,7 +185,7 @@ Map.addLayer(ForestBound)
 // var info = linearFit.getInfo()
 // Export.image(linearFit,'BHNFscale',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, 'scale':30, crs_transform:JSON.stringify(info.crs_transform)});
 
-exportImage(linearFit, "NNF_Slope_NDVI",
+Export.image(linearFit, "NNF_Slope_NDVI",
       {'maxPixels': 2e9,
         'region': sa.bounds().getInfo().coordinates[0],
         'crs':  'EPSG:26913',
