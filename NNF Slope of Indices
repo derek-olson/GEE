@@ -1,9 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: d63000 */ee.Geometry.Polygon(
-        [[[-104.23828125, 44.55916341529184],
-          [-104.2822265625, 41.68932225997044],
-          [-100.04150390625, 41.70572851523752],
-          [-99.7998046875, 44.44946753600694]]]);
+var sa = /* color: 0B4A8B */ee.Geometry.Polygon(
+        [[[-113.02734375, 39.20671884491848],
+          [-110.654296875, 39.16414104768743],
+          [-110.599365234375, 41.73852846935917],
+          [-113.13720703125, 41.74672584176937]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
