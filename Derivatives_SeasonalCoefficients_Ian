@@ -1,10 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: 98ff00 */ee.Geometry.Polygon(
-        [[[-104.12841796875, 44.54350521320822],
-          [-104.161376953125, 41.599013054830216],
-          [-99.755859375, 41.64007838467894],
-          [-99.8876953125, 44.96479793033104],
-          [-104.1064453125, 44.89479576469787]]]);
+        [[[-112.9229736328125, 40.42029213268894],
+          [-111.5386962890625, 40.499703081749566],
+          [-111.5496826171875, 41.12746972249552],
+          [-112.91748046875, 41.22256815655704]]]),
+    visParams = {"opacity":1,"bands":["NDVI_sin_200_year","NDVI_cos_200_year","NDVI_sin_x_cos_200_year"],"min":-0.2,"max":0.3,"gamma":1};
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Simple Landsat cloud busting script
 
@@ -580,8 +580,8 @@ addToMap(predicted,{},'predicted')
 //////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
 //Parameters
-var startDate = ee.Date.fromYMD(2013,1,1);
-var endDate = ee.Date.fromYMD(2015,11,30);
+var startDate = ee.Date.fromYMD(2010,1,1);
+var endDate = ee.Date.fromYMD(2015,12,31);
 // var startJulian = 190;
 // var endJulian = 250;
 var cloudThresh = 20;//Threshold for cloud masking (lower number masks more clouds)
