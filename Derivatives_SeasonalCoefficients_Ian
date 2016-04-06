@@ -1,10 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: 98ff00 */ee.Geometry.Polygon(
+var sa = /* color: d63000 */ee.Geometry.Polygon(
         [[[-112.9229736328125, 40.42029213268894],
           [-111.5386962890625, 40.499703081749566],
           [-111.5496826171875, 41.12746972249552],
           [-112.91748046875, 41.22256815655704]]]),
-    visParams = {"opacity":1,"bands":["NDVI_sin_200_year","NDVI_cos_200_year","NDVI_sin_x_cos_200_year"],"min":-0.2,"max":0.3,"gamma":1};
+    visParams = {"opacity":1,"bands":["NDVI_sin_200_year","NDVI_cos_200_year","NDVI_sin_x_cos_200_year"],"min":-0.2,"max":0.3,"gamma":1},
+    aspen = /* color: 98ff00 */ee.Geometry.Point([-111.59494757652283, 40.63772984761156]),
+    willow = /* color: 0B4A8B */ee.Geometry.Point([-111.59626722335815, 40.636752860718985]),
+    conifer = /* color: ffc82d */ee.Geometry.Point([-111.58326387405396, 40.63875566846105]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Simple Landsat cloud busting script
 
@@ -317,17 +320,17 @@ function simpleCloudShadowFreeImages(startDate,endDate,startJulian,endJulian){
         .map(bustClouds)
         .select(sensor_band_dict.get('L5'),bandNames)
         
-  // var l7 = ee.ImageCollection('LE7_L1T_TOA')
-  //       .filterDate(startDate,endDate)
-  //       .filter(ee.Filter.calendarRange(startJulian,endJulian))
-  //       .filterBounds(sa)
-  //       if(runDefringe === true){
-  //         print('Running defringe on L7')
-  //         l7 = l7.map(defringeLandsat);
-  //       }
-  //       l7 = l7
-  //       .map(bustClouds)
-  //       .select(sensor_band_dict.get('L7'),bandNames)
+  var l7 = ee.ImageCollection('LE7_L1T_TOA')
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(sa)
+        if(runDefringe === true){
+          print('Running defringe on L7')
+          l7 = l7.map(defringeLandsat);
+        }
+        l7 = l7
+        .map(bustClouds)
+        .select(sensor_band_dict.get('L7'),bandNames)
         
   var l8 = ee.ImageCollection('LC8_L1T_TOA')
         .filterDate(startDate,endDate)
@@ -336,7 +339,7 @@ function simpleCloudShadowFreeImages(startDate,endDate,startJulian,endJulian){
         .map(bustClouds)
         .select(sensor_band_dict.get('L8'),bandNames)
         
-  var ls = ee.ImageCollection(l5.merge(l8));
+  var ls = ee.ImageCollection(l5.merge(l7).merge(l8));
   
   if(shouldMaskSnow === true){
     print('Masking snow');
@@ -576,6 +579,7 @@ function newPredict(coeffs,harmonics){
   })
  
 addToMap(predicted,{},'predicted')
+return predicted
 }
 //////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
@@ -625,7 +629,15 @@ forExport = forExport.mask(ee.Image(1));//Get rid of all null values
 forExport = forExport.where(m.not(),-9999);//Reset null values to no data value
   
 Export.image(forExport,'NDVI_Angle_sc',{'crs':crs,'region':regionJSON,'scale':30,'maxPixels':1e13})
-newPredict(coeffs,withHarmonics)
+var predictedHar = newPredict(coeffs,withHarmonics)
 print(coeffs,withHarmonics)
-
+var aspenChart = Chart.image.series(predictedHar, aspen, ee.Reducer.mean(), 30).setOptions({
+  title: 'Seasonality of Aspen'})
+print(aspenChart)
+var willowChart = Chart.image.series(predictedHar, willow, ee.Reducer.mean(), 30).setOptions({
+  title: 'Seasonality of Willow'})
+print(willowChart)
+var coniferChart = Chart.image.series(predictedHar, conifer, ee.Reducer.mean(), 30).setOptions({
+  title: 'Seasonality of Conifer'})
+print(coniferChart)
 // addToMap(withHarmonics.select([0,2,3]),{},'withHarmonics')
