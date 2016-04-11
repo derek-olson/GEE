@@ -168,7 +168,7 @@ var inverter = function(inImage)
 var minYearGetter = function(inCollection,bandName)
   {
     var newCollection = inCollection.map(inverter)
-    return(inCollection.qualityMosaic(bandName).select('year').multiply(-1));
+    return(newCollection.qualityMosaic(bandName).select('year').multiply(-1));
   }
   
 var lowYear = minYearGetter(Imagery,index)
