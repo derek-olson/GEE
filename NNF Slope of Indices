@@ -1,9 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: 98ff00 */ee.Geometry.Polygon(
-        [[[-107.60009765625, 43.46886761482925],
-          [-106.578369140625, 43.46886761482925],
-          [-106.776123046875, 45.19752230305684],
-          [-108.314208984375, 45.166547157856016]]]);
+        [[[-98.81103515625, 41.66470503009207],
+          [-99.063720703125, 44.61393394730625],
+          [-104.34814453125, 44.62957319195104],
+          [-104.21630859375, 41.72213058512578],
+          [-99.898681640625, 41.70572851523752]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
@@ -173,6 +174,16 @@ var minYearGetter = function(inCollection,bandName)
   
 var lowYear = minYearGetter(Imagery,index)
 Map.addLayer(lowYear)
+
+//Map year of maximum index
+var maxYearGetter = function(inCollection,bandName)
+  {
+    var maxCollection = inCollection.qualityMosaic(bandName).select('year')
+    return(maxCollection);
+  }
+  
+var highYear = maxYearGetter(Imagery,index)
+Map.addLayer(highYear)
 
 //linear reducer
 // Reduce the collection with the linear fit reducer.
