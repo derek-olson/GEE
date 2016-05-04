@@ -1,30 +1,15 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: 0B4A8B */ee.Geometry.Polygon(
-        [[[-114.22073364257812, 36.60229913579044],
-          [-113.65493774414062, 36.75979104322286],
-          [-113.455810546875, 36.88840804313823],
-          [-113.26904296875, 37.18548452548039],
-          [-113.36105346679688, 37.20080005987362],
-          [-113.52447509765625, 37.165788559578765],
-          [-113.63571166992188, 37.092430683283474],
-          [-113.67141723632812, 37.09023980307208],
-          [-113.75518798828125, 37.03983207971425],
-          [-113.90899658203125, 36.96854668458301],
-          [-114.20013427734375, 36.832370801556834],
-          [-114.25918579101562, 36.78729146682001],
-          [-114.32373046875, 36.711366342819254],
-          [-114.3731689453125, 36.595684037179076],
-          [-114.37728881835938, 36.56039393337068],
-          [-114.35806274414062, 36.51736231572707],
-          [-114.30038452148438, 36.511843709862454],
-          [-114.27841186523438, 36.53943280355122],
-          [-114.27017211914062, 36.59127365634205]]]);
+        [[[-104.3701171875, 41.42625319507272],
+          [-99.29443359375, 41.21172151054787],
+          [-99.29443359375, 44.63739123445585],
+          [-104.34814453125, 44.69989765840318]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
 var startDate = new Date('01/01/1990')
 var endDate = new Date('12/31/2015')
-var startJulian = 152
-var endJulian = 273
+var startJulian = 172
+var endJulian = 265
 
 //Get the bands right
 var sensor_band_dict =ee.Dictionary({L8 : ee.List([1,2,3,4,5,9,6]),
@@ -235,10 +220,10 @@ Map.addLayer(ForestBound)
 // var info = linearFit.getInfo()
 // Export.image(linearFit,'BHNFscale',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, 'scale':30, crs_transform:JSON.stringify(info.crs_transform)});
 
-// Export.image(linearFit, "NNF_Slope_NDVI",
-//       {'maxPixels': 2e9,
-//         'region': sa.bounds().getInfo().coordinates[0],
-//         'crs':  'EPSG:26913',
-//         'scale': 30
-//       });
+Export.image(linearFit, "Summer_Slope_NDVI",
+      {'maxPixels': 2e9,
+        'region': sa.bounds().getInfo().coordinates[0],
+        'crs':  'EPSG:26913',
+        'scale': 30
+      });
        
