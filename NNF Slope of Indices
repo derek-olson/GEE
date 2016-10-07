@@ -1,13 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: 0B4A8B */ee.Geometry.Polygon(
+var sa = /* color: d63000 */ee.Geometry.Polygon(
         [[[-104.3701171875, 41.42625319507272],
           [-99.29443359375, 41.21172151054787],
           [-99.29443359375, 44.63739123445585],
           [-104.34814453125, 44.69989765840318]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get time variables
-var startDate = new Date('01/01/1990')
-var endDate = new Date('12/31/2015')
+var startDate = new Date('01/01/2007')
+var endDate = new Date('10/01/2016')
 var startJulian = 172
 var endJulian = 265
 
@@ -157,7 +157,7 @@ Imagery = Imagery.map(EVI)
 Imagery = Imagery.map(createTimeBand)
 
 //choose index
-var index = 'NDVI'
+var index = 'NDII7'
 
 //Map year of minimum index
 var inverter = function(inImage)
@@ -220,7 +220,7 @@ Map.addLayer(ForestBound)
 // var info = linearFit.getInfo()
 // Export.image(linearFit,'BHNFscale',{'maxPixels': 2e9,'region':regionJSON,crs:info.crs, 'scale':30, crs_transform:JSON.stringify(info.crs_transform)});
 
-Export.image(linearFit, "Summer_Slope_NDVI",
+Export.image(linearFit, "Summer07_Slope_NBR",
       {'maxPixels': 2e9,
         'region': sa.bounds().getInfo().coordinates[0],
         'crs':  'EPSG:26913',
