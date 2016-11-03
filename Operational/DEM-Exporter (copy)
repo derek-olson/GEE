@@ -3,6 +3,10 @@
 var studyArea = ee.FeatureCollection('ft:1iwmmWVRB3OHol5R71tR87BQXgR2Omi6lGq9DRPOW', 'geometry');
 Map.addLayer(studyArea)
 
+var bounds = studyArea.geometry(10000)
+print(bounds)
+
+bounds = bounds.getInfo()
 //Specify dem source
 //Options include: USGS/GMTED2010, USGS/SRTMGL1_003, CGIAR/SRTM90_V4, and others 
 var demName = 'USGS/NED';
@@ -14,27 +18,27 @@ var resampleMethod = 'bicubic';//Specify resampling method (bicubic generally wo
 
 var exportName = 'DEMExport';//Give the exported .tif a descriptive name
 //////////////////////////////////////////////////////////////
-var regionJSON = studyArea.toGeoJSONString();
+var regionJSON = bounds.toGeoJSONString();
 
 
-//Get data
-var dem = ee.Image(demName);
-dem = dem.clip(studyArea).resample(resampleMethod);
-addToMap(dem,{'min':3000,'max':4000},'DEM');
+// //Get data
+// var dem = ee.Image(demName);
+// dem = dem.clip(studyArea).resample(resampleMethod);
+// addToMap(dem,{'min':3000,'max':4000},'DEM');
 
-//Reset mask so exporting will not use 0 as no data
-var m = dem.mask();
-dem = dem.mask(ee.Image(1));
-dem = dem.where(m.not(),noDataValue)
+// //Reset mask so exporting will not use 0 as no data
+// var m = dem.mask();
+// dem = dem.mask(ee.Image(1));
+// dem = dem.where(m.not(),noDataValue)
 
-//Export reprojected as well as native projection
-var info = dem.getInfo().bands[0]
-Export.image(dem,exportName +'Proj',{'region':regionJSON,crs:'EPSG:326'+zone.toString() ,'scale':resolution});
-Export.image(dem,exportName +'Geog',{'region':regionJSON,crs:info.crs, crs_transform:JSON.stringify(info.crs_transform) });
+// //Export reprojected as well as native projection
+// var info = dem.getInfo().bands[0]
+// Export.image(dem,exportName +'Proj',{'region':regionJSON,crs:'EPSG:326'+zone.toString() ,'scale':resolution});
+// Export.image(dem,exportName +'Geog',{'region':regionJSON,crs:info.crs, crs_transform:JSON.stringify(info.crs_transform) });
 
-//Convert to 8 bit
-var demViz = dem.visualize({'min':3000,'max':4000});
-addToMap(demViz,{},'DEM-8-bit')
-//Get URL for PNG 
-var url =demViz.getThumbURL({'dimensions':1500,'region':regionJSON,'format':'png'})
-print(url)
+// //Convert to 8 bit
+// var demViz = dem.visualize({'min':3000,'max':4000});
+// addToMap(demViz,{},'DEM-8-bit')
+// //Get URL for PNG 
+// var url =demViz.getThumbURL({'dimensions':1500,'region':regionJSON,'format':'png'})
+// print(url)
