@@ -10,7 +10,6 @@ var band_names = ['pr']
 function getMonthlySum(year,monthStart,monthEnd,reducer){
   var startDate = ee.Date.fromYMD(year,1,1).advance(monthStart,'month').advance(-1,'month');
   var endDate = ee.Date.fromYMD(year,1,1).advance(monthEnd,'month').advance(-1,'month').advance(-1,'day');
-  
   var gridmetT = gridmet.filterDate(startDate,endDate)
                 .select(band_names);
   gridmetT = gridmetT.reduce(reducer);
@@ -18,10 +17,8 @@ function getMonthlySum(year,monthStart,monthEnd,reducer){
   return gridmetT
 }
 
-
-
 function iterateGetYearlyMonthlySum(years,months,monthSpan,reducer){
-  var stack =years.map(function(yr){
+  var stack = years.map(function(yr){
     return months.map(function(month){
       var startMonth = month;var endMonth = ee.Number(month).add(monthSpan);
       
