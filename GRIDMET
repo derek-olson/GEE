@@ -1,0 +1,4 @@
+var precip = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET");
+Map.addLayer(precip,
+                {bands:['pr']}, 'Precipitation');
+                
