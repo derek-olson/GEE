@@ -30,4 +30,4 @@ function iterateGetYearlyMonthlySum(years,months,monthSpan,reducer){
 }
 
 var precipSumStack =iterateGetYearlyMonthlySum(years,months,monthSpan,reducer)
-Map.addLayer(precipSumStack.median(),{'min':0,'max':100},'Median Monthly Sum')
+Map.addLayer(precipSumStack,{'min':0,'max':100},'Median Monthly Sum')
