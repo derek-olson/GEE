@@ -1,9 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var geometry = /* color: d63000 */ee.Geometry.MultiPoint();
+var geometry = /* color: d63000 */ee.Geometry.MultiPoint(),
+    imageVisParam = {"opacity":1,"bands":["elevation"],"min":3000,"max":4000,"gamma":1};
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Script to download DEM without artifacts
 
-var studyArea = ee.FeatureCollection('ft:1iwmmWVRB3OHol5R71tR87BQXgR2Omi6lGq9DRPOW', 'geometry');
+var studyArea = ee.FeatureCollection('ft:14W_sIrTWXwNyCugjKP9CVr7rg-2I5yoSajyDUxVj', 'geometry');
 Map.addLayer(studyArea)
 
 var bounds = studyArea.geometry(10000)
