@@ -1,34 +1,40 @@
 var studyArea = ee.FeatureCollection('ft:14W_sIrTWXwNyCugjKP9CVr7rg-2I5yoSajyDUxVj', 'geometry');
-var startDate = new Date('01/01/1994')
-var endDate = new Date('11/01/2016')
-var startJulian = 172
-var endJulian = 265
-//var monthList = ee.List.sequence(1:12)
-//var yearList = ee.List.sequence(1:22)
-
-var precip = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET").select('pr')
-        .filterDate(startDate,endDate)
-        //.filter(ee.Filter.calendarRange(startJulian,endJulian))
-        //.filterBounds(studyArea);
-
-var median = precip.reduce(ee.Reducer.median())
-var mean = precip.reduce(ee.Reducer.mean())
-var Rfac = mean.pow(1.61).multiply(.0483)
-Map.addLayer(median)
-Map.addLayer(mean)
-Map.addLayer(Rfac)
-// Map.addLayer(precip,
-//                 {bands:['pr']}, 'Precipitation');
+var yearSpan = 1
+var sum = ee.Reducer.sum();
+var mean = ee.Reducer.mean();
+var band_names = ['pr'];
+var years = ee.List.sequence(1994,2016);
+var gridmet = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET");
 
 
 
+//function to get annual sum for the GRIDMET precip band 
+function getAnnualSum(year, yearStart, yearEnd,reducer){
+  var startYear = ee.Date.fromYMD(year,1,1);
+  print(startYear);
+  var endYear = ee.Date.fromYMD(year,1,1);
+  print(endYear);
+  var precip = gridmet.filterDate(startYear,endYear).select(band_names)
+  precip = precip.reduce(sum)
+  precip = precip.set('system:time_start', startDate.millis());
+  return precip
+}
 
-// //add Julian data band
-// var createTimeBand = function(precip) 
-// {
-//   var d = ee.Date(image.get('system:time_start'));
-//   var year = d.get('year');
-//   var proportion = d.getFraction('year');
-//   var yearProportion = ee.Image(year.add(proportion)).float();
-//   return image.addBands(yearProportion.select([0],['year']))
-// };                
+//function to get annual average for the GRIDMET precip band 
+function getAnnualAverage(years, yearSpan, reducer){
+  var stack = years.map(function(yr){
+    return years.map(function(yr){
+      var startYear = yr; var endYear = ee.Number(yr).add(yearSpan)
+    
+    return getAnnualSum(yr, startYear, endYear, mean)
+      })
+    })
+  stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
+  return stack
+}
+
+var precipMeanStack = getAnnualAverage(years, yearSpan, mean)
+Map.addLayer(precipMeanStack)
+
+
+
