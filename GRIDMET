@@ -3,7 +3,7 @@ var yearSpan = 1
 var sum = ee.Reducer.sum();
 var mean = ee.Reducer.mean();
 var band_names = ['pr'];
-var years = [1994, 1995, 1996]//ee.List.sequence(1994,2016);
+var years = [1994, 1995, 1996,1997]//ee.List.sequence(1994,2016);
 var gridmet = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET");
 
 
@@ -23,12 +23,12 @@ function getAnnualSum(year, yearStart, yearEnd,reducer){
 //function to get annual average for the GRIDMET precip band 
 function getAnnualAverage(years, yearSpan, reducer){
   var stack = years.map(function(yr){
-    return years.map(function(yr){
-      var startYear = yr; var endYear = ee.Number(yr).add(yearSpan)
-    
-    return getAnnualSum(yr, startYear, endYear, mean)
+      var startYear = yr; var endYear = ee.Number(yr).add(yearSpan);
+      print(startYear);
+      print(endYear);
+        return getAnnualSum(yr, startYear, endYear, sum)
       })
-    })
+   
   stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
   return stack
 }
