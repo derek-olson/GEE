@@ -3,7 +3,7 @@ var yearSpan = 1
 var sum = ee.Reducer.sum();
 var mean = ee.Reducer.mean();
 var band_names = ['pr'];
-var years = ee.List.sequence(1994,2016);
+var years = [1994, 1995, 1996]//ee.List.sequence(1994,2016);
 var gridmet = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET");
 
 
@@ -12,11 +12,11 @@ var gridmet = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET");
 function getAnnualSum(year, yearStart, yearEnd,reducer){
   var startYear = ee.Date.fromYMD(year,1,1);
   print(startYear);
-  var endYear = ee.Date.fromYMD(year,1,1);
+  var endYear = ee.Date.fromYMD(year,1,1).advance(yearSpan,'year').advance(-1,'day');
   print(endYear);
   var precip = gridmet.filterDate(startYear,endYear).select(band_names)
   precip = precip.reduce(sum)
-  precip = precip.set('system:time_start', startDate.millis());
+  precip = precip.set('system:time_start', startYear.millis());
   return precip
 }
 
