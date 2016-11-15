@@ -23,7 +23,7 @@ function getAnnualSum(year, yearStart, yearEnd,reducer){
 //function to get annual average for the GRIDMET precip band 
 function getAnnualAverage(years, yearSpan, reducer){
   var stack = years.map(function(yr){
-      var startYear = yr; var endYear = ee.Number(yr).add(yearSpan);
+      var startYear = yr; var endYear = ee.Number(yr).add(yearSpan).subtract(1);
       print(startYear);
       print(endYear);
         return getAnnualSum(yr, startYear, endYear, sum)
