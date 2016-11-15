@@ -27,7 +27,6 @@ function getAnnualAverage(years, yearSpan, reducer){
       print(endYear);
         return getAnnualSum(yr, startYear, endYear, sum)
       })
-   
   stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
   return stack
 }
