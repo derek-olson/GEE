@@ -34,7 +34,8 @@ function getAnnualAverage(years, yearSpan, reducer){
 }
 
 var precipMeanStack = getAnnualAverage(years, yearSpan, mean)
+var meanStack = precipMeanStack.mean()
 Map.addLayer(precipMeanStack)
 
-
+Map.addLayer(meanStack)
 
