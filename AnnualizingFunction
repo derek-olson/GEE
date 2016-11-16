@@ -1,0 +1,24 @@
+var gmet = ee.ImageCollection('IDAHO_EPSCOR/GRIDMET')
+          .filterDate(ee.Date.fromYMD(1994,1,1),ee.Date.fromYMD(1998,12,31))
+          .select('pr');
+
+
+
+
+
+function annualizeCollection(c,reducer){
+  c = c.sort('system:time_start');
+  var startDate = ee.Date(ee.Image(c.first()).get('system:time_start'));
+  var endDate = ee.Date(ee.Image(c.sort('system:time_start',false).first()).get('system:time_start'));
+  var years = ee.List.sequence(startDate.get('year'),endDate.get('year'));
+  
+  return ee.ImageCollection.fromImages(years.map(function(yr){
+    return c.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31)).reduce(reducer).set('system:time_start',ee.Date.fromYMD(yr,6,1).millis())
+  }))
+}
+
+var annualPrecipSum = annualizeCollection(gmet,ee.Reducer.sum())
+Map.addLayer(annualPrecipSum)
+var annualMeanPrecip = annualPrecipSum.mean();
+Map.addLayer(annualMeanPrecip)
+
