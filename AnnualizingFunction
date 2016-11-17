@@ -2,10 +2,6 @@ var gmet = ee.ImageCollection('IDAHO_EPSCOR/GRIDMET')
           .filterDate(ee.Date.fromYMD(1994,1,1),ee.Date.fromYMD(1998,12,31))
           .select('pr');
 
-
-
-
-
 function annualizeCollection(c,reducer){
   c = c.sort('system:time_start');
   var startDate = ee.Date(ee.Image(c.first()).get('system:time_start'));
