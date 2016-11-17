@@ -1,5 +1,5 @@
 var gmet = ee.ImageCollection('IDAHO_EPSCOR/GRIDMET')
-          .filterDate(ee.Date.fromYMD(1994,1,1),ee.Date.fromYMD(1998,12,31))
+          .filterDate(ee.Date.fromYMD(1994,1,1),ee.Date.fromYMD(2015,12,31))
           .select('pr');
 
 function annualizeCollection(c,reducer){
@@ -17,4 +17,5 @@ var annualPrecipSum = annualizeCollection(gmet,ee.Reducer.sum())
 Map.addLayer(annualPrecipSum)
 var annualMeanPrecip = annualPrecipSum.mean();
 Map.addLayer(annualMeanPrecip)
-
+var Rfac = annualMeanPrecip.pow(1.61).multiply(.0483)
+Map.addLayer(Rfac)
