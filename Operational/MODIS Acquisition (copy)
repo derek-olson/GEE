@@ -47,7 +47,7 @@ var startJulian1 = 140;//Start julian date
 var endJulian1 = 158;//End julian date
 
 var ForestBound = ee.FeatureCollection('ft:1HD7tPOAaP7t_ncXWIhMPbxO5tNboYnL2RV_d3fKG', 'geometry');
-
+Map.addLayer(ForestBound)
 var daily = false;//Whether to use daily MODIS (true) or 8 day composites (false)
 var maskWQA = false;//Whether to use QA bits for cloud masking
 var zenithThresh  = 90;//If daily == true, Zenith threshold for daily acquisitions for including observations
