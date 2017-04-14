@@ -434,47 +434,10 @@ var composite = ls.select(compositeBands).median();
 asyncExportToAssetWrapper(composite,collectionName,'mean',
   studyArea,30,'EPSG:4326');
 
-// FUNCTION TO RETURN DAYMET DERIVATIVES
-var yearSpan = 1
-var sum = ee.Reducer.sum();
-var mean = ee.Reducer.mean();
-var band_names = ['pr'];
-var years = ee.List.sequence(1994,2015);//[1993,1994, 1995, 1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015];
-print(years)
-var gridmet = ee.ImageCollection("IDAHO_EPSCOR/GRIDMET");
-
-
-//function to get annual sum for the GRIDMET precip band 
-function getAnnualSum(year, yearStart, yearEnd,reducer){
-  var startYear = ee.Date.fromYMD(year,1,1);
-  //print(startYear);
-  var endYear = ee.Date.fromYMD(year,1,1).advance(yearSpan,'year').advance(-1,'day');
-  //print(endYear);
-  var precip = gridmet.filterDate(startYear,endYear).select(band_names)
-  precip = precip.reduce(sum)
-  precip = precip.set('system:time_start', startYear.millis());
-  return precip
-}
-
-//function to get annual average for the GRIDMET precip band 
-function getAnnualAverage(years, yearSpan, reducer){
-  var stack = years.map(function(yr){
-      var startYear = yr; var endYear = ee.Number(yr).add(yearSpan).subtract(1);
-      //print(startYear);
-      //print(endYear);
-        return getAnnualSum(yr, startYear, endYear, sum)
-      })
-  stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
-  return stack
-}
-
-var precipMeanStack = getAnnualAverage(years, yearSpan, mean)
-var meanStack = precipMeanStack.mean()
-
 // ANNUALIZING FUNCTION
 var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
           .filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
-          .select('srad');
+          .select('prcp');
 
 function annualizeCollection(c,reducer){
   c = c.sort('system:time_start');
@@ -491,6 +454,24 @@ var annualPrecipSum = annualizeCollection(dmet,ee.Reducer.sum())
 //Map.addLayer(annualPrecipSum)
 var annualMeanPrecip = annualPrecipSum.mean();
 Map.addLayer(annualMeanPrecip)
+
+//GET THE DAILY AVERAGE SOLAR RADIATION
+var DailyAverageRadiation = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
+          .select('srad');
+DailyAverageRadiation = DailyAverageRadiation.mean()
+Map.addLayer(DailyAverageRadiation)
+
+//GET THE AVERAGE DAILY TEMPERATURE
+var c = ee.ImageCollection('NASA/ORNL/DAYMET_V3').filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
+c = ee.ImageCollection('NASA/ORNL/DAYMET_V3').map(function(c){
+  var tmax = c.select('tmax')
+  var tmin = c.select('tmin')
+  var tavg = tmax.add(tmin).divide(2);
+  return tavg
+}).mean()
+Map.addLayer(c)
+
 /*
 AUTHORS: Joshua Goldstein, Ian Housman, Karis Tenneson, GEE Team
 Function contributors: Carson Stam, Matt Hancher, Gennadii Donchyts
