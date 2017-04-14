@@ -437,8 +437,8 @@ asyncExportToAssetWrapper(composite,collectionName,'mean',
 // ANNUALIZING FUNCTION
 var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
           .filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
-          .select('prcp');
-
+          
+var precip = dmet.select('prcp')
 function annualizeCollection(c,reducer){
   c = c.sort('system:time_start');
   var startDate = ee.Date(ee.Image(c.first()).get('system:time_start'));
@@ -450,18 +450,18 @@ function annualizeCollection(c,reducer){
   }))
 }
 
-var annualPrecipSum = annualizeCollection(dmet,ee.Reducer.sum())
+var annualPrecipSum = annualizeCollection(precip,ee.Reducer.sum())
 //Map.addLayer(annualPrecipSum)
 var annualMeanPrecip = annualPrecipSum.mean();
 Map.addLayer(annualMeanPrecip)
 
 //GET THE DAILY AVERAGE SOLAR RADIATION
-DailyAverageRadiation = dmet.select('srad').mean();
+var DailyAverageRadiation = dmet.select('srad').mean();
 Map.addLayer(DailyAverageRadiation)
 
 //GET THE AVERAGE DAILY TEMPERATURE
-var c = ee.ImageCollection('NASA/ORNL/DAYMET_V3').filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
-c = ee.ImageCollection('NASA/ORNL/DAYMET_V3').map(function(c){
+//var c = ee.ImageCollection('NASA/ORNL/DAYMET_V3').filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
+var c = dmet.map(function(c){
   var tmax = c.select('tmax')
   var tmin = c.select('tmin')
   var tavg = tmax.add(tmin).divide(2);
