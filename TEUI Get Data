@@ -397,7 +397,7 @@ var mekongRegion = mekongBuffer.geometry();
 //     97.12326049804688,20.00690314683048);
 var studyArea = mekongRegion;//testRegion;//
 Map.addLayer(studyArea, null, "Lower Mekong Study Area",false);
-Map.centerObject(studyArea, 6);
+
 
 // STEP 2: Get Landsat 4,5,8,7 Image Collections
 var ls = getImageCollection(studyArea,startDate,endDate,startJulian,endJulian);
