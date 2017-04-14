@@ -456,10 +456,7 @@ var annualMeanPrecip = annualPrecipSum.mean();
 Map.addLayer(annualMeanPrecip)
 
 //GET THE DAILY AVERAGE SOLAR RADIATION
-var DailyAverageRadiation = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31))
-          .select('srad');
-DailyAverageRadiation = DailyAverageRadiation.mean()
+DailyAverageRadiation = dmet.select('srad').mean();
 Map.addLayer(DailyAverageRadiation)
 
 //GET THE AVERAGE DAILY TEMPERATURE
