@@ -488,7 +488,7 @@ composite = composite.select(['blue','green','red','nir','swir1','temp',
 print(composite);
 Map.addLayer(composite.divide(10000).clip(studyArea),vizParams,'Composite');
 asyncExportToAssetWrapper(composite,collectionName,'mean',
-  studyArea,30,'EPSG:4326');
+  studyArea,30,'EPSG:26913');
 
 
 /*
