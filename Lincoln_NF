@@ -371,6 +371,8 @@ var endJulian = 365;
 
 var collectionName30m = 'ForestComposite_30m_' + compositeYear;
 var collectionName15m = 'ForestComposite_15m_' + compositeYear;
+var collectionNameTopography = 'TopoComposite_10m'
+var collectionNameClimate = 'ClimateComposite_1km'
 
 var metadataCloudCoverMax = 100;
 var cloudThresh = 20;
@@ -484,11 +486,17 @@ composite = composite.addBands(daymet);
 // STEP 7: Visualize and export composite
 var composite30m = composite.select(['blue','green','red','nir','swir1','temp',
     'swir2','NDVI','BSI','NDFI','NDII','NDCI','HI','brightness',
-    'greenness','wetness','elevation','slope','aspect','aspect_8','hill_1',
-    'hill_2','hill_3','precip','average_rad','average_temp','GDD']);
+    'greenness','wetness']);
 print(composite30m);
+
 var composite15m = composite.select('pan');
 print(composite15m);
+
+var compositeTopography = composite.select(['elevation','slope','aspect','aspect_8','hill_1',
+    'hill_2','hill_3']);
+
+var compositeClimate = composite.select(['precip','average_rad','average_temp','GDD']);
+
 Map.addLayer(composite.divide(10000).clip(studyArea),vizParams,'Composite');
 asyncExportToAssetWrapper(composite30m,collectionName30m,'mean',
   studyArea,30,'EPSG:26913');
@@ -496,6 +504,11 @@ asyncExportToAssetWrapper(composite30m,collectionName30m,'mean',
 asyncExportToAssetWrapper(composite15m,collectionName15m,'mean',
   studyArea,15,'EPSG:26913');
 
+asyncExportToAssetWrapper(compositeTopography,collectionNameTopography,'mean',
+  studyArea,10,'EPSG:26913');
+  
+asyncExportToAssetWrapper(compositeClimate,collectionNameClimate,'mean',
+  studyArea,1000,'EPSG:26913');  
 /*
 AUTHORS: Joshua Goldstein, Ian Housman, Karis Tenneson, GEE Team
 Function contributors: Carson Stam, Matt Hancher, Gennadii Donchyts
