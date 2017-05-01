@@ -505,10 +505,10 @@ asyncExportToAssetWrapper(composite15m,collectionName15m,'mean',
   studyArea,15,'EPSG:26913');
 
 asyncExportToAssetWrapper(compositeTopography,collectionNameTopography,'mean',
-  studyArea,10,'EPSG:26913');
+  studyArea,10,'EPSG:3857');
   
 asyncExportToAssetWrapper(compositeClimate,collectionNameClimate,'mean',
-  studyArea,1000,'EPSG:26913');  
+  studyArea,1000,'EPSG:3857');  
 /*
 AUTHORS: Joshua Goldstein, Ian Housman, Karis Tenneson, GEE Team
 Function contributors: Carson Stam, Matt Hancher, Gennadii Donchyts
