@@ -1,10 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var huc10 = ee.FeatureCollection("USGS/WBD/2017/HUC10");
+var table = ee.FeatureCollection("USGS/WBD/2017/HUC10");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var Bound = ee.FeatureCollection('ft:18touG8j7MD1oILyT2mk2og_wP0OCeg9jiiY0DEnf', 'geometry');
 //Map.addLayer(Bound)
-var hucs = huc10.filterBounds(Bound);
-hucs = hucs.union(10000)
+var hucs = table.filterBounds(Bound);
+hucs = hucs.union()
 //Map.addLayer(hucs);
 
 var dem = ee.Image('USGS/NED');
