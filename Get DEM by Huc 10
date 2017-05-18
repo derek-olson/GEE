@@ -10,7 +10,7 @@ dem = dem.clip(hucs);
 var m = dem.mask();
 dem = dem.mask(ee.Image(1));
 dem = dem.where(m.not(),9999)
-Map.addLayer(dem,{'min':3500,'max':4000},'DEM');
+Map.addLayer(dem,{'min':440,'max':13000},'DEM');
 
 var info = dem.getInfo().bands[0]
 print(info)
