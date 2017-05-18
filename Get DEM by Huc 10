@@ -8,7 +8,7 @@ hucs = hucs.union(10000)
 //Map.addLayer(hucs);
 
 var dem = ee.Image('USGS/NED');
-dem = dem.clip(hucs);
+//dem = dem.clip(hucs);
 var m = dem.mask();
 dem = dem.mask(ee.Image(1));
 dem = dem.where(m.not(),9999)
