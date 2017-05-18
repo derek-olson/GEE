@@ -1,5 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var BoundPoly = /* color: d63000 */ee.Geometry.Polygon(
+var BoundPoly = /* color: #d63000 */ee.Geometry.Polygon(
         [[[-108.5614013671875, 40.321419995934384],
           [-108.5888671875, 38.843986129756615],
           [-105.3369140625, 38.843986129756615],
@@ -14,7 +14,7 @@ dem = dem.clip(BoundPoly);
 var m = dem.mask();
 dem = dem.mask(ee.Image(1));
 dem = dem.where(m.not(),9999)
-addToMap(dem,{'min':3500,'max':4000},'DEM');
+Map.addLayer(dem,{'min':3500,'max':4000},'DEM');
 
 var info = dem.getInfo().bands[0]
 print(info)
