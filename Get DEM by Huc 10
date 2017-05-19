@@ -2,7 +2,7 @@
 var table = ee.FeatureCollection("USGS/WBD/2017/HUC10");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var Bound = ee.FeatureCollection('ft:1EECa2nG9DeaDCG28qSwofkxrpsjYnTFlxFdNJiov', 'geometry');
-Map.addLayer(Bound,{description:'HUC10_Bound'})
+Map.addLayer(Bound,'HUC10_Bound')
 //var hucs = table.filterBounds(Bound);
 //hucs = hucs.union()
 //Map.addLayer(hucs);
@@ -16,4 +16,4 @@ Map.addLayer(dem,{'min':440,'max':13000},'DEM');
 
 var info = dem.getInfo().bands[0]
 //print(info)
-Export.image.toDrive({image: dem, description: 'R4_PHEAT_DEM',maxPixels: 2e9, region: Bound, crs: info.crs, crsTransform: info.crs_transform});
+Export.image.toDrive({image: dem, description: 'R4_PHEAT_DEM',maxPixels: 2e20, region: Bound, crs: info.crs, crsTransform: info.crs_transform});
