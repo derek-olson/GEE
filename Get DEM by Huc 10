@@ -2,7 +2,7 @@
 var table = ee.FeatureCollection("USGS/WBD/2017/HUC10");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var Bound = ee.FeatureCollection('ft:1EECa2nG9DeaDCG28qSwofkxrpsjYnTFlxFdNJiov', 'geometry');
-Map.addLayer(Bound,'HUC10_Bound')
+Map.addLayer(Bound,{},'HUC10_Bound')
 //var hucs = table.filterBounds(Bound);
 //hucs = hucs.union()
 //Map.addLayer(hucs);
