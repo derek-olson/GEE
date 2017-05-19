@@ -1,24 +1,19 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var table = ee.FeatureCollection("USGS/WBD/2017/HUC10"),
-    sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-113.44482421875, 38.591113776147445],
-          [-111.873779296875, 38.59970036588818],
-          [-111.796875, 39.80009595634838],
-          [-113.53271484375, 39.80009595634838]]]);
+var table = ee.FeatureCollection("USGS/WBD/2017/HUC10");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var Bound = ee.FeatureCollection('ft:18touG8j7MD1oILyT2mk2og_wP0OCeg9jiiY0DEnf', 'geometry');
-//Map.addLayer(Bound)
-var hucs = table.filterBounds(Bound);
+var Bound = ee.FeatureCollection('ft:1EECa2nG9DeaDCG28qSwofkxrpsjYnTFlxFdNJiov', 'geometry');
+Map.addLayer(Bound,{description:'HUC10_Bound'})
+//var hucs = table.filterBounds(Bound);
 //hucs = hucs.union()
 //Map.addLayer(hucs);
 
 var dem = ee.Image('USGS/NED');
-//dem = dem.clip(hucs);
+dem = dem.clip(Bound);
 var m = dem.mask();
 dem = dem.mask(ee.Image(1));
 dem = dem.where(m.not(),9999)
-//Map.addLayer(dem,{'min':440,'max':13000},'DEM');
+Map.addLayer(dem,{'min':440,'max':13000},'DEM');
 
 var info = dem.getInfo().bands[0]
 //print(info)
-Export.image.toDrive({image: dem, description: 'R4_PHEAT_DEM',maxPixels: 2e9, region: hucs.union(), crs: info.crs, crsTransform: info.crs_transform});
+Export.image.toDrive({image: dem, description: 'R4_PHEAT_DEM',maxPixels: 2e9, region: Bound, crs: info.crs, crsTransform: info.crs_transform});
