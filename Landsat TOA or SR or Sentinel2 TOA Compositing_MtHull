@@ -36,17 +36,17 @@ var sa = sa;
 // var sa = ee.Geometry.Polygon(studyArea.geometry().bounds().coordinates().getInfo()[0]);;//Specify study area.  Can draw a polygon, manually enter vertices, or import a Fusion Table.  Must use the syntax ee.FeatureCollection('ft:myFusionTableID','geometry').geometry() for a fusion table
 var toaOrSRLandsat = 'sr';//Choose toa or sr for top of atmosphere reflectance or surface reflectance using LEDAPS- note fewer scenes are generally available when using surface reflectance
 var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
-var startYear = 1984;//First year to include imagery from
-var endYear = 2013;//Last year to include imagery from
+var startYear = 1986;//First year to include imagery from
+var endYear = 2016;//Last year to include imagery from
 var compositingPeriod = 2;//Number of years of data to include in each exported composite
-var startJulian =91; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
-var endJulian = 181; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
+var startJulian =213; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
+var endJulian = 243; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
 var metadataCloudCoverMax = 40;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
 
 var landsatCloudMaskMethod = cloudScoreTDOMShift;//Choose masking method- choices: fMask, cloudScoreTDOMShift.  fMask is only available for Landsat SR
 var cloudThresh = 20;//If using the cloudScoreTDOMShift method-Threshold for cloud masking (lower number masks more clouds.  Between 10 and 30 generally works best)
 var cloudCloudShadowDilatePixels = 0;//Number of pixels to buffer clouds and cloud shadows by (1 or 2 generally is sufficient)
-var runShadowShiftMethod = true;//Whether to use solar geometry to mask cloud shadows.  If not, only dark outlier method is used
+var runShadowShiftMethod = false;//Whether to use solar geometry to mask cloud shadows.  If not, only dark outlier method is used
 var cloudHeights = ee.List.sequence(200,5000,500);//Height of clouds to use to project cloud shadows
 var includeL7 = false;//Whether to include Landsat 7
 
@@ -883,140 +883,10 @@ var customQualityMosaic = function(inCollection,qualityBand,percentile){
 ////////////////////
 var customMosaic = customQualityMosaic(allImages,'NDVI',50);
 Map.addLayer(customMosaic,vizParams,'50 NDVI Composite')
-var OutImageName = "NDVI50Composite"
+var OutImageName = "NDVI50Composite_August"
  Export.image(customMosaic.select(['NDVI']).multiply(10000).int16(), OutImageName,
        {'maxPixels': 2e9,
          'region': Bound.geometry().bounds().getInfo().coordinates[0],
-         'crs':  'EPSG:32611',
+         'crs':  'EPSG:26911',
          'scale': 30
        });
-// var images2015 = allImages.filter(ee.Filter.calendarRange(2015,2015,'year'));
-// var images2016 = allImages.filter(ee.Filter.calendarRange(2016,2016,'year'));
-// print(images2015,images2016)
-// var image2015 = images2015.median();
-// var image2016 = images2016.median();
-// Map.addLayer(image2015,vizParams,'2015');
-// Map.addLayer(image2016,vizParams,'2016');
-
-// Map.addLayer(image2015.select(['NBR']),{'min':0.2,'max':0.6},'NBR 2015');
-// Map.addLayer(image2016.select(['NBR']),{'min':0.2,'max':0.6},'NBR 2016');
-// Map.addLayer(image2015.select(['NBR']).subtract(image2016.select(['NBR'])),{'min':-0.5,'max':0.5,'palette':'0F0,888,F00'},'dNBR')
-
-// var dummyImage = ee.Image(allImages.first());
-// allImages = allImages.map(function(img){return img.addBands(snowScore(img).rename('snowScore'))})
-// print(allImages.first())
-// var snowyComposite = allImages.qualityMosaic('snowScore');
-// Map.addLayer(snowyComposite,vizParams,'Snowy Composite');
-// Map.addLayer(allImages.select(['snowScore']),{'min':0,'max':0.005,'palette':'F00,888,00F'},'SnowScore')
-// // var waterC= allImages.map(waterScore);
-// // var waterMask = waterC.reduce(ee.Reducer.percentile([80]));
-// // waterMask = waterMask.mask(waterMask.mask().and(waterMask.gt(waterThresh)))
-// // Map.addLayer(waterMask,{'min':0,'max':1,'palette':'000,00F'},'Water',false)
-
-// /////////////////////////////////////////////////////
-// function addDateBand(img){
-
-//   var d = ee.Date(img.get('system:time_start'))
-//   var y = d.get('year')
-//   var d = y.add(d.getFraction('year'))
-//   var db = ee.Image.constant(d).select([0],['year']).float()
-//   return img.addBands(db)
-//   // .copyProperties(img)
-// }
-// var years = range(startYear,endYear+1,compositingPeriod);
-
-// var timeSeries = years.map(function(yr){
-//   var nameEnd = yr.toString() + '_'+(yr+compositingPeriod-1).toString()+'_'+reducerPercentile.toString()+'PCTL_'+sentinel2OrLandsatOrHybrid+'_'+toaOrSR+'_Composite';
-  
-//   var startDateT = ee.Date.fromYMD(yr,1,1).advance(startJulian,'day');
-//   var endDateT = ee.Date.fromYMD(yr+compositingPeriod-1,1,1).advance(endJulian,'day');
-//   var allImagesT = allImages.filterDate(startDateT,endDateT)
-//                   .filter(ee.Filter.calendarRange(startJulian,endJulian));
-//                   // print(allImagesT.first())
-//   allImagesT = fillEmptyCollections(allImagesT,dummyImage)
-//                   .select(exportBands);
-                  
-                  
-//   var positiveBands = ['blue','green','nir','NDVI','NBR'];
-//   var negativeBands = ['red','swir1','swir2'];
-//   var pctl = 40
-//   var positiveComposite = allImagesT.select(positiveBands).reduce(ee.Reducer.percentile([pctl])).rename(positiveBands);
-//   var negativeComposite = allImagesT.select(negativeBands).reduce(ee.Reducer.percentile([100-pctl])).rename(negativeBands);
-//   var outComposite = positiveComposite.addBands(negativeComposite)
-//   // var outComposite = allImagesT.reduce(compositingReducer).rename(exportBands);
-  
-//   if(maskWater){
-//     outComposite = outComposite.updateMask(outComposite.mask());
-//   }
-  
-//   // Map.addLayer(outComposite,vizParams,nameEnd,false);
-  
-//   // outComposite = outComposite.multiply(10000).int16();
-  
-//   // outComposite = setNoData(outComposite.clip(sa),noDataValue);
- 
-//   // Export.image(outComposite,exportName+'_'+nameEnd,{'scale':resolution,'maxPixels':1e13,'crs':crs,'region': regionJSON});
-//   // // Export.image.toAsset(outComposite, exportName+'_'+nameEnd, 'users/ianhousman/'+exportName+'_'+nameEnd, null,null,regionJSON, resolution, crs, null,1e13);// {'scale':resolution,'maxPixels':1e13,'crs':crs,'region': regionJSON});
-//   return outComposite.set('system:time_start',ee.Date.fromYMD(yr,6,1).millis());
-// });
-// timeSeries = ee.ImageCollection(timeSeries);
-// timeSeries = timeSeries.map(addDateBand)
-// var first = ee.Image(timeSeries.first());
-// var last = ee.Image(timeSeries.sort('system:time_start',false).first());
-// Map.addLayer(first,vizParams,'First Composite',false);
-// Map.addLayer(last,vizParams,'Last Composite',false);
-// // Map.addLayer(timeSeries.select(['NDVI']),{},'Time Series',false)
-
-// var indexName = 'NDVI'
-// var indexSeries = timeSeries.select(['year',indexName]);
-// var linearModel = indexSeries.reduce(ee.Reducer.linearFit());
-// var predicted = indexSeries.map(function(img){
-  
-//   var predicted = (img.select('year').multiply(linearModel.select([0]))).add(linearModel.select([1])).rename(indexName+'-predicted')
-//   var resid = img.select([indexName]).subtract(predicted).rename(['residual'])
-//   return img.select([indexName,'year']).addBands(predicted).addBands(resid)});
-
-// var negativeTrend = linearModel.select([0]).lte(-0.008);
-
-// Map.addLayer(predicted.select([indexName,indexName+'-predicted','residual']),{},'Time Series',false)
-
-
-// var changeEndYear = predicted.map(function(img){
-//   var r = img.select(['residual']).multiply(-1);
-//   return img.select(['year']).addBands(r)
-// }).qualityMosaic('residual').select(['year']);
-
-// var changeStartYear = predicted.map(function(img){
-//   var r = img.select(['residual']).where(img.select(['year']).gte(changeEndYear),0);
-//   return img.select(['year']).addBands(r)
-// }).qualityMosaic('residual').select(['year'])
-
-// var minMaxResidual = predicted.select(['residual']).reduce(ee.Reducer.percentile([0,100]));
-
-// var negativeSpike = minMaxResidual.select([0]).lt(-0.1);
-// // Map.addLayer(negativeSpike.updateMask(negativeSpike),{'min':1,'max':1},'Min Resid',false)
-// // Map.addLayer(negativeTrend.updateMask(negativeTrend),{'min':1,'max':1},'Negative Trend',false)
-
-
-// var change = ee.Image(0);
-// // var diff = first.select(indexName).subtract(last.select(indexName));
-// // Map.addLayer(diff,{'min':0,'max':0.2},'Diff',false)
-// change = change.where(negativeTrend,2);
-// // change = change.where(negativeSpike,3);
-// change = change.where(negativeTrend.and(negativeSpike),1);
-
-// changeStartYear = changeStartYear.where(change.eq(2),years[0]).updateMask(change.gt(0))
-// changeEndYear = changeEndYear.where(change.eq(2),years[years.length-1]).updateMask(change.gt(0))
-// Map.addLayer(change.updateMask(change),{'min':1,'max':3,'palette':'F00,FF0,550'},'Thematic Change',false);
-// // var changeStartYear = changeStartEndYear.select([0])
-// // var changeEndYear = changeStartEndYear.select([1]).min();
-// // Map.addLayer(changeEndYear.updateMask(change.gt(0)),{'min':startYear,'max':endYear,'palette':'FF0,F00'},'Change End Year')
-// // Map.addLayer(changeStartYear,{'min':startYear,'max':endYear,'palette':'FF0,F00'},'Change Start Year')
-// Map.addLayer(changeStartYear.select(['year']),{'min':startYear,'max':endYear,'palette':'FF0,F00'},'Change Start Year')
-// Map.addLayer(changeEndYear.select(['year']),{'min':startYear,'max':endYear,'palette':'FF0,F00'},'Change End Year')
-
-// var changeDuration = changeEndYear.subtract(changeStartYear);
-// Map.addLayer(changeDuration,{'min':1,'max':endYear-startYear,'palette':'F00,FF0'},'Change Duration')
-// //////////////////////////////////////////////////////////////////////////////////////////////
-// Map.addLayer(waterMask.mask(waterMask.eq(0)),{'min':0,'max':0,'palette':'0000FF'},'WaterMask',false);
-// Map.addLayer(ee.Image().paint(studyArea,1,1),{'palette':'000000,FF0000'},'Study Area',false);
