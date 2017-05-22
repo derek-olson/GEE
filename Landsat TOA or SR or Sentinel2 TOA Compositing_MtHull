@@ -1,12 +1,5 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-119.51751708984375, 48.598408688619145],
-          [-119.0972900390625, 48.612937834706464],
-          [-119.11376953125, 49.018057956916444],
-          [-119.5367431640625, 49.007249184314226]]]);
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
-var Bound = ee.FeatureCollection('ft:122WMX6y70a34PuQHQWAJKJ8EivlmeWv4O4SrMrDj', 'geometry');
-//Map.addLayer(sa)
+var Bound = ee.FeatureCollection('ft:1EECa2nG9DeaDCG28qSwofkxrpsjYnTFlxFdNJiov', 'geometry');
+Map.addLayer(Bound,{}, 'Bound')
 var sa = sa;
 //Main code body written by: Ian Housman, Karis Tenneson, and Carson Stam
 //CloudScore function originally written by: Matt Hancher
