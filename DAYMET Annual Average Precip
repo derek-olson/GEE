@@ -38,5 +38,5 @@ var meanStack = precipMeanStack.mean().clip(studyArea)
 
 //Map.addLayer(precipMeanStack)
 Map.addLayer(meanStack, {min:119, max:1185}, 'meanStack')
-
+var info = meanStack.getInfo().bands[1]
 Export.image.toDrive({image: meanStack, description: 'DAYMET_Annual_Average',maxPixels: 2e9, region: studyArea, crs: info.crs, crsTransform: info.crs_transform});
