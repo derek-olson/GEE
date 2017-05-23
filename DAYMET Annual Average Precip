@@ -41,4 +41,4 @@ Map.addLayer(meanStack, {min:119, max:1185}, 'meanStack')
 
 var info = meanStack.getInfo().bands[0]
 print(info)
-Export.image.toDrive({image: meanStack, description: 'DAYMET_Annual_Average',maxPixels: 2e9, region: studyArea, crs: info.crs, crsTransform: info.crs_transform});
+Export.image.toDrive({image: meanStack, description: 'DAYMET_Annual_Average_precip',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
