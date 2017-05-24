@@ -38,5 +38,5 @@ var tminMeanStack = getAnnualAverage(years, yearSpan, mean,'tmin')
 Map.addLayer(precipMeanStack.clip(studyArea), {min: 100, max: 1230}, 'Annual Average Precip');
 Map.addLayer(tminMeanStack.clip(studyArea), {min: -7, max: 14}, 'Annual Average Min Temp');
 
-Export.image.toDrive({image: precipMeanStack, description: 'DAYMET_Annual_Average_precip',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
-Export.image.toDrive({image: tminMeanStack, description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
+Export.image.toDrive({image: precipMeanStack.clip(studyArea), description: 'DAYMET_Annual_Average_precip',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
+Export.image.toDrive({image: tminMeanStack.clip(studyArea), description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
