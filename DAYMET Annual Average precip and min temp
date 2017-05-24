@@ -10,9 +10,7 @@ var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
 //function to get daily reducer for the data - for a single year
 function getDailyReducer(year, yearStart, yearEnd,reducer,band_name){
   var startYear = ee.Date.fromYMD(year,1,1);
-  print(startYear);
   var endYear = ee.Date.fromYMD(year,1,1).advance(yearSpan,'year').advance(-1,'day');
-  print(endYear);
   var band = daymet.filterDate(startYear,endYear).select(band_name);
   band = band.reduce(reducer);
   band = band.set('system:time_start', startYear.millis());
@@ -23,9 +21,7 @@ function getDailyReducer(year, yearStart, yearEnd,reducer,band_name){
 function getAnnualAverage(years, yearSpan, reducer, band_name){
   var stack = years.map(function(yr){
       var startYear = yr; var endYear = ee.Number(yr).add(yearSpan).subtract(1);
-      print(startYear);
-      print(endYear);
-        return getDailyReducer(yr, startYear, endYear, reducer,band_name);
+      return getDailyReducer(yr, startYear, endYear, reducer,band_name);
       });
   stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
   return stack.mean();
