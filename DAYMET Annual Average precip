@@ -35,12 +35,8 @@ function getAnnualAverage(years, yearSpan, reducer, band_name){
 var precipMeanStack = getAnnualAverage(years, yearSpan, sum,'prcp')
 var tminMeanStack = getAnnualAverage(years, yearSpan, mean,'tmin')
 
-//Map.addLayer(precipMeanStack)
+Map.addLayer(precipMeanStack.clip(studyArea));
+Map.addLayer(tminMeanStack.clip(studyArea));
 
-Map.addLayer(tminMeanStack.clip(studyArea))
-//var info = meanStack.getInfo().bands[0]
-//print(info)
-
-//var AvgMinTemp = tminMeanStack.bounds(studyArea)
-//Map.addLayer(AvgMinTemp, {}, 'AvgMinTemp')
-//Export.image.toDrive({image: AvgMinTemp, description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
+Export.image.toDrive({image: AvgMinTemp, description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
+Export.image.toDrive({image: AvgMinTemp, description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
