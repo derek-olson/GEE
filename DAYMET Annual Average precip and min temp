@@ -8,8 +8,8 @@ print(years)
 var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
 
 
-//function to get annual sum for the GRIDMET precip band 
-function getAnnualReducer(year, yearStart, yearEnd,reducer,band_name){
+//function to get daily reducer for the data - for a single year
+function getDailyReducer(year, yearStart, yearEnd,reducer,band_name){
   var startYear = ee.Date.fromYMD(year,1,1);
   //print(startYear);
   var endYear = ee.Date.fromYMD(year,1,1).advance(yearSpan,'year').advance(-1,'day');
@@ -20,13 +20,13 @@ function getAnnualReducer(year, yearStart, yearEnd,reducer,band_name){
   return band;
 }
 
-//function to get annual average for the GRIDMET precip band 
+//function to get annual reducer - for all years
 function getAnnualAverage(years, yearSpan, reducer, band_name){
   var stack = years.map(function(yr){
       var startYear = yr; var endYear = ee.Number(yr).add(yearSpan).subtract(1);
-      //print(startYear);
-      //print(endYear);
-        return getAnnualReducer(yr, startYear, endYear, reducer,band_name);
+      print(startYear);
+      print(endYear);
+        return getDailyReducer(yr, startYear, endYear, reducer,band_name);
       });
   stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
   return stack.mean();
