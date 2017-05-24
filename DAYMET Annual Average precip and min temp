@@ -7,13 +7,12 @@ var years = ee.List.sequence(1985,2015);//[1993,1994, 1995, 1996,1997,1998,1999,
 print(years)
 var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
 
-
 //function to get daily reducer for the data - for a single year
 function getDailyReducer(year, yearStart, yearEnd,reducer,band_name){
   var startYear = ee.Date.fromYMD(year,1,1);
-  //print(startYear);
+  print(startYear);
   var endYear = ee.Date.fromYMD(year,1,1).advance(yearSpan,'year').advance(-1,'day');
-  //print(endYear);
+  print(endYear);
   var band = daymet.filterDate(startYear,endYear).select(band_name);
   band = band.reduce(reducer);
   band = band.set('system:time_start', startYear.millis());
