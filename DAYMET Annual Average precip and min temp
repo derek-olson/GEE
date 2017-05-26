@@ -31,7 +31,7 @@ function getAnnualAverage(years, yearSpan, reducer, band_name){
 
 var precipMeanStack = getAnnualAverage(years, yearSpan, sum,'prcp')
 var tminMeanStack = getAnnualAverage(years, yearSpan, mean,'tmin')
-
+print(precipMeanStack)
 print('Projection, crs, and crs_transform:', precipMeanStack.projection());
 print('Scale in meters:', precipMeanStack.projection().nominalScale());
 
