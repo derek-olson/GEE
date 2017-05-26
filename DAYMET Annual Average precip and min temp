@@ -6,6 +6,9 @@ var mean = ee.Reducer.mean();
 var years = ee.List.sequence(1985,2015);
 print(years)
 var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
+var zone = 11;//Specify UTM zone
+var resolution = 30;//Specify spatial resolutio in meters
+var resampleMethod = 'bilinear';//Specify resampling method (bicubic generally works well for terrain data)
 
 //function to get daily reducer for the data - for a single year
 function getDailyReducer(year, yearStart, yearEnd,reducer,band_name){
@@ -30,8 +33,11 @@ function getAnnualAverage(years, yearSpan, reducer, band_name){
 var precipMeanStack = getAnnualAverage(years, yearSpan, sum,'prcp')
 var tminMeanStack = getAnnualAverage(years, yearSpan, mean,'tmin')
 
+print('Projection, crs, and crs_transform:', precipMeanStack.projection());
+print('Scale in meters:', precipMeanStack.projection().nominalScale());
+
 Map.addLayer(precipMeanStack.clip(studyArea), {min: 100, max: 1230}, 'Annual Average Precip');
 Map.addLayer(tminMeanStack.clip(studyArea), {min: -7, max: 14}, 'Annual Average Min Temp');
 
-Export.image.toDrive({image: precipMeanStack.clip(studyArea), description: 'DAYMET_Annual_Average_precip',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
-Export.image.toDrive({image: tminMeanStack.clip(studyArea), description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: 1000});
+Export.image.toDrive({image: precipMeanStack.clip(studyArea).resample(resampleMethod), description: 'DAYMET_Annual_Average_precip',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: resolution});
+Export.image.toDrive({image: tminMeanStack.clip(studyArea).resample(resampleMethod), description: 'DAYMET_Annual_Average_tmin',maxPixels: 2e9, region: studyArea, crs: 'EPSG:26911',scale: resolution});
