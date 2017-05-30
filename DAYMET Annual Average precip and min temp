@@ -6,7 +6,7 @@ var mean = ee.Reducer.mean();
 var years = ee.List.sequence(1985,2015);
 print(years)
 var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
-var resolution = 30;//Specify spatial resolutio in meters
+var resolution = 1000;//Specify spatial resolutio in meters
 var resampleMethod = 'bilinear';//Specify resampling method (bicubic generally works well for terrain data)
 
 //function to get daily reducer for the data - for a single year
