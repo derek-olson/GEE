@@ -24,16 +24,12 @@ function iterateGetYearlyMonthlySum(years,month,reducer){
     })
 
   stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
-  Map.addLayer(stack,{'min':0,'max':100},'Monthly Sum '+month.toString())
+  Map.addLayer(stack,{'min':-20,'max':20},'Monthly Sum '+month.toString())
   var precip = stack.mean()
-  Map.addLayer(precip,{'min':0,'max':400},'Average Precip '+month.toString()  )
+  Map.addLayer(precip,{'min':-20,'max':20},'Average tmin '+month.toString()  )
   var resolution = 1000
-  Export.image.toDrive({image: precip, description: 'DAYMET_Month'+month.toString()+'_Average_Precip',maxPixels: 2e9, crs: 'EPSG:4326',scale: resolution});
+  Export.image.toDrive({image: precip, description: 'DAYMET_Month'+month.toString()+'_Average_tmin',maxPixels: 2e9, crs: 'EPSG:4326',scale: resolution});
 
 }
 
-months.map(function(month){iterateGetYearlyMonthlySum(years,month,reducer)})
-
-
-
-
+months.map(function(month){iterateGetYearlyMonthlySum(years,month,reducer)});
