@@ -1,0 +1,34 @@
+
+////////////////////////////////////////////////
+var daymet = ee.ImageCollection('NASA/ORNL/DAYMET_V3');
+var years = ee.List.sequence(1980,2016);
+var months = ee.List.sequence(1,1,1);//(month, to month, by)
+print(months)
+var monthSpan = 1;
+var reducer = ee.Reducer.sum();
+var band_names = ['prcp'];
+
+function getMonthlySum(year,monthStart,monthEnd,reducer){
+  var startDate = ee.Date.fromYMD(year,1,1).advance(monthStart,'month').advance(-1,'month');
+  var endDate = ee.Date.fromYMD(year,1,1).advance(monthEnd,'month').advance(-1,'month').advance(-1,'day');
+  var daymetT = daymet.filterDate(startDate,endDate)
+                .select(band_names);
+  daymetT = daymetT.reduce(reducer);
+  daymetT = daymetT.set('system:time_start',startDate.millis());
+  return daymetT
+}
+
+function iterateGetYearlyMonthlySum(years,months,monthSpan,reducer){
+  var stack = years.map(function(yr){
+    return months.map(function(month){
+      var startMonth = month;var endMonth = ee.Number(month).add(monthSpan);
+      
+      return getMonthlySum(yr,startMonth,endMonth,reducer)
+    })
+  })
+  stack = ee.ImageCollection(ee.List(stack).flatten()).sort('system:time_start');
+  return stack
+}
+
+var precipSumStack =iterateGetYearlyMonthlySum(years,months,monthSpan,reducer)
+Map.addLayer(precipSumStack,{'min':0,'max':100},'Median Monthly Sum')
