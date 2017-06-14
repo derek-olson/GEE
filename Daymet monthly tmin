@@ -1,4 +1,4 @@
-
+//Get average monthly minimum temperature
 ////////////////////////////////////////////////
 var daymet = ee.ImageCollection('NASA/ORNL/DAYMET_V3');
 var years = ee.List.sequence(1980,2016);
