@@ -398,7 +398,7 @@ print('Start and end dates:',startDate,endDate);
 //           [-106.688232421875, 32.175612478499325],
 //           [-104.74365234375, 32.175612478499325],
 //           [-104.74365234375, 34.687427949314845]]]);
-var studyArea = ee.FeatureCollection('ft:1rvXmFkMgRtRGh-_CZJdWCUIqwpyRm0Tjihw639Id', 'geometry');
+var studyArea = ee.FeatureCollection('ft:1K-BeW-UPiWLlakLn5uMIb0miy4imj9LYcl0BY585', 'geometry');
 Map.centerObject(studyArea,7);
 Map.addLayer(studyArea, null, 'Study Area',false);
 
