@@ -1,10 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: d63000 */ee.Geometry.Polygon(
-        [[[32.6953125, -9.275622176792098],
-          [28.76220703125, -14.179186142354167],
-          [28.828125, -15.474857402687228],
-          [33.42041015625, -14.157881896141461],
-          [33.7939453125, -10.595820834654035]]]);
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-108.995361328125, 37.158127630680866],
+          [-106.60858154296875, 37.15156050223665],
+          [-106.6552734375, 37.8813571797486],
+          [-109.0118408203125, 37.89219554724437]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Main code body written by: Ian Housman, Karis Tenneson, and Carson Stam
 //CloudScore function originally written by: Matt Hancher
@@ -36,8 +35,8 @@ var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybri
 var startYear = 2000;//First year to include imagery from
 var endYear = 2016;//Last year to include imagery from
 var compositingPeriod = 1;//Number of years of data to include in each exported composite
-var startJulian =140; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
-var endJulian = 200; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
+var startJulian =152; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
+var endJulian = 243; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
 var metadataCloudCoverMax = 100;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
 
 var landsatCloudMaskMethod = fMask;//Choose masking method- choices: fMask, cloudScoreTDOMShift.  fMask is only available for Landsat SR
@@ -467,7 +466,7 @@ function cloudScoreTDOMShift(c,landsatOrSentinel,toaOrSRLandsat){
   
   var bns = ee.Image(c.first()).bandNames();
   var ct  = c.reduce(ee.Reducer.percentile([5])).rename(bns);
-  addToMap(ct,vizParams,'5 pctl Before composite',false);
+  Map.addLayer(ct,vizParams,'5 pctl Before composite',false);
   
   //Run cloud project
   c = c.map(function(img){return cloudProject(img,cloudCloudShadowDilatePixels,cloudHeights,azimuthField,zenithField)});
@@ -476,7 +475,7 @@ function cloudScoreTDOMShift(c,landsatOrSentinel,toaOrSRLandsat){
   
   bns = ee.Image(c.first()).bandNames();
   ct  = c.reduce(ee.Reducer.percentile([5])).rename(bns);
-  addToMap(ct,vizParams,'5 pctl Aftercomposite',false);
+  Map.addLayer(ct,vizParams,'5 pctl Aftercomposite',false);
   return c;
 }
 ////////////////////////////////////////////////////////////////
@@ -681,7 +680,7 @@ function getImages(startDate,endDate,startJulian,endJulian,sentinel2OrLandsatOrH
       }
       print(l8TOAs)
       //////////////////////////////////////////////////////////////////////
-      addToMap(ls.median(),vizParams,'Landsat before masking composite',false);
+      Map.addLayer(ls.median(),vizParams,'Landsat before masking composite',false);
       //////////////////////////////////////////////////////////////////////
       //////////////////////////////////////////////////////////////////////
       //Now all data are gathered, perform cloud/cloud shadow masking
@@ -697,7 +696,7 @@ function getImages(startDate,endDate,startJulian,endJulian,sentinel2OrLandsatOrH
         addToMap(ct,vizParams,'5 pctl Fmask Aftercomposite',false);
       }
       out = ls;
-      addToMap(ls.median(),vizParams,'Landsat Composite',false);
+      Map.addLayer(ls.median(),vizParams,'Landsat Composite',false);
      
     }
     
@@ -705,7 +704,7 @@ function getImages(startDate,endDate,startJulian,endJulian,sentinel2OrLandsatOrH
    if(sentinel2OrLandsatOrHybrid.toLowerCase()==='hybrid'){
      print('Merging Sentinel 2 and Landsat data');
      out = ee.ImageCollection(ls.select(commonBandNames).merge(s2s.select(commonBandNames)));
-    addToMap(out.median(),vizParams,'Hybrid Composite',false);
+    Map.addLayer(out.median(),vizParams,'Hybrid Composite',false);
      
    }
    print(out.first())
@@ -733,8 +732,8 @@ timeSeries = ee.ImageCollection.fromImages(timeSeries);
 print(years)
 var firstImage = ee.Image(ee.ImageCollection.fromImages(timeSeries.toList(10).slice(0,3)).median());
 var lastImage = ee.Image(timeSeries.sort('system:time_start',false).first());
-addToMap(firstImage,vizParams,'First Composite');
-addToMap(lastImage,vizParams,'Last Composite');
+Map.addLayer(firstImage,vizParams,'First Composite');
+Map.addLayer(lastImage,vizParams,'Last Composite');
 print(timeSeries)
 
 var epochLength = 5;
@@ -767,100 +766,19 @@ function addDateBand(img){
 }
 trendSeries = trendSeries.map(addDateBand);
 
-addToMap(trendSeries.select([0]).min(),{'min':-0.16,'max':0.025},'Trend')
+Map.addLayer(trendSeries.select([0]).min(),{'min':-0.16,'max':0.025},'Trend')
 print(trendSeries);
 var trend = timeSeries.select([indexName]).formaTrend();
-addToMap(trend.select([0]),{'min':-0.16,'max':0.025},'Trend All')
+Map.addLayer(trend.select([0]),{'min':-0.16,'max':0.025},'Trend All')
 // var change = trend.select([0]).lt(-0.01);
 // addToMap(change.updateMask(change),{'min':1,'max':1,'palette':'F00'},'Change')
 
 
-
-// var crs = 'EPSG:326' + ee.Image(allImages.first()).get('UTM_ZONE').getInfo();
-// allImages = allImages.map(function(img){return img.addBands(waterScore(img).rename(['water']))});
-// var dummyImage = ee.Image(allImages.first());
-// //Break into individual compositing periods
-// var years = range(startYear,endYear+1,compositingPeriod);
-// var leftYears = ee.List(years).slice(0,years.length-2);
-// var centerYears = ee.List(years).slice(1,years.length-1);
-// var rightYears = ee.List(years).slice(2,null);
-
-// var yearPairs = leftYears.zip(centerYears).zip(rightYears).map(function(l){return ee.List(l).flatten()});
-// print(yearPairs)
-// var timeSeries = years.map(function(yr){
-//   var nameEnd = yr.toString() + '_'+(yr+compositingPeriod-1).toString()+'_'+reducerPercentile.toString()+'PCTL_'+sentinel2OrLandsatOrHybrid+'_'+toaOrSR+'_Composite';
-  
-//   var startDateT = ee.Date.fromYMD(yr,1,1).advance(startJulian,'day');
-//   var endDateT = ee.Date.fromYMD(yr+compositingPeriod-1,1,1).advance(endJulian,'day');
-//   var allImagesT = allImages.filterDate(startDateT,endDateT)
-//                   .filter(ee.Filter.calendarRange(startJulian,endJulian));
-//   allImagesT = fillEmptyCollections(allImagesT,dummyImage)
-//                   .select(exportBands);
-  
-//   var outComposite = allImagesT.reduce(compositingReducer).rename(exportBands);
-//   var forReturn = outComposite.set('system:time_start',ee.Date.fromYMD(yr,6,1));
-//   // outComposite = outComposite.updateMask(outComposite.mask().and(waterMask));
-  
-//   addToMap(outComposite,vizParams,nameEnd,false);
-  
-//   outComposite = outComposite.multiply(10000).int16();
-  
-//   outComposite = setNoData(outComposite.clip(sa),noDataValue);
- 
-//   // Export.image(outComposite,exportName+'_'+nameEnd,{'scale':resolution,'maxPixels':1e13,'crs':crs,'region': regionJSON});
-//   Export.image.toAsset(outComposite, exportName+'_'+nameEnd, 'users/ianhousman/'+exportName+'_'+nameEnd, null,null,regionJSON, resolution, crs, null,1e13);// {'scale':resolution,'maxPixels':1e13,'crs':crs,'region': regionJSON});
-//   return forReturn.addBands(waterScore(forReturn).rename(['water']))
-// });
-
-
-// timeSeries = ee.ImageCollection(timeSeries);
-
-// var waterMask = allImages.select(['water']).reduce(ee.Reducer.percentile([95])).gt(waterThresh);
-// addToMap(waterMask.mask(waterMask),{'min':1,'max':1,'palette':'0000FF'},'Water Mask',false);
-
-// // timeSeries = timeSeries.select(['NBR']).map(function(img){return img.updateMask(img.mask().and(waterMask))});
-
-// // timeSeries = timeSeries.select(['NBR']);
-// //Find the years that change is observed using basic multi-two date method
-// var dStack = yearPairs.map(function(yearPair){
-  
-//   //Get the year pair of interest
-//   yearPair = ee.List(yearPair);
-//   var date1 = ee.Date.fromYMD(yearPair.get(0),1,1);
-//   var date2 = ee.Date.fromYMD(yearPair.get(1),1,1);
-//   var date3 = ee.Date.fromYMD(yearPair.get(2),1,1);
-  
-// //   var startYear = ee.Date.fromYMD(yearPair.get(0),1,1); //dates used for change do not match with growing season specified above
-// //   var endYear = ee.Date.fromYMD(yearPair.get(1),1,1);
-  
-//   //Get the first image
-//   var i1 = ee.Image(timeSeries.filterDate(date1,date1.advance(1,'year')).first())
-//   //Get the second image
-//   var i2 = ee.Image(timeSeries.filterDate(date2,date2.advance(1,'year')).first())
-//   //Get the third image
-//   var i3 = ee.Image(timeSeries.filterDate(date3,date3.advance(1,'year')).first())
-  
-  
-//   //Compute the difference
-//   var d1 = i1.subtract(i2);
-//   var d2 = i3.subtract(i2);
-//   //Threshold the change
-//   var declined = d1.gt(0.2);
-//   var recovered = d2.lt(0.1);
-//   var changed = declined.and(recovered.not());
-//   //Attribute it to a year
-//   var changeYear = ee.Image(ee.Number(yearPair.get(1))).multiply(changed).int16().select([0],['ChangeYear']);
-//   changeYear = changeYear.mask(changeYear.mask().and(changeYear.neq(0)));
-//   var changeMagnitude = d1.mask(d1.mask().and(changeYear.mask())).multiply(10000).int16().select([0],['ChangeMagnitude'])
-//   return changeYear.addBands(changeMagnitude)
-  
-  
-// });
-// dStack = ee.ImageCollection.fromImages(dStack);
-// var lossYear = dStack.select([0]).min()
-
-// addToMap(lossYear,{'min':years[1],'max':years[years.length-2],'palette':'FFFF00,FF0000'},'ChangeYear')
-
-// //////////////////////////////////////////////////////////////////////////////////////////////
-// addToMap(waterMask.mask(waterMask.eq(0)),{'min':0,'max':0,'palette':'0000FF'},'WaterMask',false);
-// addToMap(ee.Image().paint(sa,1,1),{'palette':'000000,FF0000'},'Study Area',false);
+Export.image.toDrive({
+  'image': allImages.median().select('blue', 'green', 'red', 'nir', 'swir1', 'swir2'),
+  'description': 'LandsatComposite',
+  'region': sa,
+  'maxPixels': 1e13,
+  'crs': 'EPSG:26913',
+  'scale':30
+  });
