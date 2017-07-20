@@ -40,8 +40,8 @@ var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybri
 var startYear = 1986;//First year to include imagery from
 var endYear = 2016;//Last year to include imagery from
 var compositingPeriod = 2;//Number of years of data to include in each exported composite
-var startJulian =79; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
-var endJulian = 170; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
+var startJulian =266; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
+var endJulian = 355; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
 var metadataCloudCoverMax = 40;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
 
 var landsatCloudMaskMethod = cloudScoreTDOMShift;//Choose masking method- choices: fMask, cloudScoreTDOMShift.  fMask is only available for Landsat SR
@@ -884,7 +884,7 @@ var customQualityMosaic = function(inCollection,qualityBand,percentile){
 ////////////////////
 var customMosaic = allImages.median();
 Map.addLayer(customMosaic,vizParams,'Median Composite')
-var OutImageName = "LandsatMedianComposite_Spring"
+var OutImageName = "LandsatMedianComposite_fall"
  Export.image(customMosaic.select('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'NDVI', 'NBR', 'NDMI', 'Brightness', 'Greenness', 'Wetness', 'Angle').multiply(10000).int16(), OutImageName,
        {'maxPixels': 2e9,
          'region': sa,//.geometry().bounds().getInfo().coordinates[0],
