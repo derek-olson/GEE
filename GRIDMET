@@ -39,3 +39,11 @@ var Rfac = meanStack.pow(1.61).multiply(.0483)
 Map.addLayer(precipMeanStack)
 Map.addLayer(meanStack)
 Map.addLayer(Rfac)
+
+Export.image.toDrive({
+  'image': Rfac,
+  'description': 'R_factor',
+  'maxPixels': 1e13,
+  'crs': 'EPSG:26910',
+  
+});
