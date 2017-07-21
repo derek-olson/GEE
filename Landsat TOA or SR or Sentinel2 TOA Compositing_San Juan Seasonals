@@ -1,10 +1,17 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-108.8470458984375, 37.24782120155428],
-          [-106.50421142578125, 37.21720611325497],
-          [-106.54266357421875, 37.835818618104156],
-          [-108.8690185546875, 37.88786039168385],
-          [-108.86627197265625, 37.66860332433055]]]);
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-88.055419921875, 34.985003130171066],
+          [-88.099365234375, 34.65128519895413],
+          [-88.43994140625, 31.93351676190369],
+          [-87.82470703125, 31.043521630684204],
+          [-87.3193359375, 31.015278981711266],
+          [-86.143798828125, 31.043521630684204],
+          [-85.25390625, 31.062345409804408],
+          [-85.14404296875, 31.681433116625957],
+          [-85.0341796875, 32.509761735919426],
+          [-85.1220703125, 32.76880048488168],
+          [-85.638427734375, 35.003003395276714],
+          [-87.835693359375, 35.0120020431607]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //var Bound = ee.FeatureCollection('ft:1K-BeW-UPiWLlakLn5uMIb0miy4imj9LYcl0BY585', 'geometry');
 //Map.addLayer(Bound,{}, 'Bound')
@@ -36,24 +43,24 @@ var sa = /* color: #98ff00 */ee.Geometry.Polygon(
 
 // var sa = ee.Geometry.Polygon(studyArea.geometry().bounds().coordinates().getInfo()[0]);;//Specify study area.  Can draw a polygon, manually enter vertices, or import a Fusion Table.  Must use the syntax ee.FeatureCollection('ft:myFusionTableID','geometry').geometry() for a fusion table
 var toaOrSRLandsat = 'sr';//Choose toa or sr for top of atmosphere reflectance or surface reflectance using LEDAPS- note fewer scenes are generally available when using surface reflectance
-var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
-var startYear = 1986;//First year to include imagery from
-var endYear = 2016;//Last year to include imagery from
+var sentinel2OrLandsatOrHybrid = 'sentinel2';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
+var startYear = 2015;//First year to include imagery from
+var endYear = 2017;//Last year to include imagery from
 var compositingPeriod = 2;//Number of years of data to include in each exported composite
-var startJulian =266; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
-var endJulian = 355; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
-var metadataCloudCoverMax = 40;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
+var startJulian =121; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
+var endJulian = 265; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
+var metadataCloudCoverMax = 100;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
 
 var landsatCloudMaskMethod = cloudScoreTDOMShift;//Choose masking method- choices: fMask, cloudScoreTDOMShift.  fMask is only available for Landsat SR
 var cloudThresh = 20;//If using the cloudScoreTDOMShift method-Threshold for cloud masking (lower number masks more clouds.  Between 10 and 30 generally works best)
-var cloudCloudShadowDilatePixels = 0;//Number of pixels to buffer clouds and cloud shadows by (1 or 2 generally is sufficient)
+var cloudCloudShadowDilatePixels = 1;//Number of pixels to buffer clouds and cloud shadows by (1 or 2 generally is sufficient)
 var runShadowShiftMethod = false;//Whether to use solar geometry to mask cloud shadows.  If not, only dark outlier method is used
 var cloudHeights = ee.List.sequence(200,5000,500);//Height of clouds to use to project cloud shadows
 var includeL7 = false;//Whether to include Landsat 7
 
 var runTDOMLandsat = true;//Whether to run TDOM cloud shadow masking for Landsat.  If set to false, only the solar geometry shadow masking portion will be used
-var runTDOMSentinel = false;//Whether to run TDOM cloud shadow masking for Sentinel (likely will need to wait till 2017 until this can be set to true).  If set to false, only the solar geometry shadow masking portion will be used
-var zShadowThresh = -1.0;//Threshold for cloud shadow masking- lower number masks out less.  Between -0.8 and -1.2 generally works well
+var runTDOMSentinel = true;//Whether to run TDOM cloud shadow masking for Sentinel (likely will need to wait till 2017 until this can be set to true).  If set to false, only the solar geometry shadow masking portion will be used
+var zShadowThresh = -0.8;//Threshold for cloud shadow masking- lower number masks out less.  Between -0.8 and -1.2 generally works well
 var irSumThresh = 0.35;//Sum of IR bands to include as shadows within TDOM and the shadow shift method (lower number masks out less)
 
 var waterThresh = 0.05;//Threshold for masking water if chosen- lower number masks more
@@ -884,10 +891,11 @@ var customQualityMosaic = function(inCollection,qualityBand,percentile){
 ////////////////////
 var customMosaic = allImages.median();
 Map.addLayer(customMosaic,vizParams,'Median Composite')
-var OutImageName = "LandsatMedianComposite_fall"
+Map.addLayer(allImages.select([0]).count(),{'min':1,'max':10,'palette':'F00,00F'},'Count',false);
+var OutImageName = "Sentinel2_Composite_summer"
  Export.image(customMosaic.select('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'NDVI', 'NBR', 'NDMI', 'Brightness', 'Greenness', 'Wetness', 'Angle').multiply(10000).int16(), OutImageName,
        {'maxPixels': 2e9,
          'region': sa,//.geometry().bounds().getInfo().coordinates[0],
-         'crs':  'EPSG:26913',
-         'scale': 30
+         'crs':  'EPSG:26916',
+         'scale': 10
        });
