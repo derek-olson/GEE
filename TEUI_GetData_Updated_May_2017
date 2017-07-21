@@ -1,3 +1,11 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-87.84805297851562, 34.55299544048395],
+          [-87.802734375, 30.921959956295034],
+          [-85.23193359375, 30.921959956295034],
+          [-85.374755859375, 34.58842141784074],
+          [-87.769775390625, 34.55223551605555]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*/////////////////////////////////////////////////////////////////////////////
 SERVIR-MEKONG 2016
 SCRIPT: ExportComposite
@@ -398,7 +406,7 @@ print('Start and end dates:',startDate,endDate);
 //           [-106.688232421875, 32.175612478499325],
 //           [-104.74365234375, 32.175612478499325],
 //           [-104.74365234375, 34.687427949314845]]]);
-var studyArea = ee.FeatureCollection('ft:1K-BeW-UPiWLlakLn5uMIb0miy4imj9LYcl0BY585', 'geometry');
+var studyArea = sa//ee.FeatureCollection('ft:1K-BeW-UPiWLlakLn5uMIb0miy4imj9LYcl0BY585', 'geometry');
 Map.centerObject(studyArea,7);
 Map.addLayer(studyArea, null, 'Study Area',false);
 
