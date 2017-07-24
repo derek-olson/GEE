@@ -1,4 +1,4 @@
-var studyArea = ee.FeatureCollection('ft:14W_sIrTWXwNyCugjKP9CVr7rg-2I5yoSajyDUxVj', 'geometry');
+var studyArea = ee.FeatureCollection('ft:1UOWQws7Tl-xIRcckEdpisKT7eJWsmMAEbapx-iHi', 'geometry');
 var yearSpan = 1
 var sum = ee.Reducer.sum();
 var mean = ee.Reducer.mean();
@@ -43,7 +43,7 @@ Map.addLayer(Rfac)
 Export.image.toDrive({
   'image': Rfac,
   'description': 'R_factor',
+  'region': studyArea,
   'maxPixels': 1e13,
   'crs': 'EPSG:26910',
-  
 });
