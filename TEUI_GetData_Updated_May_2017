@@ -480,7 +480,7 @@ var positiveAvgTemp = dmet.map(function(image){
   var tmax = image.select('tmax');
   var tmin = image.select('tmin');
   var tavg = tmax.add(tmin).divide(2);
-  return tavg.gt(0).set('system:time_start',time);
+  return tavg.gt(5).lt(35).set('system:time_start',time);
 });
 var annualGDD = annualizeCollection(positiveAvgTemp,ee.Reducer.sum());
 var annualMeanGDD = annualGDD.mean().rename('GDD');
