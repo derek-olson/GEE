@@ -295,11 +295,11 @@ vizParams: Options for map visualization
 */
 
 //Load bounding box of kaibab plateau
-var kaibab = ee.FeatureCollection('ft:1K-BeW-UPiWLlakLn5uMIb0miy4imj9LYcl0BY585');
+var kaibab = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
 
 var studyArea = kaibab.geometry();
-var startYear = 2010;
-var endYear = 2014;
+var startYear = 2012;
+var endYear = 2016;
 var startJulian = 1;
 var endJulian = 365;
 
@@ -381,17 +381,17 @@ htcClip = htcClip.clip(kaibab);
 print(htcClip);         
 
 //Include data from FullFieldStructurePlotList points, with updated sample weights
-var fieldStructure = ee.FeatureCollection('ft:1LkdGmqdrQP85ixDvmWUpqS0j8w0T5GxwxUylOxon');
+//var fieldStructure = ee.FeatureCollection('ft:1LkdGmqdrQP85ixDvmWUpqS0j8w0T5GxwxUylOxon');
 
           
 // Add data to the Map
-Map.centerObject(kaibab, 9);
+//Map.centerObject(kaibab, 9);
 Map.addLayer(kaibab, null, "Kaibab Plateau");
 Map.addLayer(htcClip,{bands:['cos_1', 'sin_1']},'Cos and sin Harmonics');
 Map.addLayer(htcClip,{bands:['constant']},'intercept');
 Map.addLayer(htcClip,{bands:['t']},'time trend');
 Map.addLayer(rgb, {}, 'phase (hue), amplitude (saturation)');
-Map.addLayer(fieldStructure, {}, 'Field Structure Plot List');
+//Map.addLayer(fieldStructure, {}, 'Field Structure Plot List');
 
 
 ///////////////////////////////////////////
