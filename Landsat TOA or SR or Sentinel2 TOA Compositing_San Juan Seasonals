@@ -1,20 +1,21 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-88.055419921875, 34.985003130171066],
-          [-88.099365234375, 34.65128519895413],
-          [-88.43994140625, 31.93351676190369],
-          [-87.82470703125, 31.043521630684204],
-          [-87.3193359375, 31.015278981711266],
-          [-86.143798828125, 31.043521630684204],
-          [-85.25390625, 31.062345409804408],
-          [-85.14404296875, 31.681433116625957],
-          [-85.0341796875, 32.509761735919426],
-          [-85.1220703125, 32.76880048488168],
-          [-85.638427734375, 35.003003395276714],
-          [-87.835693359375, 35.0120020431607]]]);
+var sa = /* color: #98ff00 */ee.Geometry.Polygon(
+        [[[-110.181884765625, 44.268804788566165],
+          [-110.819091796875, 44.276671273775186],
+          [-111.192626953125, 43.548548110912854],
+          [-111.2255859375, 42.13082130188811],
+          [-110.423583984375, 41.95949009892467],
+          [-110.0830078125, 42.90011265525328],
+          [-109.061279296875, 42.28543700749154],
+          [-108.599853515625, 42.58544425738491],
+          [-109.775390625, 43.667871610117494],
+          [-109.53369140625, 43.99281450048989],
+          [-109.566650390625, 44.3002644115815],
+          [-109.764404296875, 44.457309801319305],
+          [-110.19287109375, 44.48083027856261]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-//var Bound = ee.FeatureCollection('ft:1K-BeW-UPiWLlakLn5uMIb0miy4imj9LYcl0BY585', 'geometry');
-//Map.addLayer(Bound,{}, 'Bound')
+var Bound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+Map.addLayer(Bound,{}, 'Bound')
 //var sa = sa;
 //Main code body written by: Ian Housman, Karis Tenneson, and Carson Stam
 //CloudScore function originally written by: Matt Hancher
@@ -42,13 +43,13 @@ var sa = /* color: #d63000 */ee.Geometry.Polygon(
 // var studyArea = ee.FeatureCollection('ft:1cO7rYgRmd5L_DCCanxgMXVwXBdd4HDSMRQ5T4D1O', 'geometry');
 
 // var sa = ee.Geometry.Polygon(studyArea.geometry().bounds().coordinates().getInfo()[0]);;//Specify study area.  Can draw a polygon, manually enter vertices, or import a Fusion Table.  Must use the syntax ee.FeatureCollection('ft:myFusionTableID','geometry').geometry() for a fusion table
-var toaOrSRLandsat = 'sr';//Choose toa or sr for top of atmosphere reflectance or surface reflectance using LEDAPS- note fewer scenes are generally available when using surface reflectance
-var sentinel2OrLandsatOrHybrid = 'sentinel2';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
-var startYear = 2015;//First year to include imagery from
+var toaOrSRLandsat = 'toa';//Choose toa or sr for top of atmosphere reflectance or surface reflectance using LEDAPS- note fewer scenes are generally available when using surface reflectance
+var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
+var startYear = 1997;//First year to include imagery from
 var endYear = 2017;//Last year to include imagery from
 var compositingPeriod = 2;//Number of years of data to include in each exported composite
-var startJulian =121; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
-var endJulian = 265; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
+var startJulian =266; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
+var endJulian = 334; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
 var metadataCloudCoverMax = 100;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
 
 var landsatCloudMaskMethod = cloudScoreTDOMShift;//Choose masking method- choices: fMask, cloudScoreTDOMShift.  fMask is only available for Landsat SR
@@ -68,9 +69,9 @@ var maskWater = true;//Whether to apply water mask
 
 //Export parameters
 var exportName = 'summerComposite'; // Give the study area a descriptive name. This name is used for output composites file names.
-var reducerPercentile = 50; // Reducer for compositing
+var reducerPercentile = 80; // Reducer for compositing
 var resolution = 30;//Landsat should be set to 30. Sentinel 2 should be set to 10, 20, or 60 depending on which bands are of interest.  Hybrid can be set to 10, 20, 30, or 60 depending on the need.  60 is the finest resolution that all can be divided without a remainder
-var crs = 'EPSG:26913'; // EPSG number for output projection. 32651 = WGS84/UTM Zone 51N. For more info- http://spatialreference.org/ref/epsg/  
+var crs = 'EPSG:26912'; // EPSG number for output projection. 32651 = WGS84/UTM Zone 51N. For more info- http://spatialreference.org/ref/epsg/  
 var noDataValue = -32678;//Choose a value that is not a real value in any exports
 var exportBands = ['blue','green','red','nir','swir1','swir2','NDVI','NBR','Brightness','Greenness','Wetness','Angle'];//Bands to export
 //////////////////////////////////////////////////////////////////////////////////
@@ -892,10 +893,10 @@ var customQualityMosaic = function(inCollection,qualityBand,percentile){
 var customMosaic = allImages.median();
 Map.addLayer(customMosaic,vizParams,'Median Composite')
 Map.addLayer(allImages.select([0]).count(),{'min':1,'max':10,'palette':'F00,00F'},'Count',false);
-var OutImageName = "Sentinel2_Composite_summer"
+var OutImageName = "landsat_BT_Composite_fall"
  Export.image(customMosaic.select('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'NDVI', 'NBR', 'NDMI', 'Brightness', 'Greenness', 'Wetness', 'Angle').multiply(10000).int16(), OutImageName,
        {'maxPixels': 2e9,
          'region': sa,//.geometry().bounds().getInfo().coordinates[0],
-         'crs':  'EPSG:26916',
-         'scale': 10
+         'crs':  'EPSG:26912',
+         'scale': 30
        });
