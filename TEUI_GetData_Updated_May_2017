@@ -6,30 +6,6 @@ var sa = /* color: #d63000 */ee.Geometry.Polygon(
           [-85.374755859375, 34.58842141784074],
           [-87.769775390625, 34.55223551605555]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-/*/////////////////////////////////////////////////////////////////////////////
-SERVIR-MEKONG 2016
-SCRIPT: ExportComposite
-CONTACT INFORMATION: Karis Tenneson, rsac_gee@fs.fed.us
-Date: 18-Oct-2016
-
-SNIPPETS USED:
--getCloudFreeImages
--addIndices
--getTasseledCap
--exportAsset
-
-LINK TO REPORT(S):
-DESCRIPTION:
-This script accomplishes several tasks:
- 1) Loads Mekong study region 
- 2) Gathers Landsat 4,5,7,8 imagery
- 3) Masks shadows and clouds 
- 4) Adds common spectral indices and tasseled cap
- 5) Splits collection by year and exports composite to asset
- 
-See ExportComposite_Bands.xlsx for band descriptions
-*//////////////////////////////////////////////////////////////////////////////
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //FUNCTIONS
