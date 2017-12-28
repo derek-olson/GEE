@@ -1,0 +1,13 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var image = ee.Image("USGS/NED"),
+    geometry = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-112.060546875, 41.046216814520626],
+          [-110.91796875, 41.31082388091817],
+          [-111.181640625, 41.83682786072715],
+          [-111.796875, 41.77131167976406]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+print(image.projection())
+
+image = image.resample("bicubic")
+image = image.clip(geometry)
+Export.image.toDrive(image, "DEM", "demFolder", "dem", null, geometry.bounds().getInfo().coordinates[0], 10, "EPSG:32612", null, 1e13)
