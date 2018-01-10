@@ -1,10 +1,19 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-111.68701171875, 44.42593442145313],
-          [-111.3134765625, 43.02071359427862],
-          [-108.87451171875, 42.35854391749706],
-          [-108.5009765625, 42.61779143282346],
-          [-109.852294921875, 44.48083027856261]]]);
+        [[[-108.30322265625, 37.524975368048196],
+          [-108.20709228515625, 37.293720520228696],
+          [-107.62481689453125, 37.31119861382921],
+          [-107.60009765625, 37.23907530202184],
+          [-107.2210693359375, 37.223767535823576],
+          [-107.04803466796875, 37.25000751785145],
+          [-107.0123291015625, 37.322120359451766],
+          [-107.0343017578125, 37.4530574713902],
+          [-107.06451416015625, 37.48139702942734],
+          [-107.17437744140625, 37.57505900514996],
+          [-107.347412109375, 37.63163475580643],
+          [-107.5946044921875, 37.65338320128765],
+          [-107.93243408203125, 37.65338320128765],
+          [-108.116455078125, 37.63598495426961]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -23,13 +32,13 @@ This script accomplishes several tasks:
 // or draw a polygon and make StudyRegion = drawnPolygon
 // Also need to specify a crs EPSG number (http://spatialreference.org)
 var StudyRegion = sa;
-var crs = 'EPSG:32616';
+var crs = 'EPSG:26913';
 // 2. Update the startJulian and endJulian variables to indicate your seasonal constraints. 
 // This supports wrapping for tropics and southern hemisphere.
 // startJulian: Starting Julian date 
 // endJulian: Ending Julian date
-var startJulian = 190;
-var endJulian = 250;     
+var startJulian = 244;
+var endJulian = 305;     
 
 // 3. Specify start and end years for all analyses
 // Generally, these years do not need changed
@@ -42,7 +51,7 @@ var endYear = 2017;
 var timebuffer = 1;
 
 // 5. Set up Names for the export
-var outputName = 'Alabama'; 
+var outputName = 'SJNF'; 
 
 // 6. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
@@ -56,7 +65,7 @@ var toaOrSR = 'sr';
 
 // 8. Specify which cloud/cloud shadow masking method
 // Choices are fmask, cloudScoreTDOM, or hybrid to run cloudScore/TDOM and then fmask 
-var cloudcloudShadowMaskingMethod = 'cloudScoreTDOM';
+var cloudcloudShadowMaskingMethod = 'hybrid';
 
 // 9. Choose whether to include Landat 7
 // Generally only included when data are limited
