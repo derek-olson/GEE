@@ -1,17 +1,17 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var geometry = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-111.68701171875, 44.42593442145313],
-          [-111.3134765625, 43.02071359427862],
-          [-108.87451171875, 42.35854391749706],
-          [-108.5009765625, 42.61779143282346],
-          [-109.852294921875, 44.48083027856261]]]),
-    sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-87.84805297851562, 34.55299544048395],
-          [-87.802734375, 30.921959956295034],
-          [-85.23193359375, 30.921959956295034],
-          [-85.374755859375, 34.58842141784074],
-          [-87.769775390625, 34.55223551605555]]]);
+var sa = /* color: #98ff00 */ee.Geometry.Polygon(
+        [[[-96.416015625, 46.22545288226939],
+          [-98.7451171875, 46.37725420510028],
+          [-109.9951171875, 45.36758436884978],
+          [-110.9619140625, 44.49650533109348],
+          [-109.3798828125, 36.633162095586584],
+          [-103.0078125, 36.56260003738545],
+          [-98.0859375, 36.527294814546245],
+          [-94.0869140625, 36.80928470205937],
+          [-94.2626953125, 39.40224434029275]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+var ForestBound = ee.FeatureCollection('ft:1FJRrQne_eBm1g4lEg7M_95p17AgzJHW4VwwtdyEJ', 'geometry');
+Map.addLayer(ForestBound)
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
 This script accomplishes several tasks:
@@ -29,32 +29,32 @@ This script accomplishes several tasks:
 // or draw a polygon and make StudyRegion = drawnPolygon
 // Also need to specify a crs naip_factor number (http://spatialreference.org)
 var StudyRegion = sa;
-var crs = 'EPSG:32616';
+var crs = 'EPSG:26913';
 // 2. Update the startJulian and endJulian variables to indicate your seasonal constraints. 
 // This supports wrapping for tropics and southern hemisphere.
 // startJulian: Starting Julian date 
 // endJulian: Ending Julian date
-var startJulian = 190;
-var endJulian = 250;     
+var startJulian = 151;
+var endJulian = 273;     
 
 // 3. Specify start and end years for all analyses
 // Generally, these years do not need changed
-var startYear = 2015;
+var startYear = 1987;
 var endYear = 2017;
 
 // 4. Specify an annual buffer to include imagery from the same season 
 // timeframe from the prior and following year. timeBuffer = 1 will result 
 // in a 3 year moving window
-var timebuffer = 1;
+var timebuffer = 15;
 
 // 5. Set up Names for the export
-var outputName = 'Alabama'; 
+var outputName = 'R2_PHEAT'; 
 
 // 6. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
 // single date of observation across all bands
 // Specify compositing method (median or medoid)
-var compositingMethod = 'medoid';
+var compositingMethod = 'median';
 
 // 7. Choose Top of Atmospheric (TOA) or Surface Reflectance (SR) 
 // Specify TOA or SR
@@ -105,8 +105,8 @@ var removeHaze = false;
 var hazeThresh = 300;
 
 // 13. Specify NAIP year, and aggregating factor
-var naip_year = 2016;
-var naip_factor = 2; // meters 
+var naip_year = 2015;
+var naip_factor = 5; // meters 
 
 ////////////////////////////////////////////////////////////////////////////////
 // End User defined variables.
@@ -172,8 +172,14 @@ var annualGDD = annualizeCollection(positiveAvgTemp,ee.Reducer.sum());
 var annualMeanGDD = annualGDD.mean().rename('GDD');
 Map.addLayer(annualMeanGDD,{min:309,max:362},'Annual Mean Growing Degree-Days',false);
 
+// Daily average min temperature
+var DailyAverageMinTemp = dmet.select('tmin').mean().rename('average_MinTemp');
+var DailyAverageMinTemp2 = annualizeCollection(dmet.select('tmin'),ee.Reducer.mean()).mean().rename('average_minTemp');
+Map.addLayer(DailyAverageMinTemp,{min:0,max:12},'Daily Average Min Temperature',false);
+Map.addLayer(DailyAverageMinTemp2,{min:0,max:12},'Daily Average Min Temperature 2',false);
+
 var daymet = annualMeanPrecip.addBands(DailyAverageRadiation)
-  .addBands(DailyAverageTemp).addBands(annualMeanGDD).int16();
+  .addBands(DailyAverageTemp).addBands(annualMeanGDD).addBands(DailyAverageMinTemp).addBands(DailyAverageMinTemp2).int16();
 
 // STEP 3: Get Landsat 5,8,7 Image Collections
 var ls = getImageCollection(studyArea,startDate,endDate,startJulian,endJulian,toaOrSR,includeSLCOffL7);
