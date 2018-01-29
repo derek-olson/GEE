@@ -1,16 +1,11 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-96.416015625, 46.22545288226939],
-          [-98.7451171875, 46.37725420510028],
-          [-109.9951171875, 45.36758436884978],
-          [-110.9619140625, 44.49650533109348],
-          [-109.3798828125, 36.633162095586584],
-          [-103.0078125, 36.56260003738545],
-          [-98.0859375, 36.527294814546245],
-          [-94.0869140625, 36.80928470205937],
-          [-94.2626953125, 39.40224434029275]]]);
+        [[[-114.8291015625, 46.263442671779885],
+          [-115.7958984375, 44.43377984606822],
+          [-113.18115234375, 43.12504316740127],
+          [-112.247314453125, 44.95702412512118]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var ForestBound = ee.FeatureCollection('ft:1FJRrQne_eBm1g4lEg7M_95p17AgzJHW4VwwtdyEJ', 'geometry');
+var ForestBound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W', 'geometry');
 Map.addLayer(ForestBound)
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -29,7 +24,7 @@ This script accomplishes several tasks:
 // or draw a polygon and make StudyRegion = drawnPolygon
 // Also need to specify a crs naip_factor number (http://spatialreference.org)
 var StudyRegion = sa;
-var crs = 'EPSG:26913';
+var crs = 'EPSG:26912';
 // 2. Update the startJulian and endJulian variables to indicate your seasonal constraints. 
 // This supports wrapping for tropics and southern hemisphere.
 // startJulian: Starting Julian date 
@@ -48,7 +43,7 @@ var endYear = 2017;
 var timebuffer = 15;
 
 // 5. Set up Names for the export
-var outputName = 'R2_PHEAT'; 
+var outputName = 'SalmonChallis'; 
 
 // 6. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
