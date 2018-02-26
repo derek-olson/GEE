@@ -1,21 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-110.181884765625, 44.268804788566165],
-          [-110.819091796875, 44.276671273775186],
-          [-111.192626953125, 43.548548110912854],
-          [-111.2255859375, 42.13082130188811],
-          [-110.423583984375, 41.95949009892467],
-          [-110.0830078125, 42.90011265525328],
-          [-109.061279296875, 42.28543700749154],
-          [-108.599853515625, 42.58544425738491],
-          [-109.775390625, 43.667871610117494],
-          [-109.53369140625, 43.99281450048989],
-          [-109.566650390625, 44.3002644115815],
-          [-109.764404296875, 44.457309801319305],
-          [-110.19287109375, 44.48083027856261]]]);
+var sa = /* color: #0b4a8b */ee.Geometry.Polygon(
+        [[[-106.8804931640625, 31.98944183792288],
+          [-104.2767333984375, 31.95216223802497],
+          [-104.2437744140625, 32.008075959291055],
+          [-104.5294189453125, 33.99347299511967],
+          [-106.80908203125, 34.00258128543371]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var Bound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
-Map.addLayer(Bound,{}, 'Bound')
+//var Bound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+//Map.addLayer(Bound,{}, 'Bound')
 //var sa = sa;
 //Main code body written by: Ian Housman, Karis Tenneson, and Carson Stam
 //CloudScore function originally written by: Matt Hancher
@@ -45,11 +37,11 @@ Map.addLayer(Bound,{}, 'Bound')
 // var sa = ee.Geometry.Polygon(studyArea.geometry().bounds().coordinates().getInfo()[0]);;//Specify study area.  Can draw a polygon, manually enter vertices, or import a Fusion Table.  Must use the syntax ee.FeatureCollection('ft:myFusionTableID','geometry').geometry() for a fusion table
 var toaOrSRLandsat = 'toa';//Choose toa or sr for top of atmosphere reflectance or surface reflectance using LEDAPS- note fewer scenes are generally available when using surface reflectance
 var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
-var startYear = 1997;//First year to include imagery from
+var startYear = 2012;//First year to include imagery from
 var endYear = 2017;//Last year to include imagery from
 var compositingPeriod = 2;//Number of years of data to include in each exported composite
-var startJulian =266; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
-var endJulian = 334; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
+var startJulian =152; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
+var endJulian = 258; // Ending Julian date- Supports wrapping for tropics and southern hemisphere
 var metadataCloudCoverMax = 100;//Cloud cover percentage in image metadata threshold- will not include images with cloud cover > this number- set to 100 if using metadata cloud cover is not wanted
 
 var landsatCloudMaskMethod = cloudScoreTDOMShift;//Choose masking method- choices: fMask, cloudScoreTDOMShift.  fMask is only available for Landsat SR
@@ -69,9 +61,9 @@ var maskWater = true;//Whether to apply water mask
 
 //Export parameters
 var exportName = 'summerComposite'; // Give the study area a descriptive name. This name is used for output composites file names.
-var reducerPercentile = 80; // Reducer for compositing
+var reducerPercentile = 5; // Reducer for compositing
 var resolution = 30;//Landsat should be set to 30. Sentinel 2 should be set to 10, 20, or 60 depending on which bands are of interest.  Hybrid can be set to 10, 20, 30, or 60 depending on the need.  60 is the finest resolution that all can be divided without a remainder
-var crs = 'EPSG:26912'; // EPSG number for output projection. 32651 = WGS84/UTM Zone 51N. For more info- http://spatialreference.org/ref/epsg/  
+var crs = 'EPSG:26913'; // EPSG number for output projection. 32651 = WGS84/UTM Zone 51N. For more info- http://spatialreference.org/ref/epsg/  
 var noDataValue = -32678;//Choose a value that is not a real value in any exports
 var exportBands = ['blue','green','red','nir','swir1','swir2','NDVI','NBR','Brightness','Greenness','Wetness','Angle'];//Bands to export
 //////////////////////////////////////////////////////////////////////////////////
@@ -893,7 +885,7 @@ var customQualityMosaic = function(inCollection,qualityBand,percentile){
 var customMosaic = allImages.median();
 Map.addLayer(customMosaic,vizParams,'Median Composite')
 Map.addLayer(allImages.select([0]).count(),{'min':1,'max':10,'palette':'F00,00F'},'Count',false);
-var OutImageName = "landsat_BT_Composite_fall"
+var OutImageName = "Landsat_Lincoln_TOA_5pct_Composite_2012_2017_152_258"
  Export.image(customMosaic.select('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'NDVI', 'NBR', 'NDMI', 'Brightness', 'Greenness', 'Wetness', 'Angle').multiply(10000).int16(), OutImageName,
        {'maxPixels': 2e9,
          'region': sa,//.geometry().bounds().getInfo().coordinates[0],
