@@ -1,11 +1,12 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-114.8291015625, 46.263442671779885],
-          [-115.7958984375, 44.43377984606822],
-          [-113.18115234375, 43.12504316740127],
-          [-112.247314453125, 44.95702412512118]]]);
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-109.97314453125, 44.47250119351299],
+          [-111.2255859375, 44.441133975220566],
+          [-111.26953125, 41.9753167881278],
+          [-108.6328125, 41.99164989141194],
+          [-108.56689453125, 44.441133975220566]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var ForestBound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W', 'geometry');
+var ForestBound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
 Map.addLayer(ForestBound)
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -43,7 +44,7 @@ var endYear = 2017;
 var timebuffer = 15;
 
 // 5. Set up Names for the export
-var outputName = 'SalmonChallis'; 
+var outputName = 'BridgerTeton'; 
 
 // 6. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
@@ -101,7 +102,7 @@ var hazeThresh = 300;
 
 // 13. Specify NAIP year, and aggregating factor
 var naip_year = 2015;
-var naip_factor = 5; // meters 
+var naip_factor = 10; // meters 
 
 ////////////////////////////////////////////////////////////////////////////////
 // End User defined variables.
