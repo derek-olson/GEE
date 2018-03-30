@@ -37,7 +37,7 @@ var sa = /* color: #0b4a8b */ee.Geometry.Polygon(
 // var sa = ee.Geometry.Polygon(studyArea.geometry().bounds().coordinates().getInfo()[0]);;//Specify study area.  Can draw a polygon, manually enter vertices, or import a Fusion Table.  Must use the syntax ee.FeatureCollection('ft:myFusionTableID','geometry').geometry() for a fusion table
 var toaOrSRLandsat = 'toa';//Choose toa or sr for top of atmosphere reflectance or surface reflectance using LEDAPS- note fewer scenes are generally available when using surface reflectance
 var sentinel2OrLandsatOrHybrid = 'landsat';//Choose landsat, sentinel2, or hybrid for which sensor programs to include- Landsat will include all Landsat sensors 5-8 unless includL7 is set to false, while hybrid will merge Landsat and Sentinel2 data together
-var startYear = 2012;//First year to include imagery from
+var startYear = 1998;//First year to include imagery from
 var endYear = 2017;//Last year to include imagery from
 var compositingPeriod = 2;//Number of years of data to include in each exported composite
 var startJulian =152; // Starting Julian Date- Supports wrapping for tropics and southern hemisphere
@@ -61,7 +61,7 @@ var maskWater = true;//Whether to apply water mask
 
 //Export parameters
 var exportName = 'summerComposite'; // Give the study area a descriptive name. This name is used for output composites file names.
-var reducerPercentile = 5; // Reducer for compositing
+var reducerPercentile = 50; // Reducer for compositing
 var resolution = 30;//Landsat should be set to 30. Sentinel 2 should be set to 10, 20, or 60 depending on which bands are of interest.  Hybrid can be set to 10, 20, 30, or 60 depending on the need.  60 is the finest resolution that all can be divided without a remainder
 var crs = 'EPSG:26913'; // EPSG number for output projection. 32651 = WGS84/UTM Zone 51N. For more info- http://spatialreference.org/ref/epsg/  
 var noDataValue = -32678;//Choose a value that is not a real value in any exports
