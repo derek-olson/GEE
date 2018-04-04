@@ -31,11 +31,11 @@ Map.addLayer(MODIS2,{'min':-0.1, 'max':0.8},'modis2',false)
 Map.addLayer(MODIS1,{'min':-0.1, 'max':0.8},'modis1',false)
 Map.addLayer(diff,{'min':-0.15, 'max':0.15,'palette':'db0c0c, 15f215'},'Diff')
 
-var N = NAIP
+/*var N = NAIP
     .filterDate(new Date('1-01-2012'),new Date('12-01-2014'))
     .median()
     .select(['N','R','G'])
-print(N)
+print(N)*/
               
 
 //addToMap(N)
