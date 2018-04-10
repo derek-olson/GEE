@@ -1,7 +1,3 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var NAIP = ee.ImageCollection("USDA/NAIP/DOQQ"),
-    image = ee.Image("UMD/hansen/global_forest_change_2016_v1_4");
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
 //var ForestBound = ee.FeatureCollection('ft:1evoQ9ZDFqzGXiG2COjauqpXy6RI4BIWu54cMUSID', 'geometry');
 //Map.addLayer(ForestBound)
 
@@ -10,7 +6,7 @@ var NAIP = ee.ImageCollection("USDA/NAIP/DOQQ"),
 var hansen = ee.Image('UMD/hansen/global_forest_change_2016_v1_4')
 var fc = hansen.select(['treecover2000']).gt(20)
 
-var MODIS1 = ee.ImageCollection('MODIS/MOD13Q1')
+var MODIS1 = ee.ImageCollection('MODIS/006/MOD13Q1')
               .filterDate(new Date('1-01-2014'),new Date('12-01-2015'))
               .filter(ee.Filter.calendarRange(182,273))
               .select(['NDVI']);
@@ -18,7 +14,7 @@ var MODIS1 = ee.ImageCollection('MODIS/MOD13Q1')
 MODIS1 = MODIS1.median().divide(10000).mask(fc);
 
 
-var MODIS2 = ee.ImageCollection('MODIS/MOD13Q1')
+var MODIS2 = ee.ImageCollection('MODIS/006/MOD13Q1')
               .filterDate(new Date('1-01-2016'),new Date('12-01-2017'))
               .filter(ee.Filter.calendarRange(182,273))
               .select(['NDVI']);
