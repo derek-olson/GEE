@@ -295,11 +295,11 @@ vizParams: Options for map visualization
 */
 
 //Load bounding box of kaibab plateau
-var kaibab = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+var kaibab = ee.FeatureCollection('ft:1hnVlNKz6KmY8Ohl4DfwtUFNeiMe1l65PDiMmZMBS', 'geometry');
 
 var studyArea = kaibab.geometry();
-var startYear = 2012;
-var endYear = 2016;
+var startYear = 2013;
+var endYear = 2015;
 var startJulian = 1;
 var endJulian = 365;
 
