@@ -1,0 +1,764 @@
+/*/////////////////////////////////////////////////////////////////////////////
+SERVIR-MEKONG 2016
+SCRIPT: ExportAnnualLandsatHarmonics
+CONTACT INFORMATION: Karis Tenneson, rsac_gee@fs.fed.us
+Date: 6-Mar-2018
+
+SNIPPETS USED:
+-addIndices
+-getTasseledCap
+-getHarmonicsAmplitudePhase
+-exportAsset
+
+LINK TO REPORT(S):
+DESCRIPTION:
+This script accomplishes several tasks:
+ 1) Loads Mekong study region 
+ 2) Gathers Landsat 4,5,7,8 imagery
+ 3) Masks shadows and clouds 
+ 4) Adds common spectral indices
+ 5) Calculates harmonic coefficients for a dependent variable
+    and exports harmonics to asset
+*//////////////////////////////////////////////////////////////////////////////
+
+// STEP 0: Define user inputs:
+
+// 1. Specify study area: Study area
+var kaibab = ee.FeatureCollection('ft:1hnVlNKz6KmY8Ohl4DfwtUFNeiMe1l65PDiMmZMBS', 'geometry');
+
+var studyArea = kaibab;
+// Map.centerObject(studyArea, 6);
+
+// 2. Choose one dependent and number of harmonics (i.e. cycles per year). Options for dependents are:
+  //   Spectral bands: 'blue','green','red','nir','swir1','temp','swir2'
+  //   Normalized differences: 'ND_blue_green','ND_blue_red','ND_blue_nir','ND_blue_swir1',
+  //      'ND_blue_swir2','ND_green_red','ND_green_nir','ND_green_swir1','ND_green_swir2',
+  //      'ND_red_swir1','ND_red_swir2','ND_nir_red','ND_nir_swir1','ND_nir_swir2','ND_swir1_swir2'
+  //   Tasseled Cap bands: 'brightness','greenness','wetness','fourth', 'fifth', 'sixth'
+  //   Tasseled Cap angles and distances: 'tcAngleBG','tcDistBG','tcAngleGW','tcDistGW','tcAngleBW','tcDistBW'
+  //   Ratios: 'R_swir1_nir','R_red_swir1'
+  //   Other indices: 'EVI','SAVI','IBI'
+
+var dependent = 'ND_nir_red';
+var harmonics = 1;
+
+//3. Specify start and end years for all analyses
+//Generally, these years do not need changed
+var startYear = 2013;
+var endYear = 2015;
+
+// 3. Specify an annual buffer to include imagery from the same season 
+// timeframe from the prior and following year. 
+var timebuffer = 1;
+
+// 4. Choose methods and names
+//Specify TOA or SR
+var toaOrSR = 'SR';
+
+//Specify which cloud/cloud shadow masking method
+//Choices are fmask, cloudScoreTDOM, or hybrid to run cloudScore/TDOM and then fmask 
+var cloudcloudShadowMaskingMethod = 'cloudScoreTDOM';
+
+//Whether to include Landat 7
+//Generally only included when data are limited
+var includeL7 = true;
+
+// Metadata tag
+var versionNumber = 2;
+
+// Choose export path root
+var exportPathRoot = 'projects/servir-mekong/Harmonics/Harmonics_' + dependent;
+
+// 5. Cloud and cloud shadow masking parameters.
+// cloudThresh: If using the cloudScoreTDOMShift method-Threshold for cloud 
+//    masking (lower number masks more clouds.  Between 10 and 30 generally 
+//    works best)
+var cloudThresh = 20;
+
+//If using surface reflectance data, haze can be removed
+var removeHaze = true;
+//If removing haze, choose threshold.  Generally 200-300 works well.  Higher number will mask out less
+var hazeThresh = 250;
+
+// contractPixels: The radius of the number of pixels to contract (negative buffer) clouds and cloud 
+//    shadows by.  Intended to eliminate smaller cloud patches that are likely errors
+// (1.5 results in a -1 pixel buffer)(0.5 results in a -0 pixel buffer)
+// (1.5 or 2.5 generally is sufficient)
+var contractPixels = 1.5; 
+
+// dilatePixels: The radius of the number of pixels to dilate (buffer) clouds and cloud 
+//    shadows by.  Intended to include edges of clouds/cloud shadows that are often missed
+//(1.5 results in a 1 pixel buffer)(0.5 results in a 0 pixel buffer)
+// (2.5 or 3.5 generally is sufficient)
+var dilatePixels = 3.5;
+
+// zScoreThresh: Threshold for cloud shadow masking- lower number masks out 
+//    less.  Between -0.8 and -1.2 generally works well
+var zScoreThresh = -0.8;
+    
+// shadowSumThresh: Sum of IR bands to include as shadows within TDOM and the 
+//    shadow shift method (lower number masks out less)
+var shadowSumThresh = 0.35;
+
+// metadataCloudCoverMax: Cloud cover percentage in image metadata threshold.
+//    Will not include images with cloud cover > this number. Set to 100 if 
+//    using metadata cloud cover is not wanted
+var metadataCloudCoverMax = 100;
+
+// 6. Adjust the map visualization parameters.
+// vizParams: Options for map visualization of exported data set.
+
+////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// End User defined variables.
+// Change items below with caution.
+////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// STEP 1: Prepare dates (using entire year for harmonics)
+var startJulian = 1;
+var endJulian = 365;
+if(startJulian > endJulian){endJulian = endJulian + 365}
+var startDate = ee.Date.fromYMD(startYear,1,1).advance(startJulian-1,'day');
+var endDate = ee.Date.fromYMD(endYear,1,1).advance(endJulian-1,'day');
+print('Start and end dates:',startDate,endDate);
+
+// STEP 2: Get Landsat 4,5,8,7 Image Collections
+var ls = getImageCollection(studyArea,startDate,endDate,startJulian,endJulian);
+print('Image Count:',ls.size());
+
+// STEP 3: Compute a cloud score and mask clouds
+if(removeHaze & toaOrSR.toLowerCase() === 'sr'){
+  print('Removing haze');
+  ls = ls.map(maskHaze);
+}
+
+if(cloudcloudShadowMaskingMethod.toLowerCase() === 'cloudscoretdom' || cloudcloudShadowMaskingMethod.toLowerCase() === 'hybrid'){
+  ls = ls.map(landsatCloudScore);
+
+  // Find and mask out dark outliers
+  ls = simpleTDOM2(ls,zScoreThresh,shadowSumThresh,contractPixels,dilatePixels);
+}
+
+if(cloudcloudShadowMaskingMethod.toLowerCase() === 'fmask' ||cloudcloudShadowMaskingMethod.toLowerCase() === 'hybrid'){
+  if(toaOrSR.toLowerCase() === 'sr'){
+    ls = ls.map(srFmask);
+  } else{
+    ls = ls.map(toaFmask);
+  }
+} 
+
+// STEP 4: Add indices, tasseled cap, and other derivatives
+// Add common spectral indices
+ls = ls.map(addIndices);
+
+// Add tasseled cap transformation, tasseled cap angles, and NDSV
+var tcInputBands = ee.List(['blue','green','red','nir','swir1','swir2']);
+ls = ls.map(function(img){
+  img = getTasseledCap(img,tcInputBands);
+  img = addTCAngles(img);
+  return img;
+});
+
+ls = ls.select([dependent]);
+
+//Create composites for each year within startYear and endYear range
+ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo().map(function(year){
+  
+  //Set up dates
+  var startYearT = year-timebuffer;
+  var endYearT = year+timebuffer;
+  var startDateT = ee.Date.fromYMD(startYearT,1,1).advance(startJulian-1,'day');
+  var endDateT = ee.Date.fromYMD(endYearT,1,1).advance(endJulian-1,'day');
+
+  //Filter images for given date range
+  var lsT = ls.filterDate(startDateT,endDateT);
+  
+  // STEP 5: Perform harmonic analysis and export results
+  var harmonicOutput = getHarmonicsAmplitudePhase(lsT,dependent,harmonics);
+
+  // STEP 6: Add data layers into the map window. 
+  // Display the Landsat Harmonics.
+  ///////////////////////////////////////////////////////////////////////////////
+  // Use the HSV to RGB transform to display phase and amplitude
+  var harmonicPhase = harmonicOutput.select(dependent + '_phase_1');
+  var harmonicAmplitude = harmonicOutput.select(dependent + '_amplitude_1');
+  
+  var rgb = harmonicPhase.unitScale(-Math.PI, Math.PI).addBands(
+            ee.Image(1)).addBands(
+            harmonicAmplitude.multiply(2.5)).hsvToRgb();
+  Map.addLayer(rgb, {},'Landsat Harmonics '+toaOrSR.toUpperCase()+' '+year.toString(), false);
+  // STEP 7: Reformat data for export. 
+  ///////////////////////////////////////////////////////////////////////////////
+  // var harmonicOutputBands = harmonicOutput.bandNames();
+  var harmonicOutputBands = [0,2,3];
+  // var nonDivideBands = ee.List([dependent + '_numImages']);
+  // var harmonicOutput1000 = harmonicOutput.select(harmonicOutputBands.removeAll(nonDivideBands)).multiply(1000);
+  // var harmonicOutput1 = harmonicOutput.select([dependent + '_numImages']);
+  // harmonicOutput = harmonicOutput1000.addBands(harmonicOutput1).int16();
+  harmonicOutput = harmonicOutput.select(harmonicOutputBands).multiply(1000).int16();
+  
+  // Add metadata, cast to integer, and export harmonics
+  harmonicOutput = harmonicOutput.set({
+    'system:time_start': ee.Date.fromYMD(year,6,1).millis(),
+    'date': ee.Date.fromYMD(year,6,1),
+    'source': toaOrSR.toUpperCase(),
+    'version': versionNumber,
+    'harmonics': harmonics,
+    'dependent': dependent,
+    'startDate':startDateT.millis(),
+    'endDate':endDateT.millis(),
+    'toaOrSR': toaOrSR.toUpperCase(),
+    'cloudcloudShadowMaskingMethod':cloudcloudShadowMaskingMethod,
+    'removeHaze':removeHaze
+  });
+  
+  // STEP 7: Export the harmonics. 
+  ///////////////////////////////////////////////////////////////////////////////
+  // set up export name and path
+  // var exportName = SRname + 'Landsat_'+toaOrSR+'_' + startJulian + '_' + endJulian + 
+  // '_' + startYearT + '_' + endYearT+'_'+compositingMethod;
+
+  var exportName = 'Harmonics_' + dependent + '_' + startYearT + '_' + endYearT;
+  var exportPath = exportPathRoot + '/' + exportName;
+  print(harmonicOutput, exportPath);
+  
+ // asyncExportToAssetWrapper(harmonicOutput,exportName,exportPath,'mean',
+ //   studyArea,30,'EPSG:4326');
+  Export.image.toDrive({image: harmonicOutput, description: 'HarmonicTrendCoefficients',maxPixels:1e13, crs:'EPSG:26913', scale:30, });
+  
+  // STEP 8: Display re-formatted Landsat imagery. 
+  ///////////////////////////////////////////////////////////////////////////////
+  
+  // Map.addLayer(harmonicOutput, {},'Landsat Harmonics '+toaOrSR+' '+year.toString(), false);
+
+});
+
+////////////////////////////////////////////////////////////////////////////////
+// Load the study region, with a blue outline.
+// Create an empty image into which to paint the features, cast to byte.
+// Paint all the polygon edges with the same number and width, display.
+var empty = ee.Image().byte();
+var outline = empty.paint({
+  featureCollection: studyArea,
+  color: 1,
+  width: 3
+});
+Map.addLayer(outline, {palette: '0000FF'}, "Study Area", false);
+  
+////////////////////////////////////////////////////////////////////////////////
+//FUNCTIONS
+//Function for applying fmask to sr data
+function srFmask(img){
+  var cloud = img.select('pixel_qa').bitwiseAnd(32).neq(0);
+  var cloud_shadow = img.select('pixel_qa').bitwiseAnd(8).neq(0);
+  return img.updateMask(cloud.or(cloud_shadow).not());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Function for applying fmask to toa data
+//Source: https://landsat.usgs.gov/collectionqualityband
+// 0=clear
+// 1=water
+// 2=shadow
+// 3=snow
+// 4=cloud
+var tmQACodes = { '4':ee.Image([752, 756, 760, 764]),
+                 '2':ee.Image([928, 932, 936, 940, 960, 964, 968, 972]),
+                 '3':ee.Image([1696, 1700, 1704, 1708, 1728, 1732, 1736, 1740]),
+                 '0':ee.Image([672, 676, 680, 684])};
+var oliQACodes = { '4':ee.Image([2800, 2804, 2808, 2812, 6896, 6900, 6904, 6908]),
+                 '2':ee.Image([2976, 2980, 2984, 2988, 3008, 3012, 3016, 3020, 7072, 7076, 7080, 7084, 7104, 7108, 7112, 7116]),
+                 '3':ee.Image([3744, 3748, 3752, 3756, 3776, 3780, 3784, 3788, 7840, 7844, 7848, 7852, 7872, 7876, 7880, 7884]),
+                 '0':ee.Image([2720, 2724, 2728, 2732])};
+var tmOrOLI = {'L4':tmQACodes,
+                'L5':tmQACodes,
+                'L7':tmQACodes,
+                'L8':oliQACodes};
+var tmCloudCloudShadowCodes = ee.Image([752, 756, 760, 764,928, 932, 936, 940, 960, 964, 968, 972]);
+var oliCloudCloudShadowCodes = ee.Image([2800, 2804, 2808, 2812, 6896, 6900, 6904, 6908,2976, 2980, 2984, 2988, 3008, 3012, 3016, 3020, 7072, 7076, 7080, 7084, 7104, 7108, 7112, 7116]);
+
+function toaFmask(img){
+  //Find whether it is TM/ETM+ or OLI
+  var whichCodes = ee.Algorithms.If(ee.String(img.get('SENSOR_ID')).index('TM').neq(-1),ee.Image([752, 756, 760, 764,928, 932, 936, 940, 960, 964, 968, 972]),ee.Image([2800, 2804, 2808, 2812, 6896, 6900, 6904, 6908,2976, 2980, 2984, 2988, 3008, 3012, 3016, 3020, 7072, 7076, 7080, 7084, 7104, 7108, 7112, 7116]));
+
+  //Get bqa band and creat cloud/cloud shadow mask
+  var bqa = img.select(['BQA']);
+  var mask = bqa.eq(whichCodes).reduce(ee.Reducer.max()).not().focal_max(contractPixels).focal_min(dilatePixels);
+  return img.updateMask(mask);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Function for acquiring Landsat TOA image collection
+function getImageCollection(studyArea,startDate,endDate,startJulian,endJulian){
+   //Set up bands and corresponding band names
+  var sensorBandDict ={'L8TOA' : ee.List([1,2,3,4,5,9,6,'BQA']),
+                        'L7TOA' : ee.List([0,1,2,3,4,5,7,'BQA']),
+                        'L5TOA' : ee.List([0,1,2,3,4,5,6,'BQA']),
+                        'L4TOA' : ee.List([0,1,2,3,4,5,6,'BQA']),
+                        'L8SR' : ee.List([1,2,3,4,5,7,6,'pixel_qa','sr_aerosol']),
+                        'L7SR' : ee.List([0,1,2,3,4,5,6,'pixel_qa','sr_atmos_opacity']),
+                        'L5SR' : ee.List([0,1,2,3,4,5,6,'pixel_qa','sr_atmos_opacity']),
+                        'L4SR' : ee.List([0,1,2,3,4,5,6,'pixel_qa','sr_atmos_opacity']),
+                        };
+  var sensorBandNameDict ={'L8TOA' : ee.List(['blue','green','red','nir','swir1','temp','swir2','BQA']),
+                        'L7TOA' : ee.List(['blue','green','red','nir','swir1','temp','swir2','BQA']),
+                        'L5TOA' :ee.List(['blue','green','red','nir','swir1','temp','swir2','BQA']),
+                        'L4TOA' : ee.List(['blue','green','red','nir','swir1','temp','swir2','BQA']),
+                        'L8SR' : ee.List(['blue','green','red','nir','swir1','temp', 'swir2','pixel_qa','sr_atmos_opacity']),
+                        'L7SR' : ee.List(['blue','green','red','nir','swir1','temp', 'swir2','pixel_qa','sr_atmos_opacity']),
+                        'L5SR' :ee.List(['blue','green','red','nir','swir1','temp', 'swir2','pixel_qa','sr_atmos_opacity']),
+                        'L4SR' :ee.List(['blue','green','red','nir','swir1','temp', 'swir2','pixel_qa','sr_atmos_opacity'])
+                         };
+  //Set up collections
+  var collections = {
+    'L8TOA':'LANDSAT/LC08/C01/T1_TOA',
+    'L7TOA':'LANDSAT/LE07/C01/T1_TOA',
+    'L5TOA':'LANDSAT/LT05/C01/T1_TOA',
+    'L8SR':'LANDSAT/LC08/C01/T1_SR',
+    'L7SR':'LANDSAT/LE07/C01/T1_SR',
+    'L5SR':'LANDSAT/LT05/C01/T1_SR',
+  };
+
+ toaOrSR = toaOrSR.toUpperCase();
+ 
+  //Get images
+  var l5s = ee.ImageCollection(collections['L5'+toaOrSR])
+      .filterDate(startDate,endDate)
+      .filter(ee.Filter.calendarRange(startJulian,endJulian))
+      .filterBounds(studyArea)
+      .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
+      .select(sensorBandDict['L5'+toaOrSR],sensorBandNameDict['L5'+toaOrSR]);
+  
+  var l8s= ee.ImageCollection(collections['L8'+toaOrSR])
+      .filterDate(startDate,endDate)
+      .filter(ee.Filter.calendarRange(startJulian,endJulian))
+      .filterBounds(studyArea)
+      .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
+      .select(sensorBandDict['L8'+toaOrSR],sensorBandNameDict['L8'+toaOrSR]);
+  var ls;
+  
+  if(includeL7){
+    print('Including Landsat 7');
+    var l7s = ee.ImageCollection(collections['L7'+toaOrSR])
+        .filterDate(startDate,endDate)
+        .filter(ee.Filter.calendarRange(startJulian,endJulian))
+        .filterBounds(studyArea)
+        .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
+        .select(sensorBandDict['L7'+toaOrSR],sensorBandNameDict['L7'+toaOrSR]);
+    
+    //Merge collections
+    ls = ee.ImageCollection(l5s.merge(l7s).merge(l8s));
+  }
+  else{
+    print('Not including Landsat 7');
+    //Merge collections
+    ls = ee.ImageCollection(l5s.merge(l8s)); 
+  }
+  if(toaOrSR.toLowerCase() === 'sr'){
+    print('Surface Reflectance: Have to divide it');
+    ls = ls.map(function(img){
+      var out = img;
+      var temp = out.select(['temp']).divide(10);
+      var qa = out.select(['pixel_qa','sr_atmos_opacity']);
+      out = out.select(['blue','green','red','nir','swir1','swir2']).divide(10000);
+      out = out.addBands(temp).addBands(qa).select(sensorBandNameDict.L5SR).copyProperties(img).set('system:time_start',img.get('system:time_start'));
+      return out;
+    });
+  }
+  //Ensure images have data in all bands.  Mask if not
+  ls = ls.map(function(img){return img.updateMask(img.mask().reduce(ee.Reducer.min()))});
+  
+  return ls;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// A helper to apply an expression and linearly rescale the output.
+// Used in the landsatCloudScore function below.
+function rescale(img, exp, thresholds) {
+  return img.expression(exp, {img: img})
+      .subtract(thresholds[0]).divide(thresholds[1] - thresholds[0]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Compute a cloud score and adds a band that represents the cloud mask.  
+// This expects the input image to have the common band names: 
+// ["red", "blue", etc], so it can work across sensors.
+function landsatCloudScore(img) {
+  // Compute several indicators of cloudiness and take the minimum of them.
+  var score = ee.Image(1.0);
+  // Clouds are reasonably bright in the blue band.
+  score = score.min(rescale(img, 'img.blue', [0.1, 0.3]));
+ 
+  // Clouds are reasonably bright in all visible bands.
+  score = score.min(rescale(img, 'img.red + img.green + img.blue', [0.2, 0.8]));
+   
+  // Clouds are reasonably bright in all infrared bands.
+  score = score.min(
+      rescale(img, 'img.nir + img.swir1 + img.swir2', [0.3, 0.8]));
+
+  // Clouds are reasonably cool in temperature.
+  score = score.min(rescale(img,'img.temp', [300, 290]));
+
+  // However, clouds are not snow.
+  var ndsi = img.normalizedDifference(['green', 'swir1']);
+  score =  score.min(rescale(ndsi, 'img', [0.8, 0.6])).multiply(100).byte();
+  score = score.lt(cloudThresh).focal_max(contractPixels).focal_min(dilatePixels).rename('cloudMask');
+  img = img.updateMask(score);
+  return img.addBands(score);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Function for finding dark outliers in time series.
+//Original concept written by Carson Stam and adapted by Ian Housman.
+//Adds a band that is a mask of pixels that are dark, and dark outliers.
+function simpleTDOM2(collection,zScoreThresh,shadowSumThresh,contractPixels,dilatePixels){
+  var shadowSumBands = ['nir','swir1'];
+  
+  //Get some pixel-wise stats for the time series
+  var irStdDev = collection.select(shadowSumBands).reduce(ee.Reducer.stdDev());
+  var irMean = collection.select(shadowSumBands).mean();
+  
+  //Mask out dark dark outliers
+  collection = collection.map(function(img){
+    var zScore = img.select(shadowSumBands).subtract(irMean).divide(irStdDev);
+    var irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum());
+    var TDOMMask = zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2)
+        .and(irSum.lt(shadowSumThresh));
+    TDOMMask = TDOMMask.focal_min(contractPixels).focal_max(dilatePixels);
+    return img.updateMask(TDOMMask.not());
+  });
+  
+  return collection;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Function to add common (and less common) spectral indices to an image.
+// Includes the Normalized Difference Spectral Vector from (Angiuli and Trianni, 2014)
+function addIndices(img){
+  // Add Normalized Difference Spectral Vector (NDSV)
+  img = img.addBands(img.normalizedDifference(['blue','green']).rename('ND_blue_green'));
+  img = img.addBands(img.normalizedDifference(['blue','red']).rename('ND_blue_red'));
+  img = img.addBands(img.normalizedDifference(['blue','nir']).rename('ND_blue_nir'));
+  img = img.addBands(img.normalizedDifference(['blue','swir1']).rename('ND_blue_swir1'));
+  img = img.addBands(img.normalizedDifference(['blue','swir2']).rename('ND_blue_swir2'));
+
+  img = img.addBands(img.normalizedDifference(['green','red']).rename('ND_green_red'));
+  img = img.addBands(img.normalizedDifference(['green','nir']).rename('ND_green_nir')); //NDWBI
+  img = img.addBands(img.normalizedDifference(['green','swir1']).rename('ND_green_swir1')); //NDSI, MNDWI
+  img = img.addBands(img.normalizedDifference(['green','swir2']).rename('ND_green_swir2'));
+
+  img = img.addBands(img.normalizedDifference(['red','swir1']).rename('ND_red_swir1'));
+  img = img.addBands(img.normalizedDifference(['red','swir2']).rename('ND_red_swir2'));
+
+  img = img.addBands(img.normalizedDifference(['nir','red']).rename('ND_nir_red')); //NDVI
+  img = img.addBands(img.normalizedDifference(['nir','swir1']).rename('ND_nir_swir1')); //NDWI, LSWI, -NDBI
+  img = img.addBands(img.normalizedDifference(['nir','swir2']).rename('ND_nir_swir2')); //NBR, MNDVI
+
+  img = img.addBands(img.normalizedDifference(['swir1','swir2']).rename('ND_swir1_swir2'));
+  
+  // Add ratios
+  img = img.addBands(img.select('swir1').divide(img.select('nir')).rename('R_swir1_nir')); //ratio 5/4
+  img = img.addBands(img.select('red').divide(img.select('swir1')).rename('R_red_swir1')); // ratio 3/5
+
+  // Add Enhanced Vegetation Index (EVI)
+  var evi = img.expression(
+    '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))', {
+      'NIR': img.select('nir'),
+      'RED': img.select('red'),
+      'BLUE': img.select('blue')
+  }).float();
+  img = img.addBands(evi.rename('EVI'));
+  
+  // Add Soil Adjust Vegetation Index (SAVI)
+  // using L = 0.5;
+  var savi = img.expression(
+    '(NIR - RED) * (1 + 0.5)/(NIR + RED + 0.5)', {
+      'NIR': img.select('nir'),
+      'RED': img.select('red')
+  }).float();
+  img = img.addBands(savi.rename('SAVI'));
+  
+  // Add Index-Based Built-Up Index (IBI)
+  var ibi_a = img.expression(
+    '2*SWIR1/(SWIR1 + NIR)', {
+      'SWIR1': img.select('swir1'),
+      'NIR': img.select('nir')
+    }).rename('IBI_A');
+  var ibi_b = img.expression(
+    '(NIR/(NIR + RED)) + (GREEN/(GREEN + SWIR1))', {
+      'NIR': img.select('nir'),
+      'RED': img.select('red'),
+      'GREEN': img.select('green'),
+      'SWIR1': img.select('swir1')
+    }).rename('IBI_B');
+  ibi_a = ibi_a.addBands(ibi_b);
+  var ibi = ibi_a.normalizedDifference(['IBI_A','IBI_B']);
+  img = img.addBands(ibi.rename('IBI'));
+  
+  return img;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Function to compute the Tasseled Cap transformation and return an image
+// with the following bands added: ['brightness', 'greenness', 'wetness', 
+// 'fourth', 'fifth', 'sixth']
+function getTasseledCap(image,bands) {
+  // Kauth-Thomas coefficients for Thematic Mapper data
+  var coefficients = ee.Array([
+    [0.3037, 0.2793, 0.4743, 0.5585, 0.5082, 0.1863],
+    [-0.2848, -0.2435, -0.5436, 0.7243, 0.0840, -0.1800],
+    [0.1509, 0.1973, 0.3279, 0.3406, -0.7112, -0.4572],
+    [-0.8242, 0.0849, 0.4392, -0.0580, 0.2012, -0.2768],
+    [-0.3280, 0.0549, 0.1075, 0.1855, -0.4357, 0.8085],
+    [0.1084, -0.9022, 0.4120, 0.0573, -0.0251, 0.0238]
+  ]);
+  // Make an Array Image, with a 1-D Array per pixel.
+  var arrayImage1D = image.select(bands).toArray();
+  
+  // Make an Array Image with a 2-D Array per pixel, 6x1.
+  var arrayImage2D = arrayImage1D.toArray(1);
+  
+  var componentsImage = ee.Image(coefficients)
+    .matrixMultiply(arrayImage2D)
+    // Get rid of the extra dimensions.
+    .arrayProject([0])
+    // Get a multi-band image with TC-named bands.
+    .arrayFlatten(
+      [['brightness', 'greenness', 'wetness', 'fourth', 'fifth', 'sixth']])
+    .float();
+  
+  return image.addBands(componentsImage);
+}
+
+// Function to add Tasseled Cap angles and distances to an image.
+// Assumes image has bands: 'brightness', 'greenness', and 'wetness'.
+function addTCAngles(image){
+  // Select brightness, greenness, and wetness bands
+  var brightness = image.select(['brightness']);
+  var greenness = image.select(['greenness']);
+  var wetness = image.select(['wetness']);
+  
+  // Calculate Tasseled Cap angles and distances
+  var tcAngleBG = brightness.atan2(greenness).divide(Math.PI).rename('tcAngleBG');
+  var tcAngleGW = greenness.atan2(wetness).divide(Math.PI).rename('tcAngleGW');
+  var tcAngleBW = brightness.atan2(wetness).divide(Math.PI).rename('tcAngleBW');
+  var tcDistBG = brightness.hypot(greenness).rename('tcDistBG');
+  var tcDistGW = greenness.hypot(wetness).rename('tcDistGW');
+  var tcDistBW = brightness.hypot(wetness).rename('tcDistBW');
+  image = image.addBands(tcAngleBG).addBands(tcAngleGW)
+    .addBands(tcAngleBW).addBands(tcDistBG).addBands(tcDistGW)
+    .addBands(tcDistBW);
+  return image;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//Function that performs a harmonic time series analysis of an image collection
+//for a dependent variable and returns a multi-band image of the harmonic 
+//coefficients, RMSE, and number of images
+function getHarmonicsAmplitudePhase(collection,dependent,harmonics,roi){
+  // Make a list of harmonic frequencies to model.  
+  // These also serve as band name suffixes.
+
+  var harmonicFrequencies = ee.List.sequence(1,harmonics);
+  
+  // Function to get a sequence of band names for harmonic terms.
+  var getNames = function(base, list) {
+    return ee.List(list).map(function(i) { 
+      return ee.String(base).cat(ee.Number(i).int());
+    });
+  };
+  
+  // Construct lists of names for the harmonic terms.
+  var cosNames = getNames('cos_', harmonicFrequencies);
+  var sinNames = getNames('sin_', harmonicFrequencies);
+  var amplitudeNames = getNames('amplitude_', harmonicFrequencies);
+  var phaseNames = getNames('phase_', harmonicFrequencies);
+  
+  // Independent variables.
+  var independents = ee.List(['constant', 't'])
+    .cat(cosNames).cat(sinNames);
+  
+  // Function to add a constant band.
+  var addConstant = function(image) {
+    return image.addBands(ee.Image(1));
+  };
+
+  // Function to add a time band.
+  var addTime = function(image) {
+    // Compute time in fractional years since the epoch.
+    var date = ee.Date(image.get('system:time_start'));
+    var years = date.difference(ee.Date('1970-01-01'), 'year');
+    var timeRadians = ee.Image(years.multiply(2 * Math.PI));
+    return image.addBands(timeRadians.rename('t').float());
+  };
+  
+  // Function to compute the specified number of harmonics
+  // and add them as bands.  Assumes the time band is present.
+  var addHarmonics = function(freqs) {
+    return function(image) {
+      // Make an image of frequencies.
+      var frequencies = ee.Image.constant(freqs);
+      // This band should represent time in radians.
+      var time = ee.Image(image).select('t');
+      // Get the cosine terms.
+      var cosines = time.multiply(frequencies).cos()
+        .rename(cosNames);
+      // Get the sin terms.
+      var sines = time.multiply(frequencies).sin()
+        .rename(sinNames);
+      return image.addBands(cosines).addBands(sines);
+    };
+  };
+  
+  // Add constants, time, and harmonics to image
+  var harmonicImages = collection
+    .map(addConstant)
+    .map(addTime)
+    .map(addHarmonics(harmonicFrequencies));
+	
+  // Compute number of images
+  var numImages = harmonicImages.select(dependent).count()
+      .rename('numImages');  
+  
+  // Mask out pixels with fewer than minImage number of images
+  var minImage = 0;
+  var minImageMask = ee.Image(0).where(numImages.gte(minImage),1);
+  harmonicImages = harmonicImages.map(function(img) {
+    img = img.updateMask(minImageMask);
+	return img;
+  });
+
+  // The output of the regression reduction is a 4x1 array image.
+  var harmonicTrend = harmonicImages
+    .select(independents.add(dependent))
+    .reduce(ee.Reducer.linearRegression(independents.length(), 1));
+
+  // Turn the array image into a multi-band image of coefficients.
+  var harmonicTrendCoefficients = harmonicTrend.select('coefficients')
+    .arrayProject([0])
+    .arrayFlatten([independents]);
+  var harmonicTrendResiduals = harmonicTrend.select('residuals')
+    .arrayGet(0)
+	.rename('RMSE');
+  
+  var out = harmonicTrendCoefficients.select(['constant','t']);
+  
+  // Compute phase and amplitude
+  var phaseAmplitude = harmonicFrequencies.map(function(harmonic){
+      var harmonicString = ee.String(ee.Number(harmonic).int());
+      var cosName_i = ee.String('cos_').cat(harmonicString);
+      var sinName_i = ee.String('sin_').cat(harmonicString);
+      var phaseName_i = ee.String('phase_').cat(harmonicString);
+      var amplitudeName_i = ee.String('amplitude_').cat(harmonicString);
+      var phase = harmonicTrendCoefficients.select(cosName_i).atan2(
+          harmonicTrendCoefficients.select(sinName_i));
+      phase = phase.rename(phaseName_i);
+      var amplitude = harmonicTrendCoefficients.select(cosName_i).hypot(
+          harmonicTrendCoefficients.select(sinName_i));
+      amplitude = amplitude.rename(amplitudeName_i);
+      var out = phase.addBands(amplitude);
+      return out;
+  });
+  
+  out = out.addBands(newCollectionToImage(phaseAmplitude));
+  out = out.addBands(harmonicTrendResiduals);
+  out = out.addBands(numImages);
+
+  // If an ROI is provided, draw a chart of original and fitted values
+  if (roi !== undefined && roi !== null) {
+    // Compute fitted values.
+    var fittedHarmonic = harmonicImages.map(function(image) {
+      return image.addBands(
+        image.select(independents)
+          .multiply(harmonicTrendCoefficients)
+          .reduce('sum')
+          .rename('fitted'));
+    });
+    
+    // Plot the fitted model and the original data at the ROI.
+    print(Chart.image.series(fittedHarmonic.select(['fitted', dependent]), roi, ee.Reducer.mean(), 30)
+        .setOptions({
+          title: 'Harmonic model: original and fitted values',
+          lineWidth: 1,
+          pointSize: 3,
+    }));
+  }
+  
+  // Rename band to dependent_band
+  var bands = out.bandNames();
+  var new_bands = bands.map(function(band){
+    var new_band = ee.String(dependent).cat('_').cat(band);
+    return new_band;
+  });
+  out = out.rename(new_bands);
+  
+  return out;
+}
+
+// Helper function to convert image collection into stack of image bands
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Function for removing haze
+function maskHaze(img){
+    var opa = img.select(['sr_atmos_opacity']);
+    var haze = opa.gt(hazeThresh);
+    return img.updateMask(haze.not());
+  }
+  
+////////////////////////////////////////////////////////////////////////////////
+// Function to export a provided image to an EE asset
+function asyncExportToAssetWrapper(
+  imageForExport,assetName,assetPath,pyramidingPolicy,roi,scale,crs){
+  //Make sure image is clipped to roi in case it's a multi-part polygon
+  imageForExport = imageForExport.clip(roi);
+  assetName = assetName.replace(/\s+/g,'-');//Get rid of any spaces
+  
+  //Asynchronous approach to gathering converting server-side vectors to 
+  //client-side without locking the browser
+  roi.evaluate(function(roiInfo){
+    var roiType = roiInfo.type.toString();
+    //If it is a Polygon geometry...
+    if( roiType === 'Polygon'){
+      roi.bounds(1000).evaluate(function(polygonInfo){
+        var region = polygonInfo.coordinates[0];
+        Export.image.toAsset(imageForExport, assetName, assetPath, 
+        {'.default':pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+      });
+    }
+    //If it is a MultiPolygon gometry.....
+    else if( roiType === 'MultiPolygon'){
+      roi.bounds(1000).evaluate(function(multiPolygonInfo){
+        var region = multiPolygonInfo.coordinates[0];
+        Export.image.toAsset(imageForExport, assetName, assetPath, 
+        {'.default':pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+      });
+    }
+    //If it is a FeatureCollection.....
+    else if( roiType === 'FeatureCollection'){
+      roi.geometry(1000).bounds(1000).evaluate(function(featureCollectionInfo){
+        var region = featureCollectionInfo.coordinates[0];
+        Export.image.toAsset(imageForExport, assetName, assetPath, 
+        {'.default':pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+      });
+    }
+    //Alert user if not supported
+    else(
+    alert('Type of feature is "'+roiType+ '". This is not handled\nIf a ' + 
+    'Feature, can manually cast to featureCollections by using: ' + 
+    'ee.FeatureCollection([myFeature])')
+    );
+  });
+}
+
+/*
+AUTHORS: Joshua Goldstein, Ian Housman, Karis Tenneson, GEE Team
+Function contributors: Carson Stam, Matt Hancher, Gennadii Donchyts
+*/
