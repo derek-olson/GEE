@@ -1,13 +1,16 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-109.97314453125, 44.47250119351299],
-          [-111.2255859375, 44.441133975220566],
-          [-111.26953125, 41.9753167881278],
-          [-108.6328125, 41.99164989141194],
-          [-108.56689453125, 44.441133975220566]]]);
+        [[[-124.486083984375, 42.762742674203366],
+          [-124.43115234375, 42.53648734588184],
+          [-124.43115234375, 42.325656419115944],
+          [-124.4091796875, 42.11411656450412],
+          [-124.21142578125, 41.91822022041961],
+          [-122.003173828125, 41.95091151143792],
+          [-121.88232421875, 42.956020578506774],
+          [-124.464111328125, 43.05243261535514]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var ForestBound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
-Map.addLayer(ForestBound)
+//var ForestBound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+//Map.addLayer(ForestBound)
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
 This script accomplishes several tasks:
@@ -44,7 +47,7 @@ var endYear = 2017;
 var timebuffer = 15;
 
 // 5. Set up Names for the export
-var outputName = 'BridgerTeton'; 
+var outputName = 'RogueBasin'; 
 
 // 6. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
@@ -135,7 +138,7 @@ var region = studyArea.bounds(1000).getInfo().coordinates[0];
 var topo = addNEDTopography();
 
 var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .filterDate(ee.Date.fromYMD(1997,1,1),ee.Date.fromYMD(2015,12,31));
+          .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31));
 
 // Mean total yearly precipitation
 var precip = dmet.select('prcp');
