@@ -715,7 +715,7 @@ var mask = ee.ImageCollection(ts).select(['NDVI']).reduce(ee.Reducer.percentile(
 //Choose index to be used in LT analysis
 var index = 'NBR';
 ts = ee.ImageCollection(ts).select([index]);
-Map.addLayer(ts,{},'Time Series',false);
+//Map.addLayer(ts,{},'Time Series',false);
 
 //Run LT
 var results = getLT([index,-1],ts,'temp',run_params,exportPathRoot);
