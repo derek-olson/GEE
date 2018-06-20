@@ -1,3 +1,10 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-115.29052734375, 44.134913443750726],
+          [-113.31298828125, 43.977004674964085],
+          [-113.26904296875, 44.68427737181225],
+          [-115.1806640625, 44.77793589631623]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
 This script accomplishes several tasks:
