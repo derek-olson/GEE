@@ -911,7 +911,8 @@ asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
   studyArea,10,'EPSG:26912');
 Map.addLayer(naipAsset,{},'naipAsset')
 
-
+var z = 0.5;
+var bandsPIF = ['blue','green','red','nir','swir1','swir2'];
 var slave = naipAsset
 var master = composite.clip(sa).select(0,1,2,3,4,5)
 //print(image2)
