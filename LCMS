@@ -1,9 +1,11 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-115.29052734375, 44.134913443750726],
-          [-113.31298828125, 43.977004674964085],
-          [-113.26904296875, 44.68427737181225],
-          [-115.1806640625, 44.77793589631623]]]);
+        [[[-113.48464965820312, 44.456819690590095],
+          [-113.4063720703125, 44.45436907523842],
+          [-113.41598510742188, 44.50483098934639],
+          [-113.48739624023438, 44.50238238974582]]]),
+    naipAsset = ee.Image("users/thinkbetween/naip"),
+    imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1};
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -20,7 +22,7 @@ This script accomplishes several tasks:
 // Can specify a country, provide a fusion table  or asset table (must add 
 // .geometry() after it), or draw a polygon and make studyArea = drawnPolygon
 var BobMarshall = ee.FeatureCollection('ft:1eFcsKy2OvyhC7QDwyVE-UKStqV-g7YSzWz_ifmCu').geometry().bounds();
-var studyArea = BobMarshall;
+var studyArea = sa;
 
 
 // 2. Update the startJulian and endJulian variables to indicate your seasonal 
@@ -43,10 +45,10 @@ var endYear = 2018;
 var timebuffer = 0;
 
 // 5. Set up Names for the export
-var outputName = 'Bob-Marshall'; 
+var outputName = 'NAIPtest'; 
 
 // 6. Provide location composites will be exported to
-var exportPathRoot = 'users/ianhousman/soils-mapping';
+var exportPathRoot = 'users/thinkbetween';
 
 // 7. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
@@ -883,21 +885,34 @@ var outline = empty.paint({
 Map.addLayer(outline, {palette: '0000FF'}, "Study Area", false);
 // Map.centerObject(studyArea, 6);
 
-//Set some NAIP parameters
-var naip_year = 2015
-var studyArea = sa
-
-//Get the NAIP data
+/////////////////////////////////////////////////////
+//Get NAIP data
+var year = 2015;
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
-  .filterDate(ee.Date.fromYMD(naip_year,1,1),ee.Date.fromYMD(naip_year,12,31))
-  .filterBounds(studyArea);
-var naip_proj = ee.Image(naip.first()).projection();
-print(naip_proj)
-//var naip_mosaic = naip.mosaic().reproject(naip_proj);
-//naip_mosaic = naip_mosaic.reduceResolution(ee.Reducer.mean(),true,1024);
-//var naip_name = outputName + '_NAIP_' + naip_factor + 'm';
+          .filterBounds(sa)
+          .filter(ee.Filter.calendarRange(year,year,'year'))
+print(ee.Image(naip.first()).projection())
+naip = naip
+          .mosaic()
 
-/*//Function for getting the PIFs (returns like pixels)
+//Map.addLayer(naip,{},'before')
+
+var studyArea = sa
+var crs2 = "EPSG:26912"
+var scale2 = 10
+var assetName2 = 'naipTest'
+var assetPath2 = 'users/thinkbetween'
+var region2 = sa
+
+naip = naip.reproject('EPSG:26912').reduceResolution(ee.Reducer.mean(),true,1024);
+//naip = naip.reproject('EPSG:26912',null,10)
+//Export.image.toAsset(naip, assetPath2, assetName2,'mean', null, region2, scale2, crs2, null, 1e13);
+asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
+  studyArea,10,'EPSG:26912');
+Map.addLayer(naipAsset,{},'naipAsset')
+
+
+//Function for getting the PIFs (returns like pixels)
 function getPIFsPair(img1, img2, bandsPIF)
   {
   var diff = img1.subtract(img2);
@@ -994,4 +1009,4 @@ var imgNormalizer = function(slave, master, PIFpixels)
     }
     // ouptput the corrected slave?  
     return ee.Image.cat(contArray); 
-    };*/
+    };
