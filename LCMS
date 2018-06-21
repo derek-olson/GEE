@@ -1,11 +1,11 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-113.48464965820312, 44.456819690590095],
-          [-113.4063720703125, 44.45436907523842],
-          [-113.41598510742188, 44.50483098934639],
-          [-113.48739624023438, 44.50238238974582]]]),
-    naipAsset = ee.Image("users/thinkbetween/naip"),
-    imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1};
+var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1},
+    sa = /* color: #98ff00 */ee.Geometry.Polygon(
+        [[[-113.31504821777344, 44.48842340818461],
+          [-113.49769592285156, 44.48964801395034],
+          [-113.50627899169922, 44.39920304109373],
+          [-113.29822540283203, 44.40435407378617]]]),
+    naipAsset = ee.Image("users/thinkbetween/naipTest2");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -912,101 +912,85 @@ asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
 Map.addLayer(naipAsset,{},'naipAsset')
 
 
-//Function for getting the PIFs (returns like pixels)
-function getPIFsPair(img1, img2, bandsPIF)
-  {
-  var diff = img1.subtract(img2);
-  var region = diff.geometry();
-  //reducer parameters
-  var calcParamsMean = 
-        {     
-          'reducer': ee.Reducer.mean(),
-          'geometry': region, 
-          'scale': 90, 
-          'bestEffort': true,
-          'maxPixels': 500000000,
-          'tileScale': 8,
-          'crs':  'EPSG:326' + zone.toString()
-        };
-  var calcParamsStdDev = 
-        {     
-          'reducer': ee.Reducer.stdDev(),
-          'geometry': region, 
-          'scale': 90, 
-          'bestEffort': true,
-          'maxPixels': 500000000,
-          'tileScale': 8,
-          'crs':  'EPSG:326' + zone.toString()
-        };
-  //compute the difference to find unchanged pixels 
-  var all_bandsDiff = img1.subtract(img2);
-  
-  //Initialize an empty image
-  var masked = ee.Image.constant(0);
-  //loop through the bands and get statistics  
-  for(var i in bandsPIF)
-    {
-      //initialize a new empty image for each band PIF selection
-      var masked2 = ee.Image.constant(0);
-      var bandname = bandsPIF[i];
-      //compute the mean/stdDev value for the band
-      var StdDev = ee.Image.constant(all_bandsDiff.select(bandname).reduceRegion(calcParamsStdDev).get(bandname));
-      var StdDevTH = StdDev.divide(1);
-      var diffMean = ee.Image.constant(all_bandsDiff.select(bandname).reduceRegion(calcParamsMean).get(bandname));
-      var THupper = diffMean.add(StdDevTH);
-      var THlower = diffMean.subtract(StdDevTH);
-      //where the difference value is less than the threshold, add a 1
-      var maskedTemp = masked2.where(all_bandsDiff.select(bandname).lt(THupper),1);
-      var maskedTemp2 = maskedTemp.where(all_bandsDiff.select(bandname).lt(THlower),0);
-      //add up the values in the the specified bands
-      masked = masked.add(maskedTemp2);
-    }
-  //Find the pixels that have low variance in all the given bands and clip this image to the region to avoid extrapolation 
-  var potentialPIFs = masked.eq(bandsPIF.length).clip(region);
-  //Return these locations -Value of 1 with non PIFs masked out
-  return potentialPIFs.mask(potentialPIFs);
-  }
+var slave = naipAsset
+var master = composite.clip(sa).select(0,1,2,3,4,5)
+//print(image2)
+Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
 
-//NORMALIZE W REGRESSION
-// This function returns one corrected image and can be mapped across the stack to return a corrected stack
-var imgNormalizer = function(slave, master, PIFpixels)
-    {
-    
-    var diff = slave.subtract(master);
-    var region = diff.geometry();
-    var calcParamsLF = 
-        {     
-          'reducer': ee.Reducer.linearFit(),
+////////////////////////////////////////////////////////////////////////////////
+// Function for getting the pseudo-invariant features (PIFs)
+function getPIFsPair(img1, img2, bandsPIF,z) {
+  // Compute the difference to find unchanged pixels 
+  var diff = img1.subtract(img2).select(bandsPIF);
+  var inter = img1.geometry().intersection(img2.geometry(),1000);
+  diff = diff.set('system:footprint',inter);
+  var region = diff.geometry();
+  var calcParamsAll = {     
+          'reducer': ee.Reducer.mean().forEachBand(diff).combine(ee.Reducer.stdDev().forEachBand(diff),'s_',true),
           'geometry': region, 
           'scale': 90, 
           'bestEffort': true,
           'maxPixels': 500000000,
-          'tileScale': 8,
-          'crs':  'EPSG:326' + zone.toString()
-        }
-    var PIFslave = slave.mask(PIFpixels);
-    var PIFmaster = master.mask(PIFpixels);
-    
-    //Get the statistics and make them constant images to be used in band math correction
-    //Empty array to hold corrected bands
-    var contArray = []
-    //Loop through bands, get regression coeffs and correct
-    for (var band in STD_NAMES){
-      //Make a 2 band image for regression
-      var regImg = ee.Image([PIFslave.select([STD_NAMES[band]]),PIFmaster.select([STD_NAMES[band]])]);
-      //Get the intercept
-      var intercept = regImg.reduceRegion(calcParamsLF).get('offset'); 
-      //Get the slope
-      var slope = regImg.reduceRegion(calcParamsLF).get('scale');
-      //Use the coefficients to create constant images that could then be used for the band math correction functions. 
-      var SlopeImg = ee.Image.constant(slope);
-      var IntImg = ee.Image.constant(intercept);
-      //Select the corresponding band to correct
-      var band2Correct = slave.select([STD_NAMES[band]]);
-      //Linear correction = y = int + slope*x
-      var corrBand = band2Correct.multiply(SlopeImg).add(IntImg);
-      contArray.push(corrBand.toUint16());
-    }
-    // ouptput the corrected slave?  
-    return ee.Image.cat(contArray); 
-    };
+          'tileScale': 2
+        };
+  var s_bandsPIF = addPrefix(bandsPIF,'s_');
+  // Compute the mean/stdDev value for the band
+  var dict = diff.reduceRegion(calcParamsAll);
+  var diffMean = ee.Image.constant(dict.select(bandsPIF).values()).rename(dict.select(bandsPIF).keys()).float();
+  var StdDevTH = ee.Image.constant(dict.select(s_bandsPIF).values()).multiply(z).rename(dict.select(bandsPIF).keys()).float();
+  var THupper = diffMean.add(StdDevTH);
+  var THlower = diffMean.subtract(StdDevTH);
+  // Where the difference value is less than the threshold, add a 1
+  var maskedTemp =  diff.lt(THupper).and(diff.gt(THlower));
+  // Find the pixels that are have low variance in all the given bands and clip
+  // this image to the region to avoid extrapolation 
+  var potentialPIFs = maskedTemp.reduce(ee.Reducer.max()).clip(region);
+  // Return these locations -Value of 1 with non PIFs masked out
+  return potentialPIFs.mask(potentialPIFs);//.clip(geometry3);//.clip(water_removed);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// NORMALIZE W MULTIVARIATE REGRESSION
+// This function returns one corrected image and can be mapped across the stack
+// to return a corrected stack
+function imgNormalizerMulti(slave, master, PIFpixels, dropBands){
+  var diff = slave.subtract(master);
+  var inter = slave.geometry().intersection(master.geometry(),1000);
+  diff = diff.set('system:footprint',inter);
+  var region = diff.geometry();
+  var PIFslave = slave.mask(PIFpixels);
+  var PIFmaster = master.mask(PIFpixels);
+  // Loop through bands, get regression coeffs and correct
+  var bandnames = master.bandNames().removeAll(dropBands);
+  var calcParamsLR = {     
+        'reducer': ee.Reducer.linearRegression(bandnames.length(),1),
+        'geometry': region, 
+        'scale': 90, 
+        'bestEffort': true,
+        'maxPixels': 500000000,
+        'tileScale': 2
+      };
+  var contArray = ee.List(bandnames).map(function(band){
+    band = ee.String(band);
+    var regImg = PIFslave.select(bandnames).addBands(PIFmaster.select(band).rename('master'));
+    var LR = regImg.reduceRegion(calcParamsLR);
+    var coeffs = ee.Array(LR.get('coefficients')).project([0]).toList();
+    coeffs = ee.Image.constant(coeffs).rename(bandnames);
+    var corrBand = slave.select(bandnames).multiply(coeffs).reduce('sum');
+    return corrBand;//.toUint16();
+  });
+  // Concatenate the bands to form the corrected slave image
+  contArray = ee.ImageCollection(contArray);
+  var corrected = newCollectionToImage(contArray).rename(bandnames);
+  // Add back in the dropped bands
+  corrected = corrected.addBands(slave.select(dropBands));
+  // Add the slave image footprint to the corrected image
+  corrected = corrected.set('system:footprint',slave.geometry());
+  
+  return corrected;
+  print(corrected);
+}
+
+var corrected = imgNormalizerMulti(slave, master, PIFpixels, nonSpectralBands);
+/Map.addLayer(corrected,vizParams,'Slave corrected',false);
+/Map.addLayer(corrected,vizParamsTrue,'Slave corrected true',false);
