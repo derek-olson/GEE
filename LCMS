@@ -991,6 +991,9 @@ function imgNormalizerMulti(slave, master, PIFpixels, dropBands){
   print(corrected);
 }
 
+var PIFpixels = getPIFsPair(slave, master, bandsPIF,z);
+Map.addLayer(PIFpixels,{},'PIFpixels',false);
+
 var corrected = imgNormalizerMulti(slave, master, PIFpixels, nonSpectralBands);
-/Map.addLayer(corrected,vizParams,'Slave corrected',false);
-/Map.addLayer(corrected,vizParamsTrue,'Slave corrected true',false);
+//Map.addLayer(corrected,vizParams,'Slave corrected',false);
+//Map.addLayer(corrected,vizParamsTrue,'Slave corrected true',false);
