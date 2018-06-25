@@ -934,9 +934,9 @@ Map.addLayer(naipAsset,{},'naipAsset')
 var z = 0.5;
 var bandsPIF = ['blue','green','red','nir'];
 var slave = naipAsset
-var master = composite.clip(sa).select([0,1,2,3,4,5])
+var master = composite.clip(sa).select([0,1,2,3])
 //print(image2)
-Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
+//Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function for getting the pseudo-invariant features (PIFs)
@@ -1015,4 +1015,4 @@ Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
 var corrected = imgNormalizerMulti(slave, master, PIFpixels);
 //Map.addLayer(corrected,vizParams,'Slave corrected',false);
-Map.addLayer(corrected,{},'Slave corrected true',false);
+Map.addLayer(corrected);
