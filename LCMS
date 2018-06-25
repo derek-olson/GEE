@@ -1015,4 +1015,4 @@ Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
 var corrected = imgNormalizerMulti(slave, master, PIFpixels);
 //Map.addLayer(corrected,vizParams,'Slave corrected',false);
-//Map.addLayer(corrected,vizParamsTrue,'Slave corrected true',false);
+Map.addLayer(corrected,{},'Slave corrected true',false);
