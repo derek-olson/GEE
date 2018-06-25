@@ -378,7 +378,16 @@ function compositeTimeSeries(startYear,endYear,timebuffer){
   });
   return ee.ImageCollection(ts);
 }
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to convert image collection into stack of image bands
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
 
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
 ////////////////////////////////////////////////////////////////////////////////
 // Function to export composite collection
 function exportCollection(collection,startYear,endYear,timebuffer){
@@ -885,16 +894,26 @@ var outline = empty.paint({
 Map.addLayer(outline, {palette: '0000FF'}, "Study Area", false);
 // Map.centerObject(studyArea, 6);
 
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to add a string prefix to a list of strings
+function addPrefix(list,prefix){
+  return list.map(function(element){
+    return prefix + element;
+  });
+}
 /////////////////////////////////////////////////////
 //Get NAIP data
 var year = 2015;
+var bandDict = ee.List(['B', 'G', 'R', 'N'])
+var naipBands =  ee.List(['blue','green','red','nir'])
+
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
           .filterBounds(sa)
           .filter(ee.Filter.calendarRange(year,year,'year'))
 print(ee.Image(naip.first()).projection())
-naip = naip
-          .mosaic()
-
+naip = naip.mosaic().select(bandDict, naipBands)
+print(naip)
+naipAsset = naipAsset.select(bandDict, naipBands)
 //Map.addLayer(naip,{},'before')
 
 var studyArea = sa
@@ -911,10 +930,11 @@ asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
   studyArea,10,'EPSG:26912');
 Map.addLayer(naipAsset,{},'naipAsset')
 
+
 var z = 0.5;
-var bandsPIF = ['blue','green','red','nir','swir1','swir2'];
+var bandsPIF = ['blue','green','red','nir'];
 var slave = naipAsset
-var master = composite.clip(sa).select(0,1,2,3,4,5)
+var master = composite.clip(sa).select([0,1,2,3,4,5])
 //print(image2)
 Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
 
@@ -922,14 +942,14 @@ Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' +
 // Function for getting the pseudo-invariant features (PIFs)
 function getPIFsPair(img1, img2, bandsPIF,z) {
   // Compute the difference to find unchanged pixels 
-  var diff = img1.subtract(img2).select(bandsPIF);
+  var diff = img1.select(bandsPIF).subtract(img2.select(bandsPIF));
   var inter = img1.geometry().intersection(img2.geometry(),1000);
   diff = diff.set('system:footprint',inter);
   var region = diff.geometry();
   var calcParamsAll = {     
           'reducer': ee.Reducer.mean().forEachBand(diff).combine(ee.Reducer.stdDev().forEachBand(diff),'s_',true),
           'geometry': region, 
-          'scale': 90, 
+          'scale': 1000, 
           'bestEffort': true,
           'maxPixels': 500000000,
           'tileScale': 2
@@ -954,7 +974,7 @@ function getPIFsPair(img1, img2, bandsPIF,z) {
 // NORMALIZE W MULTIVARIATE REGRESSION
 // This function returns one corrected image and can be mapped across the stack
 // to return a corrected stack
-function imgNormalizerMulti(slave, master, PIFpixels, dropBands){
+function imgNormalizerMulti(slave, master, PIFpixels){
   var diff = slave.subtract(master);
   var inter = slave.geometry().intersection(master.geometry(),1000);
   diff = diff.set('system:footprint',inter);
@@ -962,7 +982,7 @@ function imgNormalizerMulti(slave, master, PIFpixels, dropBands){
   var PIFslave = slave.mask(PIFpixels);
   var PIFmaster = master.mask(PIFpixels);
   // Loop through bands, get regression coeffs and correct
-  var bandnames = master.bandNames().removeAll(dropBands);
+  var bandnames = master.bandNames();
   var calcParamsLR = {     
         'reducer': ee.Reducer.linearRegression(bandnames.length(),1),
         'geometry': region, 
@@ -983,18 +1003,16 @@ function imgNormalizerMulti(slave, master, PIFpixels, dropBands){
   // Concatenate the bands to form the corrected slave image
   contArray = ee.ImageCollection(contArray);
   var corrected = newCollectionToImage(contArray).rename(bandnames);
-  // Add back in the dropped bands
-  corrected = corrected.addBands(slave.select(dropBands));
   // Add the slave image footprint to the corrected image
   corrected = corrected.set('system:footprint',slave.geometry());
   
   return corrected;
-  print(corrected);
+  
 }
 
 var PIFpixels = getPIFsPair(slave, master, bandsPIF,z);
 Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
-var corrected = imgNormalizerMulti(slave, master, PIFpixels, nonSpectralBands);
+var corrected = imgNormalizerMulti(slave, master, PIFpixels);
 //Map.addLayer(corrected,vizParams,'Slave corrected',false);
 //Map.addLayer(corrected,vizParamsTrue,'Slave corrected true',false);
