@@ -7,7 +7,8 @@ var sa = /* color: #d63000 */ee.Geometry.Polygon(
           [-124.21142578125, 41.91822022041961],
           [-122.003173828125, 41.95091151143792],
           [-121.88232421875, 42.956020578506774],
-          [-124.464111328125, 43.05243261535514]]]);
+          [-124.464111328125, 43.05243261535514]]]),
+    srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //var ForestBound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
 //Map.addLayer(ForestBound)
@@ -144,11 +145,11 @@ var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
 var precip = dmet.select('prcp');
 var annualPrecipSum = annualizeCollection(precip,ee.Reducer.sum());
 var annualMeanPrecip = annualPrecipSum.mean().rename('precip');
-Map.addLayer(annualMeanPrecip,{min:1300,max:2400},'Mean Annual Precipitation',false);
+//Map.addLayer(annualMeanPrecip,{min:1300,max:2400},'Mean Annual Precipitation',false);
 
 // Daily average solar radiation
 var DailyAverageRadiation = dmet.select('srad').mean().rename('average_rad');
-Map.addLayer(DailyAverageRadiation,{min:300,max:360},'Daily Average Radiation',false);
+//Map.addLayer(DailyAverageRadiation,{min:300,max:360},'Daily Average Radiation',false);
 
 // Daily average temperature
 var DailyAverageTemp = dmet.map(function(image){
@@ -157,7 +158,7 @@ var DailyAverageTemp = dmet.map(function(image){
   var tavg = tmax.add(tmin).divide(2);
   return tavg;
 }).mean().rename('average_temp');
-Map.addLayer(DailyAverageTemp,{min:7.8,max:17.3},'Daily Average Temperature',false);
+//Map.addLayer(DailyAverageTemp,{min:7.8,max:17.3},'Daily Average Temperature',false);
 
 // Growing degree-days
 /*var positiveAvgTemp = dmet.map(function(image){
@@ -177,15 +178,55 @@ var DailyAverageMinTemp = dmet.select('tmin').mean().rename('average_MinTemp');
 //Map.addLayer(DailyAverageMinTemp,{min:0,max:12},'Daily Average Min Temperature',false);
 //Map.addLayer(DailyAverageMinTemp2,{min:0,max:12},'Daily Average Min Temperature 2',false);
 
-var daymet = annualMeanPrecip.addBands(DailyAverageRadiation)
-  .addBands(DailyAverageTemp).addBands(DailyAverageMinTemp).int16();
+var daymet = annualMeanPrecip.addBands(DailyAverageRadiation).addBands(DailyAverageTemp).addBands(DailyAverageMinTemp).int16();
+
+//////////////////////////////////////////////////////////////////////////
+//Downscale Climate Data
+//////////////////////////////////////////////////////////////////////////
+var ned = ee.Image('USGS/NED');
+
+function downscaler(dem1, dem2, climate){
+   
+  var linFitParams = {
+    'reducer': ee.Reducer.linearFit(),
+    'geometry': StudyRegion,
+    'scale': 1000,
+    'bestEffort': true,
+    'maxPixels': 500000000,
+    'tileScale': 2
+  };
+  
+  var bandnames = srtm.bandNames();
+  var contArray = ee.List(bandnames).map(function(band){
+    band = ee.String(band);
+    // Make a 2 band image for regression
+    var regImg = ee.Image([ned.select(band),srtm
+      .select(band)]);
+    // Get the intercept and slope
+    var LF = regImg.reduceRegion(calcParamsLF);
+    var intercept = LF.get('offset'); 
+    var slope = LF.get('scale');
+    // Use the coefficients to create constant images that could then be used 
+    // for the band math correction functions. 
+    var SlopeImg = ee.Image.constant(slope);
+    var IntImg = ee.Image.constant(intercept);
+    // Select the corresponding band to correct
+    var band2Correct = slave.select(band);
+    // Linear correction = y = int + slope*x
+    var corrBand = band2Correct.multiply(SlopeImg).add(IntImg);
+    return corrBand;//.toUint16();
+  });
+}
+
+
 
 //////////////////////////////////////////////////////////////////////////
 //Get climate principal components
 //////////////////////////////////////////////////////////////////////////
 
 // Load image, select the bands of interest.
-var image1 = daymet.select(['annualMeanPrecip', 'DailyAverageTemp']);
+print(daymet)
+var image1 = daymet.select(['precip', 'average_temp']);
 
 // Display the input imagery and the region in which to do the PCA.
 var region = image1.geometry();
@@ -201,7 +242,7 @@ var bandNames = image1.bandNames();
 // and an SD stretch of the principal components.
 var meanDict = image1.reduceRegion({
     reducer: ee.Reducer.mean(),
-    geometry: region,
+    geometry: StudyRegion,
     scale: scale,
     maxPixels: 1e9
 });
@@ -226,7 +267,7 @@ var getPrincipalComponents = function(centered, scale, region) {
   // Compute the covariance of the bands within the region.
   var covar = arrays.reduceRegion({
     reducer: ee.Reducer.centeredCovariance(),
-    geometry: region,
+    geometry: StudyRegion,
     scale: scale,
     maxPixels: 1e9
   });
