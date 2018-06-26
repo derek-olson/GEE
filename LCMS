@@ -1,11 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1},
-    sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-113.31504821777344, 44.48842340818461],
-          [-113.49769592285156, 44.48964801395034],
-          [-113.50627899169922, 44.39920304109373],
-          [-113.29822540283203, 44.40435407378617]]]),
-    naipAsset = ee.Image("users/thinkbetween/naipTest2");
+    naipAsset = ee.Image("users/thinkbetween/naipTest2"),
+    imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
+    imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
+    sa = /* color: #00ffff */ee.Geometry.Polygon(
+        [[[-115.5044174194336, 46.93549530917939],
+          [-115.43060302734375, 46.93080654214398],
+          [-115.42648315429688, 46.976973005501634],
+          [-115.4937744140625, 46.976973005501634]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -757,7 +759,7 @@ conusChange = conusChange.map(function(img){
 var lcms_conus = conusChange.select([1]);
 
 
-var changePIF = conusChange.select(0).max().lt(50).eq(0);
+var changePIF = conusChange.select(0).max().lt(5);
 Map.addLayer(changePIF.updateMask(changePIF), {}, 'changePIFs');
 
 
@@ -916,12 +918,13 @@ var naipBands =  ee.List(['blue','green','red','nir'])
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
           .filterBounds(sa)
           .filter(ee.Filter.calendarRange(year,year,'year'))
+print(naip.first())
 print(ee.Image(naip.first()).projection())
 naip = naip.mosaic().select(bandDict, naipBands)
 print(naip)
 naipAsset = naipAsset.select(bandDict, naipBands)
 //Map.addLayer(naip,{},'before')
-
+naipAsset = naip
 var studyArea = sa
 var crs2 = "EPSG:26912"
 var scale2 = 10
@@ -1062,12 +1065,12 @@ function imgNormalizerMultiConstant(slave, master, PIFpixels){
   return corrected; 
 }
 
-var PIFpixels = getPIFsPair(slave, master.select([0,1,2,3]), bandsPIF,z);
-Map.addLayer(PIFpixels,{},'PIFpixels',false);
+var PIFpixels = changePIF// getPIFsPair(slave, master.select([0,1,2,3]), bandsPIF,z);
+//Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
-var corrected = imgNormalizerMulti(slave, master.select([0,1,2,3]), PIFpixels);
+var corrected = imgNormalizerMulti(master.select([0,1,2,3]),slave, PIFpixels);
 //Map.addLayer(corrected,vizParams,'Slave corrected',false);
-Map.addLayer(corrected);
+Map.addLayer(corrected, imageVisParam2, 'regression');
 
-var constCorrected = imgNormalizerMultiConstant(slave, master.select([0,1,2,3]), PIFpixels)
-Map.addLayer(constCorrected);
+var constCorrected = imgNormalizerMultiConstant(master.select([0,1,2,3]),slave, PIFpixels)
+Map.addLayer(constCorrected, imageVisParam3, 'regression + Constant');
