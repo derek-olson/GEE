@@ -1068,9 +1068,75 @@ function imgNormalizerMultiConstant(slave, master, PIFpixels){
 var PIFpixels = changePIF// getPIFsPair(slave, master.select([0,1,2,3]), bandsPIF,z);
 //Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
-var corrected = imgNormalizerMulti(master.select([0,1,2,3]),slave, PIFpixels);
+var corrected = imgNormalizerMulti(slave, master.select([0,1,2,3]), PIFpixels);
 //Map.addLayer(corrected,vizParams,'Slave corrected',false);
 Map.addLayer(corrected, imageVisParam2, 'regression');
 
-var constCorrected = imgNormalizerMultiConstant(master.select([0,1,2,3]),slave, PIFpixels)
+var constCorrected = imgNormalizerMultiConstant(slave, master.select([0,1,2,3]), PIFpixels)
 Map.addLayer(constCorrected, imageVisParam3, 'regression + Constant');
+
+
+///////////////////////////////////////////////////////////////////////////////
+//Random Forest Classification
+///////////////////////////////////////////////////////////////////////////////
+var naipBandDict =  ee.List(['blue','green','red','nir'])
+var predictionBands = ee.List(['B', 'G', 'R', 'N'])
+compositeNew = composite.select(naipBandDict, predictionBands)
+
+// Specify the bands of the Landsat composite to be used as predictors
+//var predictionBands = ['blue','green','red','nir'];
+
+// Stack the Landsat and the NAIP to get the training image
+var trainingImage = compositeNew.select(predictionBands)
+    .addBands(constCorrected);
+    
+//Mask the stack to the (un)disturbed areas
+var maskedTrainingImage = trainingImage.mask(changePIF)
+
+// Sample the training image at 1000 points to get the training & testing data
+var trainingData = maskedTrainingImage.sample({
+  region: maskedTrainingImage.first().geometry(), 
+  scale: 30, 
+  numPixels: 1000
+});
+
+// Randomly split the data into 60% for training, and 40% for testing
+/*trainingTesting = trainingTesting.randomColumn('random',484789);
+var training = trainingTesting
+  .filter(ee.Filter.lt('random', 0.6));
+var testing = trainingTesting
+  .filter(ee.Filter.gte('random', 0.6));*/
+  
+// Print the first training point
+print('First training point:', ee.Feature(trainingTesting.first()));
+
+function RFregression(naipBand, predictBands, trainingData){
+  // Define a Random Forest (RF) regression classifier
+  var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
+    .setOutputMode('REGRESSION')
+    .train({
+      features: trainingData, 
+      classProperty: naipBand, 
+      inputProperties: predictionBands
+    });
+
+  // Perform the RF regression on the naip image
+  var rfRegressionImage = constCorrected.select(naipBandDict)
+    .classify(rfRegression, 'rfRegression');
+    
+  return(ListOfBands);
+  }  
+
+//MapNAIP = naipAsset.map(RFregression);
+//bands to image function
+// Visualize the RF regression
+//Map.addLayer(rfRegressionImage, {min: 0, max: 100}, 'RF regression', false);
+  
+  
+  
+  
+  
+  
+  
+  
+  
