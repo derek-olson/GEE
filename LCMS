@@ -756,6 +756,12 @@ conusChange = conusChange.map(function(img){
   }) 
 var lcms_conus = conusChange.select([1]);
 
+
+var changePIF = conusChange.select(0).max().lt(50).eq(0);
+Map.addLayer(changePIF.updateMask(changePIF), {}, 'changePIFs');
+
+
+
 // Get the earliest (min) and latest (max) fire and LT years
 var firemin = mtbs.min();
 var firemax = mtbs.max();
@@ -931,10 +937,10 @@ asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
 Map.addLayer(naipAsset,{},'naipAsset')
 
 
-var z = 0.5;
+var z = 0.4;
 var bandsPIF = ['blue','green','red','nir'];
 var slave = naipAsset
-var master = composite.clip(sa).select([0,1,2,3])
+var master = composite.clip(sa)//.select([0,1,2,3])
 //print(image2)
 //Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
 
@@ -949,7 +955,7 @@ function getPIFsPair(img1, img2, bandsPIF,z) {
   var calcParamsAll = {     
           'reducer': ee.Reducer.mean().forEachBand(diff).combine(ee.Reducer.stdDev().forEachBand(diff),'s_',true),
           'geometry': region, 
-          'scale': 1000, 
+          'scale': 90, 
           'bestEffort': true,
           'maxPixels': 500000000,
           'tileScale': 2
@@ -975,7 +981,7 @@ function getPIFsPair(img1, img2, bandsPIF,z) {
 // This function returns one corrected image and can be mapped across the stack
 // to return a corrected stack
 function imgNormalizerMulti(slave, master, PIFpixels){
-  var diff = slave.subtract(master);
+  var diff = slave.select([0]).subtract(master.select([0]));
   var inter = slave.geometry().intersection(master.geometry(),1000);
   diff = diff.set('system:footprint',inter);
   var region = diff.geometry();
@@ -1005,14 +1011,63 @@ function imgNormalizerMulti(slave, master, PIFpixels){
   var corrected = newCollectionToImage(contArray).rename(bandnames);
   // Add the slave image footprint to the corrected image
   corrected = corrected.set('system:footprint',slave.geometry());
-  
+  print(corrected)
   return corrected;
   
 }
 
-var PIFpixels = getPIFsPair(slave, master, bandsPIF,z);
+////////////////////////////////////////////////////////////////////////////////
+// NORMALIZE W MULTIVARIATE REGRESSION WITH A CONSTANT BAND
+// This function returns one corrected image and can be mapped across the stack
+// to return a corrected stack
+function imgNormalizerMultiConstant(slave, master, PIFpixels){
+  var slave_mask = slave.select([0]).mask();
+  var master_mask = master.select([0]).mask();
+  var diff = slave.select([0]).subtract(master.select([0]));
+  var inter = slave.geometry().intersection(master.geometry(),1000);
+  diff = diff.set('system:footprint',inter);
+  var region = diff.geometry();
+  var bandnames = master.bandNames();
+  master = master.addBands(ee.Image(1).rename('constant')).updateMask(master_mask);
+  slave = slave.addBands(ee.Image(1).rename('constant')).updateMask(slave_mask);
+  var bandnamesPlus = bandnames.add('constant');
+  var PIFslave = slave.mask(PIFpixels);
+  var PIFmaster = master.mask(PIFpixels);
+  // Loop through bands, get regression coeffs and correct
+  var calcParamsLR = {     
+        'reducer': ee.Reducer.linearRegression(bandnamesPlus.length(),1),
+        'geometry': region, 
+        'scale': 90, 
+        'bestEffort': true,
+        'maxPixels': 500000000,
+        'tileScale': 2
+      };
+  var contArray = ee.List(bandnames).map(function(band){
+    band = ee.String(band);
+    var regImg = PIFslave.select(bandnamesPlus).addBands(PIFmaster.select(band).rename('master'));
+    var LR = regImg.reduceRegion(calcParamsLR);
+    var coeffs = ee.Array(LR.get('coefficients')).project([0]).toList();
+    coeffs = ee.Image.constant(coeffs).rename(bandnamesPlus);
+    var corrBand = slave.select(bandnamesPlus).multiply(coeffs).reduce('sum');
+    return corrBand;//.toUint16();
+  });
+  // Concatenate the bands to form the corrected slave image
+  contArray = ee.ImageCollection(contArray);
+  var corrected = newCollectionToImage(contArray).rename(bandnames);
+  // Add back in the dropped bands
+  corrected = corrected.updateMask(slave_mask);
+  // Add the slave image footprint to the corrected image
+  corrected = corrected.set('system:footprint',slave.geometry());
+  
+  return corrected; 
+}
+
+var PIFpixels = getPIFsPair(slave, master.select([0,1,2,3]), bandsPIF,z);
 Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
-var corrected = imgNormalizerMulti(slave, master, PIFpixels);
+var corrected = imgNormalizerMulti(slave, master.select([0,1,2,3]), PIFpixels);
 //Map.addLayer(corrected,vizParams,'Slave corrected',false);
 Map.addLayer(corrected);
+
+var constCorrected = imgNormalizerMultiConstant(slave, master.select([0,1,2,3]), PIFpixels)
+Map.addLayer(constCorrected);
