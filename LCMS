@@ -1079,12 +1079,9 @@ Map.addLayer(constCorrected, imageVisParam3, 'regression + Constant');
 ///////////////////////////////////////////////////////////////////////////////
 //Random Forest Classification
 ///////////////////////////////////////////////////////////////////////////////
-var naipBandDict =  ee.List(['blue','green','red','nir'])
+var origBandDict =  ee.List(['blue','green','red','nir'])
 var predictionBands = ee.List(['B', 'G', 'R', 'N'])
-compositeNew = composite.select(naipBandDict, predictionBands)
-
-// Specify the bands of the Landsat composite to be used as predictors
-//var predictionBands = ['blue','green','red','nir'];
+compositeNew = composite.select(origBandDict, predictionBands)
 
 // Stack the Landsat and the NAIP to get the training image
 var trainingImage = compositeNew.select(predictionBands)
@@ -1120,14 +1117,14 @@ function RFregression(naipBand, predictBands, trainingData){
       inputProperties: predictionBands
     });
 
-  // Perform the RF regression on the naip image
-  var rfRegressionImage = constCorrected.select(naipBandDict)
+  // Perform the RF regression on a naip band
+  var rfRegressionImage = constCorrected.select(naipBand)
     .classify(rfRegression, 'rfRegression');
     
   return(ListOfBands);
   }  
 
-//MapNAIP = naipAsset.map(RFregression);
+MapNAIP = naipAsset.select(origBandDict).map(RFregression);
 //bands to image function
 // Visualize the RF regression
 //Map.addLayer(rfRegressionImage, {min: 0, max: 100}, 'RF regression', false);
