@@ -1081,14 +1081,18 @@ Map.addLayer(constCorrected, imageVisParam3, 'regression + Constant');
 ///////////////////////////////////////////////////////////////////////////////
 var origBandDict =  ee.List(['blue','green','red','nir'])
 var predictionBands = ee.List(['B', 'G', 'R', 'N'])
-compositeNew = composite.select(origBandDict, predictionBands)
+var compositeNew = composite.select(origBandDict, predictionBands)
+print(compositeNew)
 
 // Stack the Landsat and the NAIP to get the training image
 var trainingImage = compositeNew.select(predictionBands)
     .addBands(constCorrected);
-    
-//Mask the stack to the (un)disturbed areas
+print(trainingImage)
+Map.addLayer(trainingImage, {}, 'training image')    
+
+//Mask the stack to the (un)disturbed areas - IS THIS CORRECT?????
 var maskedTrainingImage = trainingImage.mask(changePIF)
+Map.addLayer(maskedTrainingImage, {}, 'masked image')
 
 // Sample the training image at 1000 points to get the training & testing data
 var trainingData = maskedTrainingImage.sample({
@@ -1105,31 +1109,49 @@ var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
   
 // Print the first training point
-print('First training point:', ee.Feature(trainingTesting.first()));
+//print('First training point:', ee.Feature(trainingTesting.first()));
 
-function RFregression(naipBand, predictBands, trainingData){
+/*function RFregression(naipBand, predictBands, trainingData, correctedNaipData){
   // Define a Random Forest (RF) regression classifier
   var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
     .setOutputMode('REGRESSION')
     .train({
       features: trainingData, 
       classProperty: naipBand, 
-      inputProperties: predictionBands
+      inputProperties: predictBands
     });
 
   // Perform the RF regression on a naip band
-  var rfRegressionImage = constCorrected.select(naipBand)
+  var rfRegressionImage = correctedNaipData.select(naipBand)//does this need to be a parameter in the function
     .classify(rfRegression, 'rfRegression');
     
   return(ListOfBands);
-  }  
+  }  */
 
-MapNAIP = naipAsset.select(origBandDict).map(RFregression);
+//MapNAIP = constCorrected.select(origBandDict).map(RFregression(constCorrected.select(origBandDict),compositeNew.select(predictionBands),trainingData));
 //bands to image function
 // Visualize the RF regression
 //Map.addLayer(rfRegressionImage, {min: 0, max: 100}, 'RF regression', false);
   
+/* var outbands = ee.List(origBandDict).map(function(naipBand, predictBands, trainingData, naipData){
+    // Define a Random Forest (RF) regression classifier
+    var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
+    .setOutputMode('REGRESSION')
+    .train({
+      features: trainingData, 
+      classProperty: naipBand, 
+      inputProperties: predictBands
+    });
+
+    // Perform the RF regression on a naip band
+    var rfRegressionImage = naipData.select(naipBand)//does this need to be a parameter in the function
+    .classify(rfRegression, 'rfRegression');
+    
+    return outbands;
   
+   });*/
+   
+ 
   
   
   
