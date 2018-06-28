@@ -1169,6 +1169,9 @@ outNaip = newCollectionToImage(outNaip);
   
  Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip') 
   
+naipAsset = naipAsset.reproject('EPSG:5070', null, 1)
+                    .reduceResolution(ee.Reducer.mean(),true, 900)
+                    .reproject('EPSG:5070', null, 30)
 var scatterImage = compositeNew
     .addBands(naipAsset).addBands(compositeNew.select('N').log().rename('logN'));
 print(scatterImage)
@@ -1178,6 +1181,7 @@ print(scatterImage)
   var values = img.select([band1,band2]).reduceRegion(ee.Reducer.toList(), region, scale);
   var x = values.get(band1);
   var y = values.get(band2);
+  print(values)
   var chart = ui.Chart.array.values(y, 0, x);
   
   chart = chart.setOptions({
@@ -1188,5 +1192,5 @@ print(scatterImage)
   });
   print(chart);  
 }  
-scatter2d(scatterImage, sa, 30, 'blue', 'B')
+scatter2d(scatterImage, sa, 30, 'nir', 'N')
 
