@@ -1169,5 +1169,24 @@ outNaip = newCollectionToImage(outNaip);
   
  Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip') 
   
+var scatterImage = compositeNew
+    .addBands(naipAsset).addBands();
+print(scatterImage)
+
+
+ function scatter2d(img,region,scale,band1,band2){
+  var values = img.select([band1,band2]).reduceRegion(ee.Reducer.toList(), region, scale);
+  var x = values.get(band1);
+  var y = values.get(band2);
+  var chart = ui.Chart.array.values(y, 0, x);
   
-  
+  chart = chart.setOptions({
+    hAxis: { title: band1},
+    vAxis: { title: band2},
+    pointSize: 1,
+    legend: 'none'
+  });
+  print(chart);  
+}  
+scatter2d(scatterImage, sa, 30, 'blue', 'B')
+
