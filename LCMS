@@ -1109,7 +1109,7 @@ var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
   
 // Print the first training point
-//print('First training point:', ee.Feature(trainingTesting.first()));
+//print('First training point:', ee.Feature(trainingData.first()));
 
 /*function RFregression(naipBand, predictBands, trainingData, correctedNaipData){
   // Define a Random Forest (RF) regression classifier
