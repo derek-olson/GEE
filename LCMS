@@ -1170,7 +1170,7 @@ outNaip = newCollectionToImage(outNaip);
  Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip') 
   
 var scatterImage = compositeNew
-    .addBands(naipAsset).addBands();
+    .addBands(naipAsset).addBands(compositeNew.select('N').log().rename('logN'));
 print(scatterImage)
 
 
