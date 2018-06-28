@@ -1,0 +1,135 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var mod44b = ee.ImageCollection("MODIS/MOD44B"),
+    point = /* color: #d63000 */ee.Geometry.Point([-122.1699857711792, 37.42849010414782]),
+    l5raw = ee.ImageCollection("LANDSAT/LT5_L1T");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Center the map at our location
+Map.centerObject(point, 12); 
+
+// Get the most recent image out of the vegetation continuous fields collection
+var tree = ee.Image(mod44b.sort('system:time_start', false).first());
+print('Source image scale (m):',tree.projection().nominalScale());
+
+// Since water is coded as 200 in this image, replace the 200's with 0's
+var percentTree = tree.select('Percent_Tree_Cover')
+    .where(tree.select('Percent_Tree_Cover').eq(200), 0);
+    
+// Print and visualize percent tree cover
+print('Percent tree:', percentTree);
+Map.addLayer(percentTree, {max: 100}, 'Percent tree cover');
+
+// Load Landsat 5 raw scenes, filter by date, path, and row
+var l5filtered = l5raw.filterDate('2010-01-01', '2010-12-31')
+                      .filterMetadata('WRS_PATH', 'equals', 44)
+                      .filterMetadata('WRS_ROW', 'equals', 34);
+
+// Use an Earth Engine algorithm to get a cloud-free composite of Landsat imagery in 2010
+var landsat = ee.Algorithms.Landsat.simpleComposite({
+  collection: l5filtered,
+  asFloat: true
+});
+
+// Print and visualize the landsat 5 composite in false color
+print('Landsat composite:',landsat);
+Map.addLayer(landsat, {bands: ['B4', 'B3', 'B2'], max: 0.3}, 'False color L5 composite', false);
+
+// Specify the bands of the Landsat composite to be used as predictors
+var predictionBands = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'];
+
+// Stack the prediction bands and the percent tree image to get the training image
+var trainingImage = landsat.select(predictionBands)
+    .addBands(percentTree);
+
+// Sample the training image at 1000 points to get the training & testing data
+var trainingTesting = trainingImage.sample({
+  region: l5filtered.first().geometry(), 
+  scale: 30, 
+  numPixels: 1000
+});
+
+// Randomly split the data into 60% for training, and 40% for testing
+trainingTesting = trainingTesting.randomColumn('random',484789);
+var training = trainingTesting
+  .filter(ee.Filter.lt('random', 0.6));
+var testing = trainingTesting
+  .filter(ee.Filter.gte('random', 0.6));
+
+// Print the first training point
+print('First training point:', ee.Feature(training.first()));
+
+// Define a Classification and Regression Tree (CART) regression classifier
+var cartRegression = ee.Classifier.cart()
+    .setOutputMode('REGRESSION')
+    .train({
+      features: training, 
+      classProperty: 'Percent_Tree_Cover', 
+      inputProperties: predictionBands
+    });
+
+// Perform the CART regression on the landsat image 
+var cartRegressionImage = landsat.select(predictionBands)
+    .classify(cartRegression, 'cartRegression');
+    
+// Visualize the CART regression
+Map.addLayer(cartRegressionImage, {min: 0, max: 100}, 'CART regression', false);
+
+// Define a Random Forest (RF) regression classifier
+var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
+    .setOutputMode('REGRESSION')
+    .train({
+      features: training, 
+      classProperty: 'Percent_Tree_Cover', 
+      inputProperties: predictionBands
+    });
+
+// Perform the RF regression on the landsat image
+var rfRegressionImage = landsat.select(predictionBands)
+    .classify(rfRegression, 'rfRegression');
+    
+// Visualize the RF regression
+Map.addLayer(rfRegressionImage, {min: 0, max: 100}, 'RF regression', false);
+
+//------------------------------------------------------------------------------
+// Accuracy Assessment
+
+// Perform the CART regression on the test set
+var cartRegressionTesting = testing
+    .classify(cartRegression, 'cartRegression');
+print('First testing point:',ee.Feature(cartRegressionTesting.first()));
+
+// Calculate the RMSE for CART regression and print the result
+var cartRegressionRMSE = RegressionRMSE(cartRegressionTesting,'Percent_Tree_Cover','cartRegression');
+print('CART Regression RMSE:', cartRegressionRMSE);
+
+// Perform the RF regression on the test set
+var rfRegressionTesting = testing
+    .classify(rfRegression, 'rfRegression');
+
+// Calculate the RMSE for RF regression and print the result
+var rfRegressionRMSE = RegressionRMSE(rfRegressionTesting,'Percent_Tree_Cover','rfRegression');
+print('RF Regression RMSE:', rfRegressionRMSE);
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to compute the Root Mean Square Error (RMSE) for the results from 
+// Random Forest Regression. This function uses the actual values stored in the 
+// 'actual' property of the 'regression' feature collection, and the predicted 
+// values stored in the 'prediction' property.
+
+function RegressionRMSE(regression,actual,prediction) {
+  // Calculate the squared errors between the actual and predicted values
+  regression = regression.map(function(feature){
+    feature = ee.Feature(feature);
+    var actualValue = ee.Number(feature.get(actual));
+    var predict = ee.Number(feature.get(prediction));
+    var sqError = (actualValue.subtract(predict))
+      .multiply(actualValue.subtract(predict));
+    feature = feature.set('sqError',sqError);
+    return feature;
+  });
+  regression = ee.FeatureCollection(regression);
+  // Calculate the Root Mean Square Error (RMSE)
+  var MSE = regression.reduceColumns(ee.Reducer.mean(),['sqError']);
+  var RMSE =  ee.Number(MSE.get('mean')).sqrt();
+  return RMSE;
+}
