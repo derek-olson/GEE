@@ -1144,7 +1144,7 @@ var testing = trainingTesting
     });
 
     // Perform the RF regression on a naip band
-    var rfRegressionImage = maskedTrainingImage.select(predictBands)//does this need to be a parameter in the function
+    var rfRegressionImage = trainingImage.select(predictBands)//does this need to be a parameter in the function
     .classify(rfRegression, naipBand);
     
     return rfRegressionImage;
