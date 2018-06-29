@@ -51,8 +51,8 @@ var harmonics = 1;
 
 //3. Specify start and end years for all analyses
 //Generally, these years do not need changed
-var startYear = 2013;
-var endYear = 2015;
+var startYear = 2015;
+var endYear = 2017;
 
 // 3. Specify an annual buffer to include imagery from the same season 
 // timeframe from the prior and following year. 
@@ -64,11 +64,11 @@ var toaOrSR = 'SR';
 
 //Specify which cloud/cloud shadow masking method
 //Choices are fmask, cloudScoreTDOM, or hybrid to run cloudScore/TDOM and then fmask 
-var cloudcloudShadowMaskingMethod = 'cloudScoreTDOM';
+var cloudcloudShadowMaskingMethod = 'fmask';
 
 //Whether to include Landat 7
 //Generally only included when data are limited
-var includeL7 = true;
+var includeL7 = false;
 
 // Metadata tag
 var versionNumber = 2;
