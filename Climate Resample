@@ -13,11 +13,11 @@ var scale = 30;
 var crs = 'EPSG:5070'
 var ned = ee.Image('USGS/NED');
 var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .filterDate(ee.Date.fromYMD(1998,6,1),ee.Date.fromYMD(1998,8,31))
-          .select(1).sum()
-// dmet = ee.Image(dmet.first()).select(1)
+          .filterDate(ee.Date.fromYMD(2016,1,1),ee.Date.fromYMD(2017,12,31))
+          .select(1).mean()
+
 Map.addLayer(dmet,{'min':0,'max':100},'precip 1998 sum')
-Map.addLayer(ned)
+Map.addLayer(ned, {} , 'NED', false)
 var inds = ned.addBands(srtm)
 
 var kern = ee.Kernel.square(6.5, 'pixels', false)
@@ -97,4 +97,20 @@ Map.addLayer(predicted,{'min':0,'max':100},'oversampled')
 
 downscaler(inds, dmet, sa,kern ,scale,crs)
 
-
+var startDate = ee.Date(ee.Image(dmet.first(dmet)).get('system:time_start'))
+print(startDate)
+//////////////////////////////////////////////////////////////////////////////////////
+//Function to annualize
+//////////////////////////////////////////////////////////////////////////////////////
+/*function annualizeCollection(x, reducer){
+  x = x.sort('system:time_start');
+  var startDate = ee.Date(ee.Image(x.first()).get('system:time_start'))
+  var endDate = ee.Date(ee.Image(x.sort('system:time_start', false).first())
+    .get('system:time_start'));
+  var years = ee.List.sequence(startDate.get('year'), endDate.get('year'));
+  
+  return ee.ImageCollection.fromImages(years.map(function(yr){
+    return x.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31))
+      .reduce(reducer);
+  }));
+}*/
