@@ -4,110 +4,131 @@ var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
         [[[-113.02814310478749, 45.34180049751049],
           [-115.18211190396255, 45.29543247009417],
           [-114.98428000204063, 43.712350945802896],
-          [-112.19296189047623, 43.473572465675346]]]);
+          [-112.19296189047623, 43.473572465675346]]]),
+    imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1};
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
 //////////////////////////////////////////////////////////////////////////
 var scale = 30;
-var crs = 'EPSG:5070';
+var crs = 'EPSG:26912';
 var ned = ee.Image('USGS/NED');
+var yearStart = 2015
+var yearEnd = 2017
+var exportTempName = 'minTempDownscale'
+var exportPrecipName = 'minTempDownscale'
+var region = sa.bounds(1000).getInfo().coordinates[0];
+
+//exportToDriveWrapper(out,exportTempName,region,sa,30,crs);
+//exportToDriveWrapper(predicted,exportPrecipName,sa,region,30,crs);
 
 var prcp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31))
-          .select(1).mean();
+          .filterDate(ee.Date.fromYMD(yearStart,1,1),ee.Date.fromYMD(yearEnd,12,31))
+          .select(1)
 var minTemp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31))
+          .filterDate(ee.Date.fromYMD(yearStart,1,1),ee.Date.fromYMD(yearEnd,12,31))
           .select(5);
 
+var daymetProj = ee.Image(prcp.first()).projection()
 var tempIn = annualizeCollection(minTemp, ee.Reducer.mean())
+tempIn = tempIn.mean().reproject(daymetProj)
 print(tempIn);
 var prcpIn = annualizeCollection(prcp, ee.Reducer.sum())
-prcpIn = prcpIn.mean();
+prcpIn = prcpIn.mean().reproject(daymetProj);
 
-Map.addLayer(dmet,{'min':0,'max':100},'precip', false);
+
+print(prcpIn)
+Map.addLayer(tempIn,{'min':-10,'max':2},'min Temp', false);
+Map.addLayer(prcpIn,{'min':0,'max':100},'precip', false);
 Map.addLayer(ned, {} , 'NED', false);
 
+tempIn = tempIn.resample('bilinear')
+tempIn = tempIn.reproject(crs, null, scale)
 
-var inds = ned.addBands(srtm);
+prcpIn = prcpIn.resample('bilinear')
+prcpIn = prcpIn.reproject(crs, null, scale)
 
-var kern = ee.Kernel.square(6.5, 'pixels', false);
 
-function downscaler(independents, dependent, sa,kernel,scale,crs){ 
-  independents = independents;
-  dependent = dependent;
-  // independents = independents.clip(sa);
-  // dependent = dependent.clip(sa);
+var inds = ned.addBands(srtm).resample('bilinear').reproject(crs, null, scale);
+
+// var kern = ee.Kernel.square(6.5, 'pixels', false);
+
+// function downscaler(independents, dependent, sa,kernel,scale,crs){ 
+//   independents = independents;
+//   dependent = dependent;
+//   // independents = independents.clip(sa);
+//   // dependent = dependent.clip(sa);
   
-  var nInds = independents.bandNames().length().getInfo()+1;
-  var nTotal = nInds+1
-  var predStack =ee.Image(1).addBands(independents)
-  var pred = predStack.addBands(dependent);
-  var predBandNames = pred.bandNames()
-  pred = pred.neighborhoodToBands(kernel).float();
-  var stackBands = pred.bandNames().length().getInfo();
-  var imageN = stackBands/nTotal
-  print(stackBands)
-  var stackC = ee.List.sequence(0,imageN-1).getInfo().map(function(bandI){
-    var tImage = ee.Image(0);
-    ee.List.sequence(0,nTotal-1).getInfo().map(function(predI){
-      var selectI = bandI+predI*imageN;
+//   var nInds = independents.bandNames().length().getInfo()+1;
+//   var nTotal = nInds+1
+//   var predStack =ee.Image(1).addBands(independents)
+//   var pred = predStack.addBands(dependent);
+//   var predBandNames = pred.bandNames()
+//   pred = pred.neighborhoodToBands(kernel).float();
+//   var stackBands = pred.bandNames().length().getInfo();
+//   var imageN = stackBands/nTotal
+//   print(stackBands)
+//   var stackC = ee.List.sequence(0,imageN-1).getInfo().map(function(bandI){
+//     var tImage = ee.Image(0);
+//     ee.List.sequence(0,nTotal-1).getInfo().map(function(predI){
+//       var selectI = bandI+predI*imageN;
       
-      tImage = tImage.addBands(pred.select([selectI]))
+//       tImage = tImage.addBands(pred.select([selectI]))
     
-    })
-    tImage = tImage.select(ee.List.sequence(1,tImage.bandNames().length().subtract(1))).rename(predBandNames)
-    return tImage
+//     })
+//     tImage = tImage.select(ee.List.sequence(1,tImage.bandNames().length().subtract(1))).rename(predBandNames)
+//     return tImage
     
-  })
-  stackC = ee.ImageCollection(stackC)
+//   })
+//   stackC = ee.ImageCollection(stackC)
   
   
-  var fit = stackC.reduce(ee.Reducer.linearRegression(nInds, 1)).select([0]);
-  fit = fit.arrayProject([0])
+//   var fit = stackC.reduce(ee.Reducer.linearRegression(nInds, 1)).select([0]);
+//   fit = fit.arrayProject([0])
   
 
-fit = fit.arrayFlatten([predStack.bandNames()]);
-Map.addLayer(fit,{},'model',false)
-var predicted = predStack.multiply(fit).reduce(ee.Reducer.sum());
-Map.addLayer(predicted,{'min':0,'max':100},'oversampled')
-  
-  // var l = ee.List.sequence(1,10);
-  // var initial = ee.List([]);
-  // function adder(x,prev){
-  //   x = ee.Number(x)
-  //   return ee.List([prev,x.add(2)]).flatten()};
-  
-  // var out = l.iterate(adder,initial)
-  // print(out)
-  
-// var outBandNames;
-//   var stack = predBandNames.getInfo().map(function(i){
-//     var predT = pred.select([i])
-//     var out = predT.neighborhoodToBands(kernel).float();
-//     if(outBandNames === undefined){outBandNames = out.bandNames()}
-//     return out.rename(outBandNames)
-//   });
-// stack = ee.ImageCollection.fromImages(stack);
-// print(stack)
-// stack = stack.toArray().arrayTranspose(1,0)
-// Map.addLayer(stack)
-
-// // Slice off the year and ndvi, and solve for the coefficients.
-// var x = stack.arraySlice(1, 0, nInds);
-// var y = stack.arraySlice(1, nInds,null);
-  
-// var fit =x.matrixSolve(y).arrayProject([0])
-  
-// Map.addLayer(fit,{},'model',false)
 // fit = fit.arrayFlatten([predStack.bandNames()]);
+// Map.addLayer(fit,{},'model',false)
 // var predicted = predStack.multiply(fit).reduce(ee.Reducer.sum());
-// Map.addLayer(predicted,{'min':100,'max':2000},'oversampled')
+// Map.addLayer(predicted,imageVisParam,'oversampled')
+
+// exportToDriveWrapper(predicted,exportTempName,sa,sa,30,crs);
+
+//   // var l = ee.List.sequence(1,10);
+//   // var initial = ee.List([]);
+//   // function adder(x,prev){
+//   //   x = ee.Number(x)
+//   //   return ee.List([prev,x.add(2)]).flatten()};
   
-}
+//   // var out = l.iterate(adder,initial)
+//   // print(out)
+  
+// // var outBandNames;
+// //   var stack = predBandNames.getInfo().map(function(i){
+// //     var predT = pred.select([i])
+// //     var out = predT.neighborhoodToBands(kernel).float();
+// //     if(outBandNames === undefined){outBandNames = out.bandNames()}
+// //     return out.rename(outBandNames)
+// //   });
+// // stack = ee.ImageCollection.fromImages(stack);
+// // print(stack)
+// // stack = stack.toArray().arrayTranspose(1,0)
+// // Map.addLayer(stack)
 
-downscaler(inds, dmet, sa,kern ,scale,crs)
+// // // Slice off the year and ndvi, and solve for the coefficients.
+// // var x = stack.arraySlice(1, 0, nInds);
+// // var y = stack.arraySlice(1, nInds,null);
+  
+// // var fit =x.matrixSolve(y).arrayProject([0])
+  
+// // Map.addLayer(fit,{},'model',false)
+// // fit = fit.arrayFlatten([predStack.bandNames()]);
+// // var predicted = predStack.multiply(fit).reduce(ee.Reducer.sum());
+// // Map.addLayer(predicted,{'min':100,'max':2000},'oversampled')
+  
+// }
 
+// downscaler(inds, tempIn, sa,kern ,scale,crs)
 
 //////////////////////////////////////////////////////////////////////////////////////
 //Function to annualize
@@ -124,3 +145,20 @@ function annualizeCollection(x, reducer){
       .reduce(reducer);
   }));
 }
+
+// ////////////////////////////////////////////////////////////////////////////////
+// // Function to export a provided image to an Google Drive
+// function exportToDriveWrapper(imageForExport,fileName,roi,region,scale,crs){
+//   //Make sure image is clipped to roi in case it's a multi-part polygon
+//   imageForExport = imageForExport.clip(roi);
+//   fileName = fileName.replace(/\s+/g,'-');//Get rid of any spaces
+  
+//   Export.image.toDrive({
+//     image: imageForExport,
+//     description: fileName,
+//     region: region,
+//     scale: scale,
+//     crs: crs,
+//     maxPixels: 1e13
+//   });
+// }
