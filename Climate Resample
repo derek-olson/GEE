@@ -17,8 +17,8 @@ var yearStart = 2015
 var yearEnd = 2017
 var exportTempName = 'minTempDownscale'
 var exportPrecipName = 'minTempDownscale'
-var region = sa.bounds(1000).getInfo().coordinates[0];
-
+var kern = ee.Kernel.square(6.5, 'pixels', false);
+//////////////////////////////////////////////
 //exportToDriveWrapper(out,exportTempName,region,sa,30,crs);
 //exportToDriveWrapper(predicted,exportPrecipName,sa,region,30,crs);
 
@@ -28,6 +28,7 @@ var prcp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
 var minTemp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
           .filterDate(ee.Date.fromYMD(yearStart,1,1),ee.Date.fromYMD(yearEnd,12,31))
           .select(5);
+
 
 var daymetProj = ee.Image(prcp.first()).projection()
 var tempIn = annualizeCollection(minTemp, ee.Reducer.mean())
@@ -51,37 +52,55 @@ prcpIn = prcpIn.reproject(crs, null, scale)
 
 var inds = ned.addBands(srtm).resample('bilinear').reproject(crs, null, scale);
 
-var kern = ee.Kernel.square(6.5, 'pixels', false);
 
+//////////////////////////////////////////////////////
 function downscaler(independents, dependent, sa,kernel,scale,crs){ 
-  independents = independents;
-  dependent = dependent;
-  // independents = independents.clip(sa);
-  // dependent = dependent.clip(sa);
-  
+ 
+  //Get info about how many independents (number of provided independent bands + 1 for the constant band)
   var nInds = independents.bandNames().length().getInfo()+1;
+  
+  //Total number of bands in the stack that goes into the linear regression model
   var nTotal = nInds+1
   
-  var predStack =ee.Image(1).addBands(independents)
-  var pred = predStack.addBands(dependent);
+  //Set up the stack for the model
+  //Constant band plus the independents
+  var independentStack =ee.Image(1).addBands(independents)
+  
+  //Add the dependent to it
+  var pred = independentStack.addBands(dependent);
+  
+  //Get the bandnames for later use
   var predBandNames = pred.bandNames()
   
+  //Convert neighborhood to a stack of bands (nbands = nbandsPred * kernalDiameter^2)
   pred = pred.neighborhoodToBands(kernel).float();
+  print(pred.bandNames())
+  //Get client-side number of bands of big big stack
   var stackBands = pred.bandNames().length().getInfo();
+  
+  //Find number of images needed in collection for model
   var imageN = stackBands/nTotal
-  print(stackBands)
+  
+  //Code that bogs this thing down
+  //Client-side scary code
+  //Messy reshape
+  //Map across each image index
   var stackC = ee.List.sequence(0,imageN-1).getInfo().map(function(bandI){
+    //Initialize image to be stacked up
     var tImage = ee.Image(0);
+    //Map across each band for that image
     ee.List.sequence(0,nTotal-1).getInfo().map(function(predI){
       var selectI = bandI+predI*imageN;
-      
+      //Pull the nth band
       tImage = tImage.addBands(pred.select([selectI]))
     
     })
+    //Pop off the first band
     tImage = tImage.select(ee.List.sequence(1,tImage.bandNames().length().subtract(1))).rename(predBandNames)
     return tImage
-    
+
   })
+  //Convert to collection
   stackC = ee.ImageCollection(stackC)
   
   
@@ -89,12 +108,12 @@ function downscaler(independents, dependent, sa,kernel,scale,crs){
   fit = fit.arrayProject([0])
   
 
-fit = fit.arrayFlatten([predStack.bandNames()]);
+fit = fit.arrayFlatten([independentStack.bandNames()]);
 Map.addLayer(fit,{},'model',false)
-var predicted = predStack.multiply(fit).reduce(ee.Reducer.sum());
+var predicted = independentStack.multiply(fit).reduce(ee.Reducer.sum());
 Map.addLayer(predicted,imageVisParam,'oversampled')
 
-exportToDriveWrapper(predicted,exportTempName,sa,sa,30,crs);
+exportToDriveWrapper(predicted,exportTempName,sa,scale,crs);
 
   // var l = ee.List.sequence(1,10);
   // var initial = ee.List([]);
@@ -124,8 +143,8 @@ exportToDriveWrapper(predicted,exportTempName,sa,sa,30,crs);
 // var fit =x.matrixSolve(y).arrayProject([0])
   
 // Map.addLayer(fit,{},'model',false)
-// fit = fit.arrayFlatten([predStack.bandNames()]);
-// var predicted = predStack.multiply(fit).reduce(ee.Reducer.sum());
+// fit = fit.arrayFlatten([independentStack.bandNames()]);
+// var predicted = independentStack.multiply(fit).reduce(ee.Reducer.sum());
 // Map.addLayer(predicted,{'min':100,'max':2000},'oversampled')
   
 }
@@ -148,19 +167,19 @@ function annualizeCollection(x, reducer){
   }));
 }
 
-// ////////////////////////////////////////////////////////////////////////////////
-// // Function to export a provided image to an Google Drive
-// function exportToDriveWrapper(imageForExport,fileName,roi,region,scale,crs){
-//   //Make sure image is clipped to roi in case it's a multi-part polygon
-//   imageForExport = imageForExport.clip(roi);
-//   fileName = fileName.replace(/\s+/g,'-');//Get rid of any spaces
+////////////////////////////////////////////////////////////////////////////////
+// Function to export a provided image to an Google Drive
+function exportToDriveWrapper(imageForExport,fileName,roi,scale,crs){
+  //Make sure image is clipped to roi in case it's a multi-part polygon
+  imageForExport = imageForExport.clip(roi);
+  fileName = fileName.replace(/\s+/g,'-');//Get rid of any spaces
   
-//   Export.image.toDrive({
-//     image: imageForExport,
-//     description: fileName,
-//     region: region,
-//     scale: scale,
-//     crs: crs,
-//     maxPixels: 1e13
-//   });
-// }
+  Export.image.toDrive({
+    image: imageForExport,
+    description: fileName,
+    region: roi,
+    scale: scale,
+    crs: crs,
+    maxPixels: 1e13
+  });
+}
