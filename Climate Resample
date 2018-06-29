@@ -12,12 +12,21 @@ var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
 var scale = 30;
 var crs = 'EPSG:5070'
 var ned = ee.Image('USGS/NED');
-var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .filterDate(ee.Date.fromYMD(2016,1,1),ee.Date.fromYMD(2017,12,31))
+var prcp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31))
           .select(1).mean()
+var minTemp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .select(5)
 
-Map.addLayer(dmet,{'min':0,'max':100},'precip 1998 sum')
+var tempIn = annualizeCollection(minTemp, ee.Reducer.mean())
+print(tempIn)
+var prcpIn = annualizeCollection(prcp, ee.Reducer.sum())
+prcpIn = prcpIn.mean()
+
+Map.addLayer(dmet,{'min':0,'max':100},'precip', false)
 Map.addLayer(ned, {} , 'NED', false)
+
+
 var inds = ned.addBands(srtm)
 
 var kern = ee.Kernel.square(6.5, 'pixels', false)
@@ -97,12 +106,11 @@ Map.addLayer(predicted,{'min':0,'max':100},'oversampled')
 
 downscaler(inds, dmet, sa,kern ,scale,crs)
 
-var startDate = ee.Date(ee.Image(dmet.first(dmet)).get('system:time_start'))
-print(startDate)
+
 //////////////////////////////////////////////////////////////////////////////////////
 //Function to annualize
 //////////////////////////////////////////////////////////////////////////////////////
-/*function annualizeCollection(x, reducer){
+function annualizeCollection(x, reducer){
   x = x.sort('system:time_start');
   var startDate = ee.Date(ee.Image(x.first()).get('system:time_start'))
   var endDate = ee.Date(ee.Image(x.sort('system:time_start', false).first())
@@ -113,4 +121,4 @@ print(startDate)
     return x.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31))
       .reduce(reducer);
   }));
-}*/
+}
