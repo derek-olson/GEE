@@ -104,13 +104,15 @@ function downscaler(independents, dependent, sa,kernel,scale,crs){
   
   //Fit model
   var fit = stackC.reduce(ee.Reducer.linearRegression(nInds, 1));
-  print(fit)
+
   //Pull off coefficients
   fit = fit.select([0]).arrayProject([0]);
   fit = fit.arrayFlatten([independentStack.bandNames()]);
-  Map.addLayer(fit,{},'model',false)
+  Map.addLayer(fit,{},'model',false);
+  
+  //Apply model
   var predicted = independentStack.multiply(fit).reduce(ee.Reducer.sum());
-  Map.addLayer(predicted,imageVisParam,'oversampled')
+  Map.addLayer(predicted,imageVisParam,'oversampled');
 
 exportToDriveWrapper(predicted,exportTempName,sa,scale,crs);
 
