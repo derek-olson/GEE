@@ -74,12 +74,11 @@ function downscaler(independents, dependent, sa,kernel,scale,crs){
   
   //Convert neighborhood to a stack of bands (nbands = nbandsPred * kernalDiameter^2)
   pred = pred.neighborhoodToBands(kernel).float();
-  print(pred.bandNames())
   //Get client-side number of bands of big big stack
   var stackBands = pred.bandNames().length().getInfo();
   
   //Find number of images needed in collection for model
-  var imageN = stackBands/nTotal
+  var imageN = stackBands/nTotal;
   
   //Code that bogs this thing down
   //Client-side scary code
@@ -92,23 +91,23 @@ function downscaler(independents, dependent, sa,kernel,scale,crs){
     ee.List.sequence(0,nTotal-1).getInfo().map(function(predI){
       var selectI = bandI+predI*imageN;
       //Pull the nth band
-      tImage = tImage.addBands(pred.select([selectI]))
+      tImage = tImage.addBands(pred.select([selectI]));
     
-    })
-    //Pop off the first band
-    tImage = tImage.select(ee.List.sequence(1,tImage.bandNames().length().subtract(1))).rename(predBandNames)
-    return tImage
+    });
+    //Pop off the first band and give each image the same set of names
+    tImage = tImage.select(ee.List.sequence(1,tImage.bandNames().length().subtract(1))).rename(predBandNames);
+    return tImage;
 
-  })
+  });
   //Convert to collection
-  stackC = ee.ImageCollection(stackC)
+  stackC = ee.ImageCollection(stackC);
   
-  
+  //Fit model
   var fit = stackC.reduce(ee.Reducer.linearRegression(nInds, 1)).select([0]);
-  fit = fit.arrayProject([0])
-  
+  fit = fit.arrayProject([0]);
+  print(fit);
 
-fit = fit.arrayFlatten([independentStack.bandNames()]);
+  fit = fit.arrayFlatten([independentStack.bandNames()]);
 Map.addLayer(fit,{},'model',false)
 var predicted = independentStack.multiply(fit).reduce(ee.Reducer.sum());
 Map.addLayer(predicted,imageVisParam,'oversampled')
