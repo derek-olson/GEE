@@ -10,26 +10,28 @@ var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
 //////////////////////////////////////////////////////////////////////////
 var scale = 30;
-var crs = 'EPSG:5070'
+var crs = 'EPSG:5070';
 var ned = ee.Image('USGS/NED');
+
 var prcp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
           .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31))
-          .select(1).mean()
+          .select(1).mean();
 var minTemp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
-          .select(5)
+          .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31))
+          .select(5);
 
 var tempIn = annualizeCollection(minTemp, ee.Reducer.mean())
-print(tempIn)
+print(tempIn);
 var prcpIn = annualizeCollection(prcp, ee.Reducer.sum())
-prcpIn = prcpIn.mean()
+prcpIn = prcpIn.mean();
 
-Map.addLayer(dmet,{'min':0,'max':100},'precip', false)
-Map.addLayer(ned, {} , 'NED', false)
+Map.addLayer(dmet,{'min':0,'max':100},'precip', false);
+Map.addLayer(ned, {} , 'NED', false);
 
 
-var inds = ned.addBands(srtm)
+var inds = ned.addBands(srtm);
 
-var kern = ee.Kernel.square(6.5, 'pixels', false)
+var kern = ee.Kernel.square(6.5, 'pixels', false);
 
 function downscaler(independents, dependent, sa,kernel,scale,crs){ 
   independents = independents;
