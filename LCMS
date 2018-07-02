@@ -1,6 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1},
-    naipAsset = ee.Image("users/thinkbetween/naipTest2"),
     imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
     imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
     sa = /* color: #98ff00 */ee.Geometry.Polygon(
@@ -49,7 +48,7 @@ var endYear = 2018;
 var timebuffer = 0;
 
 // 5. Set up Names for the export
-var outputName = 'NAIPtest'; 
+var outputName = 'SalmonChallis'; 
 
 // 6. Provide location composites will be exported to
 var exportPathRoot = 'users/thinkbetween';
@@ -924,10 +923,9 @@ print(naip.first())
 print(ee.Image(naip.first()).projection())
 naip = naip.mosaic().select(bandDict, naipBands)
 print(naip)
-naipAsset = naipAsset.select(bandDict, naipBands)
+//naipAsset = naipAsset.select(bandDict, naipBands)
 //Map.addLayer(naip,{},'before')
-naipAsset = naip
-var studyArea = sa
+//naipAsset = naip
 var crs2 = "EPSG:26912"
 var scale2 = 10
 var assetName2 = 'naipTest'
@@ -935,11 +933,11 @@ var assetPath2 = 'users/thinkbetween'
 var region2 = sa
 
 naip = naip.reproject('EPSG:26912').reduceResolution(ee.Reducer.mean(),true,1024);
-//naip = naip.reproject('EPSG:26912',null,10)
-//Export.image.toAsset(naip, assetPath2, assetName2,'mean', null, region2, scale2, crs2, null, 1e13);
+
 asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
   studyArea,10,'EPSG:26912');
-Map.addLayer(naipAsset,{},'naipAsset')
+
+Map.addLayer(naip,{},'naip', false);
 
 
 var z = 0.4;
@@ -1092,7 +1090,7 @@ var trainingImage = compositeNew.select(predictBands)
 print(trainingImage)
 Map.addLayer(trainingImage, {}, 'training image')    
 
-//Mask the stack to the (un)disturbed areas
+//Mask the stack to the undisturbed areas
 var maskedTrainingImage = trainingImage.mask(changePIF)
 Map.addLayer(maskedTrainingImage, {}, 'masked image')
 
