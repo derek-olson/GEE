@@ -1092,7 +1092,7 @@ var trainingImage = compositeNew.select(predictBands)
 print(trainingImage)
 Map.addLayer(trainingImage, {}, 'training image')    
 
-//Mask the stack to the (un)disturbed areas - IS THIS CORRECT?????
+//Mask the stack to the (un)disturbed areas
 var maskedTrainingImage = trainingImage.mask(changePIF)
 Map.addLayer(maskedTrainingImage, {}, 'masked image')
 
@@ -1113,28 +1113,6 @@ var testing = trainingTesting
 // Print the first training point
 //print('First training point:', ee.Feature(trainingData.first()));
 
-/*function RFregression(naipBand, predictBands, trainingData, correctedNaipData){
-  // Define a Random Forest (RF) regression classifier
-  var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
-    .setOutputMode('REGRESSION')
-    .train({
-      features: trainingData, 
-      classProperty: naipBand, 
-      inputProperties: predictBands
-    });
-
-  // Perform the RF regression on a naip band
-  var rfRegressionImage = correctedNaipData.select(naipBand)//does this need to be a parameter in the function
-    .classify(rfRegression, 'rfRegression');
-    
-  return(ListOfBands);
-  }  
-*/
-//MapNAIP = constCorrected.select(origBandDict).map(RFregression(constCorrected.select(origBandDict),compositeNew.select(predictionBands),trainingData));
-//bands to image function
-// Visualize the RF regression
-//Map.addLayer(rfRegressionImage, {min: 0, max: 100}, 'RF regression', false);
-  
  var outNaip = ee.List(origBandDict).map(function(naipBand){
     // Define a Random Forest (RF) regression classifier
     var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
@@ -1154,7 +1132,13 @@ var testing = trainingTesting
    });
    
 print(outNaip) 
+
+//So if your list is called outNaip, to go from a list of images to a single image with multiple bands:
+outNaip = ee.ImageCollection(outNaip);
+outNaip = newCollectionToImage(outNaip);  
   
+Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip')
+
 ////////////////////////////////////////////////////////////////////////////////
 // Helper function to convert image collection into stack of image bands
 function newCollectionToImage(collection){
@@ -1165,11 +1149,6 @@ function newCollectionToImage(collection){
   stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
   return stack;
 } 
-//So if your list is called outNaip, to go from a list of images to a single image with multiple bands:
-outNaip = ee.ImageCollection(outNaip);
-outNaip = newCollectionToImage(outNaip);  
-  
- Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip') 
 
 ////////////////////////////////////////////////////////////////////////////////
 // create scatter plots
