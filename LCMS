@@ -3,11 +3,12 @@ var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"
     naipAsset = ee.Image("users/thinkbetween/naipTest2"),
     imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
     imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
-    sa = /* color: #00ffff */ee.Geometry.Polygon(
-        [[[-115.5044174194336, 46.93549530917939],
-          [-115.43060302734375, 46.93080654214398],
-          [-115.42648315429688, 46.976973005501634],
-          [-115.4937744140625, 46.976973005501634]]]);
+    sa = /* color: #98ff00 */ee.Geometry.Polygon(
+        [[[-114.17112350463867, 45.00547175576769],
+          [-114.1670036315918, 44.98471349844104],
+          [-114.1340446472168, 44.98811302615805],
+          [-114.1395378112793, 45.0095982323893],
+          [-114.17112350463867, 45.00632134878492]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -23,7 +24,8 @@ This script accomplishes several tasks:
 // 1. Specify study area: Study area
 // Can specify a country, provide a fusion table  or asset table (must add 
 // .geometry() after it), or draw a polygon and make studyArea = drawnPolygon
-var BobMarshall = ee.FeatureCollection('ft:1eFcsKy2OvyhC7QDwyVE-UKStqV-g7YSzWz_ifmCu').geometry().bounds();
+var roi = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W').geometry().bounds();
+Map.addLayer(roi, {}, 'roi', false)
 var studyArea = sa;
 
 
@@ -1168,8 +1170,12 @@ outNaip = ee.ImageCollection(outNaip);
 outNaip = newCollectionToImage(outNaip);  
   
  Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip') 
-  
-naipAsset = naipAsset.reproject('EPSG:5070', null, 1)
+
+////////////////////////////////////////////////////////////////////////////////
+// create scatter plots
+////////////////////////////////////////////////////////////////////////////////
+
+/*naipAsset = naipAsset.reproject('EPSG:5070', null, 1)
                     .reduceResolution(ee.Reducer.mean(),true, 900)
                     .reproject('EPSG:5070', null, 30)
 var scatterImage = compositeNew
@@ -1193,4 +1199,4 @@ print(scatterImage)
   print(chart);  
 }  
 scatter2d(scatterImage, sa, 30, 'nir', 'N')
-
+*/
