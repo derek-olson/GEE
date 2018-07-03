@@ -32,6 +32,7 @@ var yearStart = 1998
 var yearEnd = 2017
 var exportTempName = 'minTempDownscale'
 var exportPrecipName = 'precipDownscale'
+var exportPCName = 'climatePrincipalComponents'
 var kern = ee.Kernel.square(6.5, 'pixels', false);
 //////////////////////////////////////////////
 //exportToDriveWrapper(out,exportTempName,region,sa,30,crs);
@@ -289,3 +290,5 @@ for (var i = 0; i < bandNames.length().getInfo(); i++) {
   var band = pcImage.bandNames().get(i).getInfo();
   Map.addLayer(pcImage.select([band]), {min: -2, max: 2}, band,false);
 }
+
+exportToDriveWrapper(pcImage,exportPCName,sa,scale,crs);
