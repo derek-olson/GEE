@@ -1,11 +1,26 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
+    imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1},
     sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-113.02814310478749, 45.34180049751049],
-          [-115.18211190396255, 45.29543247009417],
-          [-114.98428000204063, 43.712350945802896],
-          [-112.19296189047623, 43.473572465675346]]]),
-    imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1};
+        [[[-115.323486328125, 43.27720532212024],
+          [-114.10400390625, 43.36512572875844],
+          [-113.543701171875, 43.58834891179793],
+          [-112.939453125, 43.667871610117494],
+          [-112.445068359375, 44.268804788566165],
+          [-112.412109375, 44.66865287227321],
+          [-113.214111328125, 45.36758436884978],
+          [-113.62060546875, 45.60635207711831],
+          [-114.10400390625, 45.85176048817253],
+          [-114.949951171875, 46.00459325574482],
+          [-115.740966796875, 46.03510927947334],
+          [-116.19140625, 45.752193360631054],
+          [-116.268310546875, 45.46783598133375],
+          [-116.312255859375, 45.11230010229608],
+          [-116.2353515625, 44.84808025602073],
+          [-115.828857421875, 44.64520822374404],
+          [-115.83984375, 44.42593442145313],
+          [-115.6201171875, 43.88997537383687]]]),
+    minTempAsset = ee.Image("users/thinkbetween/minTempDownscale_1998_2017");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
@@ -13,10 +28,10 @@ var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
 var scale = 30;
 var crs = 'EPSG:26912';
 var ned = ee.Image('USGS/NED');
-var yearStart = 2015
+var yearStart = 1998
 var yearEnd = 2017
 var exportTempName = 'minTempDownscale'
-var exportPrecipName = 'minTempDownscale'
+var exportPrecipName = 'precipDownscale'
 var kern = ee.Kernel.square(6.5, 'pixels', false);
 //////////////////////////////////////////////
 //exportToDriveWrapper(out,exportTempName,region,sa,30,crs);
@@ -36,9 +51,8 @@ tempIn = tempIn.mean().reproject(daymetProj)
 print(tempIn);
 var prcpIn = annualizeCollection(prcp, ee.Reducer.sum())
 prcpIn = prcpIn.mean().reproject(daymetProj);
-
-
 print(prcpIn)
+
 Map.addLayer(tempIn,{'min':-10,'max':2},'min Temp', false);
 Map.addLayer(prcpIn,{'min':0,'max':100},'precip', false);
 Map.addLayer(ned, {} , 'NED', false);
@@ -150,7 +164,7 @@ exportToDriveWrapper(predicted,exportTempName,sa,scale,crs);
   
 }
 
-downscaler(inds, tempIn, sa,kern ,scale,crs)
+downscaler(inds, prcpIn, sa,kern ,scale,crs)
 
 //////////////////////////////////////////////////////////////////////////////////////
 //Function to annualize
@@ -183,4 +197,95 @@ function exportToDriveWrapper(imageForExport,fileName,roi,scale,crs){
     crs: crs,
     maxPixels: 1e13
   });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Principal components
+
+// Load image, select the bands of interest.
+var image = minTempAsset.addBands(precipAsset)//.select(['b2', 'b3', 'b4', 'b5', 'b6', 'b7']);
+
+// Display the input imagery and the region in which to do the PCA.
+var region = image.geometry();
+//Map.centerObject(region, 10);
+//Map.addLayer(ee.Image().paint(region, 0, 2), {}, 'Region');
+//Map.addLayer(image, {bands: ['b7', 'b5', 'b4'], min: 0, max: 20000}, 'Original Image');
+
+// Get some information about the input to be used later.
+var scale = image.projection().nominalScale();
+var bandNames = image.bandNames();
+
+// Mean center the data to enable a faster covariance reducer
+// and an SD stretch of the principal components.
+var meanDict = image.reduceRegion({
+    reducer: ee.Reducer.mean(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e9
+});
+var means = ee.Image.constant(meanDict.values(bandNames));
+var centered = image.subtract(means);
+
+// This helper function returns a list of new band names.
+var getNewBandNames = function(prefix) {
+  var seq = ee.List.sequence(1, bandNames.length());
+  return seq.map(function(b) {
+    return ee.String(prefix).cat(ee.Number(b).int());
+  });
+};
+
+// This function accepts mean centered imagery, a scale and
+// a region in which to perform the analysis.  It returns the
+// Principal Components (PC) in the region as a new image.
+var getPrincipalComponents = function(centered, scale, region) {
+  // Collapse the bands of the image into a 1D array per pixel.
+  var arrays = centered.toArray();
+
+  // Compute the covariance of the bands within the region.
+  var covar = arrays.reduceRegion({
+    reducer: ee.Reducer.centeredCovariance(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e9
+  });
+
+  // Get the 'array' covariance result and cast to an array.
+  // This represents the band-to-band covariance within the region.
+  var covarArray = ee.Array(covar.get('array'));
+
+  // Perform an eigen analysis and slice apart the values and vectors.
+  var eigens = covarArray.eigen();
+
+  // This is a P-length vector of Eigenvalues.
+  var eigenValues = eigens.slice(1, 0, 1);
+  // This is a PxP matrix with eigenvectors in rows.
+  var eigenVectors = eigens.slice(1, 1);
+
+  // Convert the array image to 2D arrays for matrix computations.
+  var arrayImage = arrays.toArray(1);
+
+  // Left multiply the image array by the matrix of eigenvectors.
+  var principalComponents = ee.Image(eigenVectors).matrixMultiply(arrayImage);
+
+  // Turn the square roots of the Eigenvalues into a P-band image.
+  var sdImage = ee.Image(eigenValues.sqrt())
+    .arrayProject([0]).arrayFlatten([getNewBandNames('sd')]);
+
+  // Turn the PCs into a P-band image, normalized by SD.
+  return principalComponents
+    // Throw out an an unneeded dimension, [[]] -> [].
+    .arrayProject([0])
+    // Make the one band array image a multi-band image, [] -> image.
+    .arrayFlatten([getNewBandNames('pc')])
+    // Normalize the PCs by their SDs.
+    .divide(sdImage);
+};
+
+// Get the PCs at the specified scale and in the specified region
+var pcImage = getPrincipalComponents(centered, scale, region);
+
+// Plot each PC as a new layer
+for (var i = 0; i < bandNames.length().getInfo(); i++) {
+  var band = pcImage.bandNames().get(i).getInfo();
+  Map.addLayer(pcImage.select([band]), {min: -2, max: 2}, band,false);
 }
