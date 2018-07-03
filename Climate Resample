@@ -206,7 +206,7 @@ function exportToDriveWrapper(imageForExport,fileName,roi,scale,crs){
 var image = minTempAsset.addBands(precipAsset)//.select(['b2', 'b3', 'b4', 'b5', 'b6', 'b7']);
 
 // Display the input imagery and the region in which to do the PCA.
-var region = image.geometry();
+var region = sa//image.geometry();
 //Map.centerObject(region, 10);
 //Map.addLayer(ee.Image().paint(region, 0, 2), {}, 'Region');
 //Map.addLayer(image, {bands: ['b7', 'b5', 'b4'], min: 0, max: 20000}, 'Original Image');
@@ -219,7 +219,7 @@ var bandNames = image.bandNames();
 // and an SD stretch of the principal components.
 var meanDict = image.reduceRegion({
     reducer: ee.Reducer.mean(),
-    geometry: region,
+    geometry: sa,
     scale: scale,
     maxPixels: 1e9
 });
