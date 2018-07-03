@@ -20,7 +20,8 @@ var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
           [-115.828857421875, 44.64520822374404],
           [-115.83984375, 44.42593442145313],
           [-115.6201171875, 43.88997537383687]]]),
-    minTempAsset = ee.Image("users/thinkbetween/minTempDownscale_1998_2017");
+    minTempAsset = ee.Image("users/thinkbetween/minTempDownscale_1998_2017"),
+    precipAsset = ee.Image("users/thinkbetween/precipDownscale_1998_2017");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
