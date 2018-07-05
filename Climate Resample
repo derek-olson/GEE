@@ -188,7 +188,6 @@ function annualizeCollection(x, reducer){
 // Function to export a provided image to an Google Drive
 function exportToDriveWrapper(imageForExport,fileName,roi,scale,crs){
   //Make sure image is clipped to roi in case it's a multi-part polygon
-  imageForExport = imageForExport.clip(roi);
   fileName = fileName.replace(/\s+/g,'-');//Get rid of any spaces
   
   Export.image.toDrive({
@@ -291,5 +290,17 @@ for (var i = 0; i < bandNames.length().getInfo(); i++) {
   var band = pcImage.bandNames().get(i).getInfo();
   Map.addLayer(pcImage.select([band]), {min: -2, max: 2}, band,false);
 }
+
+//Function to set nodata
+function setNull(img, nodataValue){
+  var m = img.mask()
+  img = img.mask(ee.Image(1))
+  img = img.where(m.not(),nodataValue)
+  return img
+}
+
+var outImg = pcImage.clip(sa)
+
+setNull(outImg, -32768)
 
 exportToDriveWrapper(pcImage,exportPCName,sa,scale,crs);
