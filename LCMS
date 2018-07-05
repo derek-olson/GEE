@@ -2,12 +2,15 @@
 var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1},
     imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
     imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
-    sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-114.17112350463867, 45.00547175576769],
-          [-114.1670036315918, 44.98471349844104],
-          [-114.1340446472168, 44.98811302615805],
-          [-114.1395378112793, 45.0095982323893],
-          [-114.17112350463867, 45.00632134878492]]]);
+    sa = /* color: #bf04c2 */ee.Geometry.Polygon(
+        [[[-116.21337890625, 45.85176048817253],
+          [-116.12548828125, 44.66865287227321],
+          [-115.389404296875, 43.189157696549216],
+          [-114.334716796875, 43.19716728250127],
+          [-112.7197265625, 43.636075155965784],
+          [-112.269287109375, 44.41808794374847],
+          [-112.862548828125, 45.78284835197677],
+          [-113.741455078125, 45.93587062119052]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -70,7 +73,7 @@ var includeSLCOffL7 = false;
 // 10. Choose cloud/cloud shadow masking method
 // Choices are fmask, cloudScoreTDOM, or hybrid to run cloudScore, fmask cloud 
 // mask, TDOM, and then fmask cloud shadow 
-var cloudcloudShadowMaskingMethod = 'fmask';
+var cloudcloudShadowMaskingMethod = 'cloudScoreTDOM';
 
 // 11. Cloud and cloud shadow masking parameters.
 // If cloudScoreTDOM is chosen
@@ -265,6 +268,7 @@ function landsatCloudScore(img) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions for applying fmask to SR data
+////////////////////////////////////////////////////////////////////////////////
 function cFmaskCloud(img){
   var cloud = img.select('pixel_qa').bitwiseAnd(32).neq(0);
   return img.updateMask(cloud.not());
@@ -278,6 +282,7 @@ function cFmaskCloudShadow(img){
 // Function for finding dark outliers in time series.
 // Original concept written by Carson Stam and adapted by Ian Housman.
 // Adds a band that is a mask of pixels that are dark, and dark outliers.
+////////////////////////////////////////////////////////////////////////////////
 function simpleTDOM2(collection,zScoreThresh,shadowSumThresh,contractPixels,
   dilatePixels){
   var shadowSumBands = ['nir','swir1'];
@@ -301,6 +306,7 @@ function simpleTDOM2(collection,zScoreThresh,shadowSumThresh,contractPixels,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function for adding common indices
+////////////////////////////////////////////////////////////////////////////////
 function addIndices(img){
   img = img.addBands(img.normalizedDifference(['nir', 'red']).rename('NDVI'));
   img = img.addBands(img.normalizedDifference(['nir', 'swir2']).rename('NBR'));
@@ -310,6 +316,7 @@ function addIndices(img){
 ////////////////////////////////////////////////////////////////////////////////
 // Function for computing the mean squared difference medoid from an image 
 // collection
+////////////////////////////////////////////////////////////////////////////////
 function medoidMosaicMSD(inCollection,medoidIncludeBands) {
   // Find band names in first image
   var f = ee.Image(inCollection.first());
@@ -339,6 +346,7 @@ function medoidMosaicMSD(inCollection,medoidIncludeBands) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function to export a provided image to an EE asset
+////////////////////////////////////////////////////////////////////////////////
 function exportToAssetWrapper(imageForExport,assetName,assetPath,
   pyramidingPolicy,roi,region,scale,crs){
   //Make sure image is clipped to roi in case it's a multi-part polygon
@@ -351,6 +359,7 @@ function exportToAssetWrapper(imageForExport,assetName,assetPath,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Create composites for each year within startYear and endYear range
+////////////////////////////////////////////////////////////////////////////////
 function compositeTimeSeries(startYear,endYear,timebuffer){
   var ts = ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo()
     .map(function(year){
@@ -383,6 +392,7 @@ function compositeTimeSeries(startYear,endYear,timebuffer){
 }
 ////////////////////////////////////////////////////////////////////////////////
 // Helper function to convert image collection into stack of image bands
+////////////////////////////////////////////////////////////////////////////////
 function newCollectionToImage(collection){
   var stack = ee.Image(collection.iterate(function(img, prev) {
     return ee.Image(prev).addBands(img);
@@ -393,6 +403,7 @@ function newCollectionToImage(collection){
 }
 ////////////////////////////////////////////////////////////////////////////////
 // Function to export composite collection
+////////////////////////////////////////////////////////////////////////////////
 function exportCollection(collection,startYear,endYear,timebuffer){
   var years = ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo()
     .map(function(year){
@@ -440,7 +451,7 @@ function exportCollection(collection,startYear,endYear,timebuffer){
     // print('Write down the Asset ID:', exportPath);
   
     exportToAssetWrapper(composite,exportName,exportPath,'mean',
-      studyArea,region,30,'EPSG:4326');
+      studyArea,region,30,'EPSG:26911');
     });
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +459,7 @@ function exportCollection(collection,startYear,endYear,timebuffer){
 function asyncExportToAssetWrapper(
   imageForExport,assetName,assetPath,pyramidingPolicy,roi,scale,crs){
   //Make sure image is clipped to roi in case it's a multi-part polygon
-  imageForExport = imageForExport.clip(roi);
+  //imageForExport = imageForExport.clip(roi);
   assetName = assetName.replace(/\s+/g,'-');//Get rid of any spaces
   
   //Asynchronous approach to gathering converting server-side vectors to 
@@ -582,8 +593,9 @@ var getLTSegments = function(ltresult) {
   return result;
 };
 
-/////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //Function to produce Landtrendr outputs
+///////////////////////////////////////////////////////////////////////////////
 function getLT(indexName, annualLandsat,nameEnd,run_params,outputRepository){
   
   var sign = indexName[1];
@@ -619,8 +631,9 @@ function getLT(indexName, annualLandsat,nameEnd,run_params,outputRepository){
  return [years,ftv];
 }
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //Function for parsing output from LT into useful change data
+///////////////////////////////////////////////////////////////////////////////
 function parseLTAsset(years,ftv,forestMask,changeThresh,indexName,startYear,endYear){
   if(startYear === undefined || startYear === null){startYear = 1985}
   if(endYear === undefined || endYear === null){endYear = 2016}
@@ -705,8 +718,9 @@ function parseLTAsset(years,ftv,forestMask,changeThresh,indexName,startYear,endY
   return yearChanges;
   
 }
-///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //Lt parameters
+///////////////////////////////////////////////////////////////////////////////
 var changeThresh = 2000;//Threshold for visualizing change (change > changeThresh).Generally 1000-2000 works well.  Lower numbers map more change.
 
 //LT run params
@@ -803,6 +817,8 @@ var lsT = ls.map(function(img){
   img = img.updateMask(yr.lt(changeMin).or(yr.gte(changeMax.add(30))));
   return img;
 });
+
+///////////////////////////////////////////////////////////////////////////////
 // STEP 5: Prepare composite for export
 // Get min bands
 ///////////////////////////////////////////////////////////////////////////////
@@ -820,6 +836,7 @@ else{
   composite_pre = medoidMosaicMSD(ls.select(minBands),medoidBands);
 }
 
+///////////////////////////////////////////////////////////////////////////////
 // STEP 6: Add data layers into the map window. 
 // Display the Landsat Composite.
 ///////////////////////////////////////////////////////////////////////////////
@@ -836,8 +853,7 @@ var vizParamsTrue = {
     'bands': 'red, green, blue'
     };
     
-// Map.addLayer(composite, vizParams,'Landsat Composite '+toaOrSR+'-'+year.toString(), false);
-
+///////////////////////////////////////////////////////////////////////////////
 // STEP 7: Reformat data for export. 
 ///////////////////////////////////////////////////////////////////////////////
 var compositeBands = composite.bandNames();
@@ -860,6 +876,21 @@ composite = composite.set({
   'cloudcloudShadowMaskingMethod':cloudcloudShadowMaskingMethod
 });
 
+///////////////////////////////////////////////////////////////////////////////
+//Function to set nodata
+///////////////////////////////////////////////////////////////////////////////
+function setNull(img, nodataValue){
+  var m = img.mask()
+  img = img.mask(ee.Image(1))
+  img = img.where(m.not(),nodataValue)
+  return img
+}
+
+var outImg = composite.clip(sa)
+
+setNull(outImg, -32768)
+
+///////////////////////////////////////////////////////////////////////////////
 // STEP 7: Export the composite. 
 ///////////////////////////////////////////////////////////////////////////////
 // set up export name and path
@@ -869,9 +900,10 @@ var exportName = 'Landsat_' + toaOrSR.toUpperCase() + '_' + startYear + '_' + en
 var exportPath = exportPathRoot + '/' + exportName;
 print(composite, exportPath);
   
-asyncExportToAssetWrapper(composite,exportName,exportPath,'mean',
-  studyArea,30,'EPSG:4326');
-  
+asyncExportToAssetWrapper(outImg,exportName,exportPath,'mean',
+  studyArea,30,'EPSG:26911');
+
+///////////////////////////////////////////////////////////////////////////////  
 // STEP 8: Display re-formatted Landsat imagery. 
 ///////////////////////////////////////////////////////////////////////////////
 var vizParams2 = {
@@ -910,6 +942,9 @@ function addPrefix(list,prefix){
     return prefix + element;
   });
 }
+
+
+
 /////////////////////////////////////////////////////
 //Get NAIP data
 var year = 2015;
@@ -927,15 +962,15 @@ print(naip)
 //Map.addLayer(naip,{},'before')
 //naipAsset = naip
 var crs2 = "EPSG:26912"
-var scale2 = 10
+var scale2 = 30
 var assetName2 = 'naipTest'
 var assetPath2 = 'users/thinkbetween'
 var region2 = sa
 
-naip = naip.reproject('EPSG:26912').reduceResolution(ee.Reducer.mean(),true,1024);
+naip = naip.reproject('EPSG:26911').reduceResolution(ee.Reducer.mean(),true,1024);
 
 asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
-  studyArea,10,'EPSG:26912');
+  studyArea,30,'EPSG:26912');
 
 Map.addLayer(naip,{},'naip', false);
 
@@ -943,7 +978,7 @@ Map.addLayer(naip,{},'naip', false);
 var z = 0.4;
 var bandsPIF = ['blue','green','red','nir'];
 var slave = composite.clip(sa)
-var master = naipAsset//.select([0,1,2,3])
+var master = naip//.select([0,1,2,3])
 //print(image2)
 //Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
 
@@ -1147,6 +1182,7 @@ function newCollectionToImage(collection){
   stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
   return stack;
 } 
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // create scatter plots
