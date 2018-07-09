@@ -1,27 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
     imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1},
-    sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-115.323486328125, 43.27720532212024],
-          [-114.10400390625, 43.36512572875844],
-          [-113.543701171875, 43.58834891179793],
-          [-112.939453125, 43.667871610117494],
-          [-112.445068359375, 44.268804788566165],
-          [-112.412109375, 44.66865287227321],
-          [-113.214111328125, 45.36758436884978],
-          [-113.62060546875, 45.60635207711831],
-          [-114.10400390625, 45.85176048817253],
-          [-114.949951171875, 46.00459325574482],
-          [-115.740966796875, 46.03510927947334],
-          [-116.19140625, 45.752193360631054],
-          [-116.268310546875, 45.46783598133375],
-          [-116.312255859375, 45.11230010229608],
-          [-116.2353515625, 44.84808025602073],
-          [-115.828857421875, 44.64520822374404],
-          [-115.83984375, 44.42593442145313],
-          [-115.6201171875, 43.88997537383687]]]),
     minTempAsset = ee.Image("users/thinkbetween/minTempDownscale_1998_2017"),
-    precipAsset = ee.Image("users/thinkbetween/precipDownscale_1998_2017");
+    precipAsset = ee.Image("users/thinkbetween/precipDownscale_1998_2017"),
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-116.312255859375, 45.9511496866914],
+          [-116.25732421875, 43.14909399920127],
+          [-112.34619140625, 43.189157696549216],
+          [-112.532958984375, 46.01222384063236]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
@@ -131,7 +117,7 @@ function downscaler(independents, dependent, sa,kernel,scale,crs){
   Map.addLayer(predicted,imageVisParam,'oversampled');
 
 exportToDriveWrapper(predicted,exportTempName,sa,scale,crs);
-
+exportToDriveWrapper(predicted,exportPrecipName,sa,scale,crs);
   // var l = ee.List.sequence(1,10);
   // var initial = ee.List([]);
   // function adder(x,prev){
@@ -166,7 +152,7 @@ exportToDriveWrapper(predicted,exportTempName,sa,scale,crs);
   
 }
 
-downscaler(inds, prcpIn, sa,kern ,scale,crs)
+downscaler(inds, tempIn, sa,kern ,scale,crs)
 
 //////////////////////////////////////////////////////////////////////////////////////
 //Function to annualize
