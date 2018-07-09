@@ -975,8 +975,6 @@ var z = 0.4;
 var bandsPIF = ['blue','green','red','nir'];
 var slave = composite.clip(sa)
 var master = naip//.select([0,1,2,3])
-//print(image2)
-//Map.addLayer(master, vizParams2,'lcms '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function for getting the pseudo-invariant features (PIFs)
@@ -1009,46 +1007,6 @@ var master = naip//.select([0,1,2,3])
 //   // Return these locations -Value of 1 with non PIFs masked out
 //   return potentialPIFs.mask(potentialPIFs);//.clip(geometry3);//.clip(water_removed);
 // }
-
-////////////////////////////////////////////////////////////////////////////////
-// NORMALIZE W MULTIVARIATE REGRESSION
-// This function returns one corrected image and can be mapped across the stack
-// to return a corrected stack
-function imgNormalizerMulti(slave, master, PIFpixels){
-  var diff = slave.select([0]).subtract(master.select([0]));
-  var inter = slave.geometry().intersection(master.geometry(),1000);
-  diff = diff.set('system:footprint',inter);
-  var region = diff.geometry();
-  var PIFslave = slave.mask(PIFpixels);
-  var PIFmaster = master.mask(PIFpixels);
-  // Loop through bands, get regression coeffs and correct
-  var bandnames = master.bandNames();
-  var calcParamsLR = {     
-        'reducer': ee.Reducer.linearRegression(bandnames.length(),1),
-        'geometry': region, 
-        'scale': 90, 
-        'bestEffort': true,
-        'maxPixels': 500000000,
-        'tileScale': 2
-      };
-  var contArray = ee.List(bandnames).map(function(band){
-    band = ee.String(band);
-    var regImg = PIFslave.select(bandnames).addBands(PIFmaster.select(band).rename('master'));
-    var LR = regImg.reduceRegion(calcParamsLR);
-    var coeffs = ee.Array(LR.get('coefficients')).project([0]).toList();
-    coeffs = ee.Image.constant(coeffs).rename(bandnames);
-    var corrBand = slave.select(bandnames).multiply(coeffs).reduce('sum');
-    return corrBand;//.toUint16();
-  });
-  // Concatenate the bands to form the corrected slave image
-  contArray = ee.ImageCollection(contArray);
-  var corrected = newCollectionToImage(contArray).rename(bandnames);
-  // Add the slave image footprint to the corrected image
-  corrected = corrected.set('system:footprint',slave.geometry());
-  print(corrected)
-  return corrected;
-  
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // NORMALIZE W MULTIVARIATE REGRESSION WITH A CONSTANT BAND
