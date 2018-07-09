@@ -1,13 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
     imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1},
-    minTempAsset = ee.Image("users/thinkbetween/minTempDownscale_1998_2017"),
-    precipAsset = ee.Image("users/thinkbetween/precipDownscale_1998_2017"),
     sa = /* color: #d63000 */ee.Geometry.Polygon(
         [[[-116.312255859375, 45.9511496866914],
           [-116.25732421875, 43.14909399920127],
           [-112.34619140625, 43.189157696549216],
-          [-112.532958984375, 46.01222384063236]]]);
+          [-112.532958984375, 46.01222384063236]]]),
+    minTempAsset = ee.Image("users/thinkbetween/SC_minTempDownscale_20180709"),
+    precipAsset = ee.Image("users/thinkbetween/SC_precipDownscale_20180709");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
