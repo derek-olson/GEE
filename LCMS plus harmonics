@@ -31,15 +31,15 @@ var studyArea = sa;
 // constraints. This supports wrapping for tropics and southern hemisphere.
 // startJulian: Starting Julian date 
 // endJulian: Ending Julian date
-var startJulian = 190;
-var endJulian = 250; 
+var startJulian = 1;
+var endJulian = 365; 
 
 // 3. Specify start and end years for all analyses
 // More than a 3 year span should be provided for time series methods to work 
 // well. If using Fmask as the cloud/cloud shadow masking method, this does not 
 // matter
-var startYear = 1984;
-var endYear = 2018;
+var startYear = 2015;
+var endYear = 2017;
 
 // 4. Specify an annual buffer to include imagery from the same season 
 // timeframe from the prior and following year. timeBuffer = 1 will result 
@@ -818,8 +818,8 @@ var lsT = ls.map(function(img){
 // STEP 5: Prepare composite for export
 // Get min bands
 ///////////////////////////////////////////////////////////////////////////////
-var minBands = ee.List(['blue','green','red','nir','swir1','temp','swir2']);
-var medoidBands = ee.List(['blue','green','red','nir','swir1','swir2']);
+var minBands = ee.List(['blue','green','red','nir','swir1','temp','swir2', 'NDVI']);
+var medoidBands = ee.List(['blue','green','red','nir','swir1','swir2', 'NDVI']);
 var composite;
 var composite_pre;
 
@@ -939,237 +939,8 @@ function addPrefix(list,prefix){
   });
 }
 
-
-
-/////////////////////////////////////////////////////
-//Get NAIP data
-var year = 2015;
-var bandDict = ee.List(['B', 'G', 'R', 'N'])
-var naipBands =  ee.List(['blue','green','red','nir'])
-
-var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
-          .filterBounds(sa)
-          .filter(ee.Filter.calendarRange(year,year,'year'))
-print(naip.first())
-print(ee.Image(naip.first()).projection())
-naip = naip.mosaic().select(bandDict, naipBands)
-print(naip)
-//naipAsset = naipAsset.select(bandDict, naipBands)
-//Map.addLayer(naip,{},'before')
-//naipAsset = naip
-var crs2 = "EPSG:26912"
-var scale2 = 30
-var assetName2 = 'naipTest'
-var assetPath2 = 'users/thinkbetween'
-var region2 = sa
-
-naip = naip.reproject('EPSG:26911').reduceResolution(ee.Reducer.mean(),true,1024);
-
-asyncExportToAssetWrapper(naip,assetName2,assetPath2,'mean',
-  studyArea,30,'EPSG:26912');
-
-Map.addLayer(naip,{},'naip', false);
-
-
-var z = 0.4;
-var bandsPIF = ['blue','green','red','nir'];
-var slave = composite.clip(sa)
-var master = naip//.select([0,1,2,3])
-
-////////////////////////////////////////////////////////////////////////////////
-// Function for getting the pseudo-invariant features (PIFs)
-// function getPIFsPair(img1, img2, bandsPIF,z) {
-//   // Compute the difference to find unchanged pixels 
-//   var diff = img1.select(bandsPIF).subtract(img2.select(bandsPIF));
-//   var inter = img1.geometry().intersection(img2.geometry(),1000);
-//   diff = diff.set('system:footprint',inter);
-//   var region = diff.geometry();
-//   var calcParamsAll = {     
-//           'reducer': ee.Reducer.mean().forEachBand(diff).combine(ee.Reducer.stdDev().forEachBand(diff),'s_',true),
-//           'geometry': region, 
-//           'scale': 90, 
-//           'bestEffort': true,
-//           'maxPixels': 500000000,
-//           'tileScale': 2
-//         };
-//   var s_bandsPIF = addPrefix(bandsPIF,'s_');
-//   // Compute the mean/stdDev value for the band
-//   var dict = diff.reduceRegion(calcParamsAll);
-//   var diffMean = ee.Image.constant(dict.select(bandsPIF).values()).rename(dict.select(bandsPIF).keys()).float();
-//   var StdDevTH = ee.Image.constant(dict.select(s_bandsPIF).values()).multiply(z).rename(dict.select(bandsPIF).keys()).float();
-//   var THupper = diffMean.add(StdDevTH);
-//   var THlower = diffMean.subtract(StdDevTH);
-//   // Where the difference value is less than the threshold, add a 1
-//   var maskedTemp =  diff.lt(THupper).and(diff.gt(THlower));
-//   // Find the pixels that are have low variance in all the given bands and clip
-//   // this image to the region to avoid extrapolation 
-//   var potentialPIFs = maskedTemp.reduce(ee.Reducer.max()).clip(region);
-//   // Return these locations -Value of 1 with non PIFs masked out
-//   return potentialPIFs.mask(potentialPIFs);//.clip(geometry3);//.clip(water_removed);
-// }
-
-////////////////////////////////////////////////////////////////////////////////
-// NORMALIZE W MULTIVARIATE REGRESSION WITH A CONSTANT BAND
-// This function returns one corrected image and can be mapped across the stack
-// to return a corrected stack
-function imgNormalizerMultiConstant(slave, master, PIFpixels){
-  var slave_mask = slave.select([0]).mask();
-  var master_mask = master.select([0]).mask();
-  var diff = slave.select([0]).subtract(master.select([0]));
-  var inter = slave.geometry().intersection(master.geometry(),1000);
-  diff = diff.set('system:footprint',inter);
-  var region = diff.geometry();
-  var bandnames = master.bandNames();
-  master = master.addBands(ee.Image(1).rename('constant')).updateMask(master_mask);
-  slave = slave.addBands(ee.Image(1).rename('constant')).updateMask(slave_mask);
-  var bandnamesPlus = bandnames.add('constant');
-  var PIFslave = slave.mask(PIFpixels);
-  var PIFmaster = master.mask(PIFpixels);
-  // Loop through bands, get regression coeffs and correct
-  var calcParamsLR = {     
-        'reducer': ee.Reducer.linearRegression(bandnamesPlus.length(),1),
-        'geometry': region, 
-        'scale': 90, 
-        'bestEffort': true,
-        'maxPixels': 500000000,
-        'tileScale': 2
-      };
-  var contArray = ee.List(bandnames).map(function(band){
-    band = ee.String(band);
-    var regImg = PIFslave.select(bandnamesPlus).addBands(PIFmaster.select(band).rename('master'));
-    var LR = regImg.reduceRegion(calcParamsLR);
-    var coeffs = ee.Array(LR.get('coefficients')).project([0]).toList();
-    coeffs = ee.Image.constant(coeffs).rename(bandnamesPlus);
-    var corrBand = slave.select(bandnamesPlus).multiply(coeffs).reduce('sum');
-    return corrBand;//.toUint16();
-  });
-  // Concatenate the bands to form the corrected slave image
-  contArray = ee.ImageCollection(contArray);
-  var corrected = newCollectionToImage(contArray).rename(bandnames);
-  // Add back in the dropped bands
-  corrected = corrected.updateMask(slave_mask);
-  // Add the slave image footprint to the corrected image
-  corrected = corrected.set('system:footprint',slave.geometry());
-  
-  return corrected; 
-}
-
-var PIFpixels = changePIF// getPIFsPair(slave, master.select([0,1,2,3]), bandsPIF,z);
-//Map.addLayer(PIFpixels,{},'PIFpixels',false);
-
-var corrected = imgNormalizerMulti(slave.select([0,1,2,3]), master, PIFpixels);
-//Map.addLayer(corrected,vizParams,'Slave corrected',false);
-Map.addLayer(corrected, {'min':0,'max':255}, 'regression');
-
-var constCorrected = imgNormalizerMultiConstant(slave.select([0,1,2,3]), master, PIFpixels)
-Map.addLayer(constCorrected, {'min':0,'max':255}, 'regression + Constant');
-
-
-///////////////////////////////////////////////////////////////////////////////
-//Random Forest Classification
-///////////////////////////////////////////////////////////////////////////////
-var origBandDict =  ee.List(['blue','green','red','nir'])
-var predictBands = ee.List(['B', 'G', 'R', 'N'])
-var compositeNew = composite.select(origBandDict, predictBands)
-print(compositeNew)
-
-// Stack the Landsat and the NAIP to get the training image
-var trainingImage = compositeNew.select(predictBands)
-    .addBands(constCorrected);
-print(trainingImage)
-Map.addLayer(trainingImage, {}, 'training image')    
-
-//Mask the stack to the undisturbed areas
-var maskedTrainingImage = trainingImage.mask(changePIF)
-Map.addLayer(maskedTrainingImage, {}, 'masked image')
-
-// Sample the training image at 1000 points to get the training & testing data
- var trainingData = maskedTrainingImage.sample({
-   region: sa, 
-   scale: 30, 
-   numPixels: 1000
- });
-
-// Randomly split the data into 60% for training, and 40% for testing
-/*trainingTesting = trainingTesting.randomColumn('random',484789);
-var training = trainingTesting
-  .filter(ee.Filter.lt('random', 0.6));
-var testing = trainingTesting
-  .filter(ee.Filter.gte('random', 0.6));*/
-  
-// Print the first training point
-//print('First training point:', ee.Feature(trainingData.first()));
-
- var outNaip = ee.List(origBandDict).map(function(naipBand){
-    // Define a Random Forest (RF) regression classifier
-    var rfRegression = ee.Classifier.randomForest({numberOfTrees:25, seed:111009})
-    .setOutputMode('REGRESSION')
-    .train({
-      features: trainingData, 
-      classProperty: naipBand, 
-      inputProperties: predictBands
-    });
-
-    // Perform the RF regression on a naip band
-    var rfRegressionImage = trainingImage.select(predictBands)//does this need to be a parameter in the function
-    .classify(rfRegression, naipBand);
-    
-    return rfRegressionImage;
-  
-   });
-   
-print(outNaip) 
-
-//So if your list is called outNaip, to go from a list of images to a single image with multiple bands:
-outNaip = ee.ImageCollection(outNaip);
-outNaip = newCollectionToImage(outNaip);  
-  
-Map.addLayer(outNaip, {'min':0,'max':255}, 'outNaip')
-
-////////////////////////////////////////////////////////////////////////////////
-// Helper function to convert image collection into stack of image bands
-function newCollectionToImage(collection){
-  var stack = ee.Image(collection.iterate(function(img, prev) {
-    return ee.Image(prev).addBands(img);
-  }, ee.Image(1)));
-
-  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
-  return stack;
-} 
-
-
-////////////////////////////////////////////////////////////////////////////////
-// create scatter plots
-////////////////////////////////////////////////////////////////////////////////
-
-/*naipAsset = naipAsset.reproject('EPSG:5070', null, 1)
-                    .reduceResolution(ee.Reducer.mean(),true, 900)
-                    .reproject('EPSG:5070', null, 30)
-var scatterImage = compositeNew
-    .addBands(naipAsset).addBands(compositeNew.select('N').log().rename('logN'));
-print(scatterImage)
-
-
- function scatter2d(img,region,scale,band1,band2){
-  var values = img.select([band1,band2]).reduceRegion(ee.Reducer.toList(), region, scale);
-  var x = values.get(band1);
-  var y = values.get(band2);
-  print(values)
-  var chart = ui.Chart.array.values(y, 0, x);
-  
-  chart = chart.setOptions({
-    hAxis: { title: band1},
-    vAxis: { title: band2},
-    pointSize: 1,
-    legend: 'none'
-  });
-  print(chart);  
-}  
-scatter2d(scatterImage, sa, 30, 'nir', 'N')
-*/
-
-
-
+var dependent = 'NDVI';
+var harmonics = 1;
 
 // STEP 5: Perform harmonic analysis and export results
   var harmonicOutput = getHarmonicsAmplitudePhase(lsT,dependent,harmonics);
@@ -1185,6 +956,7 @@ scatter2d(scatterImage, sa, 30, 'nir', 'N')
             ee.Image(1)).addBands(
             harmonicAmplitude.multiply(2.5)).hsvToRgb();
   Map.addLayer(rgb, {},'Landsat Harmonics '+toaOrSR.toUpperCase()+' '+year.toString(), false);
+  
   // STEP 7: Reformat data for export. 
   ///////////////////////////////////////////////////////////////////////////////
   // var harmonicOutputBands = harmonicOutput.bandNames();
@@ -1363,3 +1135,6 @@ function newCollectionToImage(collection){
   stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
   return stack;
 }
+
+
+ 
