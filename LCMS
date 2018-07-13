@@ -2,11 +2,11 @@
 var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1},
     imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
     imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
-    sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-116.279296875, 45.95878764035639],
-          [-116.158447265625, 43.14909399920127],
-          [-112.34619140625, 43.18114705939967],
-          [-112.532958984375, 45.996961618203805]]]);
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-108.5888671875, 42.01665183556825],
+          [-108.52294921875, 44.402391829093915],
+          [-111.5771484375, 44.48083027856261],
+          [-111.708984375, 42.01665183556825]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -26,7 +26,8 @@ var roi = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W').g
 Map.addLayer(roi, {}, 'roi', false)
 var studyArea = sa;
 
-
+var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+Map.addLayer(bt, {}, 'bt');
 // 2. Update the startJulian and endJulian variables to indicate your seasonal 
 // constraints. This supports wrapping for tropics and southern hemisphere.
 // startJulian: Starting Julian date 
