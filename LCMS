@@ -1057,10 +1057,6 @@ function imgNormalizerMultiConstant(slave, master, PIFpixels){
 var PIFpixels = changePIF// getPIFsPair(slave, master.select([0,1,2,3]), bandsPIF,z);
 //Map.addLayer(PIFpixels,{},'PIFpixels',false);
 
-var corrected = imgNormalizerMulti(slave.select([0,1,2,3]), master, PIFpixels);
-//Map.addLayer(corrected,vizParams,'Slave corrected',false);
-Map.addLayer(corrected, {'min':0,'max':255}, 'regression');
-
 var constCorrected = imgNormalizerMultiConstant(slave.select([0,1,2,3]), master, PIFpixels)
 Map.addLayer(constCorrected, {'min':0,'max':255}, 'regression + Constant');
 
