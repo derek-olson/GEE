@@ -1,10 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
     sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-116.3232421875, 45.95878764035639],
-          [-116.2353515625, 43.15710884095329],
-          [-112.335205078125, 43.189157696549216],
-          [-112.5439453125, 46.00459325574482]]]);
+        [[[-108.52294921875, 42.049292638686836],
+          [-108.52294921875, 44.386691502152054],
+          [-111.37939453125, 44.43377984606822],
+          [-111.4892578125, 42.049292638686836]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //var ForestBound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
 //Map.addLayer(ForestBound)
@@ -19,6 +19,9 @@ This script accomplishes several tasks:
 *///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+Map.addLayer(bt, {}, 'bt');
+
 // STEP 0: Define user inputs:
 // 1. Specify study area: Study area
 // Can provide a fusion table  or asset table (must add .geometry() after it, 
