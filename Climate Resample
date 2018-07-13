@@ -2,13 +2,16 @@
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
     imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1},
     sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-116.312255859375, 45.9511496866914],
-          [-116.25732421875, 43.14909399920127],
-          [-112.34619140625, 43.189157696549216],
-          [-112.532958984375, 46.01222384063236]]]),
-    minTempAsset = ee.Image("users/thinkbetween/SC_minTempDownscale_20180709"),
-    precipAsset = ee.Image("users/thinkbetween/SC_precipDownscale_20180709");
+        [[[-108.731689453125, 41.9921602333763],
+          [-108.7701416015625, 44.48083027856261],
+          [-111.5771484375, 44.50434127765394],
+          [-111.5771484375, 42.0125705565935]]]),
+    precipAsset = ee.Image("users/thinkbetween/BT_prcpDownscale_20180713"),
+    minTempAsset = ee.Image("users/thinkbetween/BT_tempDownscale_20180713");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+Map.addLayer(bt, {}, 'bt');
+
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
 //////////////////////////////////////////////////////////////////////////
