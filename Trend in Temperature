@@ -21,10 +21,10 @@ var temp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
   .map(timeBand);
 
 //var maxTemp = temp.select(['tmax']).mean();
+//Map.addLayer(maxTemp, averageMaxTemp, 'average max temp');
 
 var linearFit = temp.select(['year', 'tmax']).reduce(ee.Reducer.linearFit());
 
-//Map.addLayer(maxTemp, averageMaxTemp, 'average max temp');
 Map.addLayer(linearFit, {min:-250 , max:250 , bands:['scale', 'offset', 'scale']},  'linearFit');
 
 var actualPredicted = temp.map(function(img){
