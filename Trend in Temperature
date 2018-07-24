@@ -1,10 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var averageMaxTemp = {"opacity":1,"bands":["tmax"],"min":-1.248250961303711,"max":33.600990295410156,"gamma":1};
+var averageMaxTemp = {"opacity":1,"bands":["tmax"],"min":-1.248250961303711,"max":33.600990295410156,"gamma":1},
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-120.234375, 36.31512514748051],
+          [-116.279296875, 35.67514743608468],
+          [-116.19140625, 39.095962936305476],
+          [-120.146484375, 39.16414104768743]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var startDate = ee.Date.fromYMD(1980, 1, 1);
 var endDate = ee.Date.fromYMD(2017, 12, 31);
-
-
 
 var timeBand = function(image)
 {
@@ -34,3 +37,5 @@ var actualPredicted = temp.map(function(img){
 });
 
 //Map.addLayer(actualPredicted, {min:-15, max:15, bands:['actualMaxTemp','predictedMaxTemp','predictedMaxTemp']}, 'actual vs predicted');
+
+Export.image.toDrive(image: linearFit, description: 'maxTempLinearFit', region: sa, scale; 1000, crs: 'EPSG:26911', maxPixels: 1e13)
