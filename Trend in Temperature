@@ -1,0 +1,28 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var averageMaxTemp = {"opacity":1,"bands":["tmax"],"min":-1.248250961303711,"max":33.600990295410156,"gamma":1};
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var startDate = ee.Date.fromYMD(1980, 1, 1);
+var endDate = ee.Date.fromYMD(2017, 12, 31);
+
+
+
+var timeBand = function(image)
+{
+  var time = ee.Date(image.get('system:time_start'));
+  var year = time.get('year');
+  var proportion = time.getFraction('year');
+  var yrProportion = ee.Image(year.add(proportion)).float();
+  return image.addBands(yrProportion.select([0], ['year']));
+};
+
+var temp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+  .filterDate(startDate, endDate)
+  .select(['tmax'])
+  .map(timeBand);
+
+//var maxTemp = temp.select(['tmax']).mean();
+
+var linearFit = temp.select(['year', 'tmax']).reduce(ee.Reducer.linearFit());
+
+//Map.addLayer(maxTemp, averageMaxTemp, 'average max temp');
+Map.addLayer(linearFit, {}, 'fit');
