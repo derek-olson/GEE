@@ -26,3 +26,11 @@ var linearFit = temp.select(['year', 'tmax']).reduce(ee.Reducer.linearFit());
 
 //Map.addLayer(maxTemp, averageMaxTemp, 'average max temp');
 Map.addLayer(linearFit, {min:-250 , max:250 , bands:['scale', 'offset', 'scale']},  'linearFit');
+
+var actualPredicted = temp.map(function(img){
+  var predicted = img.select(['year']).multiply(linearFit.select(['scale'])).add(linearFit.select(['offset'])).select([0], ['predictedMaxTemp']);
+  var actual = img.select(['tmax']).select([0], ['actualMaxTemp']);
+  return actual.addBands(predicted);
+});
+
+Map.addLayer(actualPredicted, {}, 'actual vs predicted');
