@@ -1,6 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var averageMaxTemp = {"opacity":1,"bands":["tmax"],"min":-1.248250961303711,"max":33.600990295410156,"gamma":1},
-    linearFit = {"opacity":1,"bands":["scale","offset","offset"],"min":-326.2589040786219,"max":123.15542742069488,"gamma":1};
+var averageMaxTemp = {"opacity":1,"bands":["tmax"],"min":-1.248250961303711,"max":33.600990295410156,"gamma":1};
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var startDate = ee.Date.fromYMD(1980, 1, 1);
 var endDate = ee.Date.fromYMD(2017, 12, 31);
@@ -26,4 +25,4 @@ var temp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
 var linearFit = temp.select(['year', 'tmax']).reduce(ee.Reducer.linearFit());
 
 //Map.addLayer(maxTemp, averageMaxTemp, 'average max temp');
-Map.addLayer(linearFit, linearFit, 'fit');
+Map.addLayer(linearFit, {min:-250 , max:250 , bands:['scale', 'offset', 'scale']},  'linearFit');
