@@ -33,4 +33,4 @@ var actualPredicted = temp.map(function(img){
   return actual.addBands(predicted);
 });
 
-Map.addLayer(actualPredicted, {}, 'actual vs predicted');
+//Map.addLayer(actualPredicted, {min:-15, max:15, bands:['actualMaxTemp','predictedMaxTemp','predictedMaxTemp']}, 'actual vs predicted');
