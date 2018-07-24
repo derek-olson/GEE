@@ -38,4 +38,6 @@ var actualPredicted = temp.map(function(img){
 
 //Map.addLayer(actualPredicted, {min:-15, max:15, bands:['actualMaxTemp','predictedMaxTemp','predictedMaxTemp']}, 'actual vs predicted');
 
-Export.image.toDrive(image: linearFit, description: 'maxTempLinearFit', region: sa, scale; 1000, crs: 'EPSG:26911', maxPixels: 1e13)
+Export.image.toDrive({image: linearFit, description:'MaxTempTrend', region: sa, scale: 1000, crs: 'EPSG:26911', maxPixels: 1e13});
+
+
