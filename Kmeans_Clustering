@@ -8,33 +8,44 @@ var topoAll = ee.Image("users/thinkbetween/SC_topoComposite_forTesting"),
           [-115.33447265625, 44.32384807250689]]]),
     climPCA = ee.Image("users/thinkbetween/SC_climatePrincipalComponents_forTesting");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var bound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W')
-Map.addLayer(bound, {}, 'bound', false)
+var bound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
+Map.addLayer(bound, {}, 'bound', false);
 
 //Set the number of clusters
 var clustNum = 10
 
 //Get datasets as assets
-var climate = climPCA.clip(sa).select([0]).multiply(10000).int16()
-var topo = topoAll.clip(sa).select([0,1,4,5,6])
-var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16()
-ndvi = ndvi.clip(sa)
+var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
+var topo = topoAll.clip(sa).select([0,1,4,5,6]);
+var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
+ndvi = ndvi.clip(sa);
 
 //Add layers to map
-Map.addLayer(climate, {}, 'climate',false)
-Map.addLayer(topo, {}, 'topo',false)
-Map.addLayer(ndvi, {}, 'ndvi',false)
+Map.addLayer(climate, {}, 'climate',false);
+Map.addLayer(topo, {}, 'topo',false);
+Map.addLayer(ndvi, {}, 'ndvi',false);
 
 //Create composite
-var composite = climate.addBands(topo).addBands(ndvi)
-print(composite)
+var composite = climate.addBands(topo).addBands(ndvi);
+print(composite);
 
 //Convert to array?
-/*var array = composite.toArray()
+var array = composite.toArray();
+print(array);
 
+var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
+  .train({
+    features: training,
+    inputProperties:properties
+  });
 
-function clusterData(img, clusterRange){
+var clusterImage = composite.cluster(kmeans, 'kmeans');
+print(clusterImage);
+Map.addLayer(clusterImage, {}, 'clusterImage',false);
+
+/*function clusterData(img, clusterer, clusterRange){
   
   composite.reduce(ee.Clusterer.wekaKMeans(clustNum, init, canopies, maxCandidates, periodicPruning, minDensity, t1, t2, distanceFunction, maxIterations, preserveOrder, fast, seed))
-}
-*/
+  return img
+}*/
+
