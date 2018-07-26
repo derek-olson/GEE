@@ -6,7 +6,12 @@ var topoAll = ee.Image("users/thinkbetween/SC_topoComposite_forTesting"),
           [-112.379150390625, 44.86365630540611],
           [-114.246826171875, 45.79050946752472],
           [-115.33447265625, 44.32384807250689]]]),
-    climPCA = ee.Image("users/thinkbetween/SC_climatePrincipalComponents_forTesting");
+    climPCA = ee.Image("users/thinkbetween/SC_climatePrincipalComponents_forTesting"),
+    chartGeom = /* color: #00ffff */ee.Geometry.Polygon(
+        [[[-114.5599365234375, 44.472991172602526],
+          [-113.8623046875, 44.4377021634654],
+          [-113.8568115234375, 44.735027899515465],
+          [-114.4720458984375, 44.742831723317565]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var bound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
 Map.addLayer(bound, {}, 'bound', false);
@@ -50,8 +55,25 @@ var clusterImage = composite.cluster(kmeans, 'kmeans');
 print(clusterImage);
 Map.addLayer(clusterImage, {}, 'clusterImage',false);
 
+/*var clustChart = ui.Chart.image.byClass({image: clusterImage, classBand: 'kmeans', region: chartGeom, classLabels: kmeans, xLabels: 'kmeans'});
+print(clustChart)*/
 /*function clusterData(img, clusterer, clusterRange){
   
   return img
 }*/
+
+//For each value of k and for each cluster get the variance
+var kvals = ee.List.sequence({start:1, end:10});
+print(kvals);
+
+var clusterVar = clusterImage.addBands(composite)
+
+var variance = ee.List(kvals).map(function(clust){
+  var variance = clusterVar.reduce(ee.Reducer.variance());
+  return variance;
+});
+print(variance);
+
+
+
 
