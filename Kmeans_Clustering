@@ -1,0 +1,40 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var topoAll = ee.Image("users/thinkbetween/SC_topoComposite_forTesting"),
+    LCMS = ee.Image("users/thinkbetween/SC_Landsat_SR_1984_2018_190_250_lcmsCONUS_mtbs"),
+    sa = /* color: #0b4a8b */ee.Geometry.Polygon(
+        [[[-113.104248046875, 43.492782808224995],
+          [-112.379150390625, 44.86365630540611],
+          [-114.246826171875, 45.79050946752472],
+          [-115.33447265625, 44.32384807250689]]]),
+    climPCA = ee.Image("users/thinkbetween/SC_climatePrincipalComponents_forTesting");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var bound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W')
+Map.addLayer(bound, {}, 'bound', false)
+
+//Set the number of clusters
+var clustNum = 10
+
+//Get datasets as assets
+var climate = climPCA.clip(sa).select([0]).multiply(10000).int16()
+var topo = topoAll.clip(sa).select([0,1,4,5,6])
+var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16()
+ndvi = ndvi.clip(sa)
+
+//Add layers to map
+Map.addLayer(climate, {}, 'climate',false)
+Map.addLayer(topo, {}, 'topo',false)
+Map.addLayer(ndvi, {}, 'ndvi',false)
+
+//Create composite
+var composite = climate.addBands(topo).addBands(ndvi)
+print(composite)
+
+//Convert to array?
+/*var array = composite.toArray()
+
+
+function clusterData(img, clusterRange){
+  
+  composite.reduce(ee.Clusterer.wekaKMeans(clustNum, init, canopies, maxCandidates, periodicPruning, minDensity, t1, t2, distanceFunction, maxIterations, preserveOrder, fast, seed))
+}
+*/
