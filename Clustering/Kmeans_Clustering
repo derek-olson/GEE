@@ -53,7 +53,7 @@ var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
 //Get kmeans clusters
 var clusterImage = composite.cluster(kmeans, 'kmeans');
 print(clusterImage);
-Map.addLayer(clusterImage, {}, 'clusterImage',false);
+Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');
 
 /*var clustChart = ui.Chart.image.byClass({image: clusterImage, classBand: 'kmeans', region: chartGeom, classLabels: kmeans, xLabels: 'kmeans'});
 print(clustChart)*/
