@@ -30,19 +30,22 @@ var composite = climate.addBands(topo).addBands(ndvi);
 print(composite);
 
 //Convert to array?
-var array = composite.toArray();
-print(array);
+/*var array = composite.toArray();
+print(array);*/
 
+//Create training data
 var training = composite.sample({
   scale: 30,
   numPixels: 10000
 });
 
-var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
+//Create clusterer
+var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
   .train({
     features: training
   });
 
+//Get kmeans clusters
 var clusterImage = composite.cluster(kmeans, 'kmeans');
 print(clusterImage);
 Map.addLayer(clusterImage, {}, 'clusterImage',false);
