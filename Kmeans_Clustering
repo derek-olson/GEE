@@ -33,10 +33,15 @@ print(composite);
 var array = composite.toArray();
 print(array);
 
+var training = composite.sample({
+  scale: 30,
+  numpixels: 10000
+});
+
 var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
   .train({
-    features: training,
-    inputProperties:properties
+    features: training
+    
   });
 
 var clusterImage = composite.cluster(kmeans, 'kmeans');
