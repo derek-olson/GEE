@@ -1,4 +1,0 @@
-var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
-print('This looks correct:',ee.Image(daymet.first()).projection().nominalScale());
-var reduced = daymet.reduce(ee.Reducer.mean());
-print('Why is this so much larger?:',reduced.projection().nominalScale()); 
