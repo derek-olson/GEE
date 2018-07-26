@@ -41,7 +41,6 @@ var training = composite.sample({
 var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
   .train({
     features: training
-    
   });
 
 var clusterImage = composite.cluster(kmeans, 'kmeans');
