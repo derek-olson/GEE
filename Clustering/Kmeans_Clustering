@@ -67,13 +67,15 @@ var kvals = ee.List.sequence({start:1, end:10});
 print(kvals);
 
 var clusterVar = clusterImage.addBands(composite)
+clusterVar = ee.ImageCollection(clusterVar)
+print(clusterVar)
 
-var variance = ee.List(kvals).map(function(clust){
-  var variance = clusterVar.reduce(ee.Reducer.variance());
+var variance = ee.List(kvals).map(function(cluster){
+  var variance = clusterVar.aggregate_total_var()
+  //var variance = clusterVar.reduce(ee.Reducer.variance());
   return variance;
 });
 print(variance);
-
 
 
 
