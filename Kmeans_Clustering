@@ -49,7 +49,6 @@ Map.addLayer(clusterImage, {}, 'clusterImage',false);
 
 /*function clusterData(img, clusterer, clusterRange){
   
-  composite.reduce(ee.Clusterer.wekaKMeans(clustNum, init, canopies, maxCandidates, periodicPruning, minDensity, t1, t2, distanceFunction, maxIterations, preserveOrder, fast, seed))
   return img
 }*/
 
