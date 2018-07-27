@@ -119,7 +119,7 @@ var varianceSumList = kvals.map(function(kval){
 
   //Try to turn the dictionary into a list; may not be necessary
   var clustVarSum = clusterVariance.get('groups')
-  print(clustVarSum)
+  //print(clustVarSum)
 
   //Extract computed stat from nested list.
   function lookup_stat(list) {
