@@ -67,10 +67,10 @@ var kvals = ee.List.sequence({start:1, end:clustNum});
 print(kvals);
 
 var compositeVariance = composite.reduce(ee.Reducer.variance());
-print(compositeVariance)
-Map.addLayer(compositeVariance,{}, 'compositeVariance', false)
+print(compositeVariance);
+Map.addLayer(compositeVariance,{}, 'compositeVariance', false);
 
-var KmeansVarianceComposite = clusterImage.addBands(compositeVariance)
+var KmeansVarianceComposite = clusterImage.addBands(compositeVariance);
 
 var clusterVariance = KmeansVarianceComposite.reduceRegion({
   reducer: ee.Reducer.mean().unweighted().group({
@@ -81,8 +81,10 @@ var clusterVariance = KmeansVarianceComposite.reduceRegion({
   scale: 30,
   maxPixels: 1e13
 });
-print(clusterVariance)
+print(clusterVariance);
 
+var clustVarSum = clusterVariance.get('groups')
+print(clustVarSum)
 
 
 
