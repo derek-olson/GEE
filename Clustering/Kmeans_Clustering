@@ -63,19 +63,57 @@ print(clustChart)*/
 }*/
 
 //For each value of k and for each cluster get the variance
-var kvals = ee.List.sequence({start:1, end:10});
+var kvals = ee.List.sequence({start:1, end:clustNum});
 print(kvals);
 
 var clusterVar = clusterImage.addBands(composite)
-clusterVar = ee.ImageCollection(clusterVar)
 print(clusterVar)
 
-var variance = ee.List(kvals).map(function(cluster){
-  var variance = clusterVar.aggregate_total_var()
-  //var variance = clusterVar.reduce(ee.Reducer.variance());
+var test = composite.reduce(ee.Reducer.variance());
+print(test)
+Map.addLayer(test,{}, 'test')
+
+var test2 = clusterImage.addBands(test)
+
+var variance = test2.reduceRegion({
+  reducer: ee.Reducer.variance().group({
+    groupField:0,
+    groupName: 'kmeans'
+  }),
+  geometry: test2.geometry(),
+  scale: 30,
+  maxPixels: 1e13
+});
+print(variance)
+
+
+
+
+
+
+
+/*var variance = ee.List(kvals).map(function(cluster){
+  var variance = clusterVar.aggregate_total_var('bands')
   return variance;
 });
-print(variance);
+print(variance);*/
+
+/*var variance = kvals.map(function(kval){
+  var variance = composite.reduce(ee.Reducer.variance());
+  return variance;
+});
+print(variance);*/
+
+/*var variance = clusterVar.reduceToVectors({
+  reducer:ee.Reducer.variance(), 
+  scale:30, 
+  bestEffort:true, 
+  maxPixels:1e13, 
+});
+print(variance)*/
+
+
+
 
 
 
