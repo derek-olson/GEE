@@ -1,0 +1,138 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var topoAll = ee.Image("users/thinkbetween/SC_topoComposite_forTesting"),
+    LCMS = ee.Image("users/thinkbetween/SC_Landsat_SR_1984_2018_190_250_lcmsCONUS_mtbs"),
+    sa = /* color: #0b4a8b */ee.Geometry.Polygon(
+        [[[-113.104248046875, 43.492782808224995],
+          [-112.379150390625, 44.86365630540611],
+          [-114.246826171875, 45.79050946752472],
+          [-115.33447265625, 44.32384807250689]]]),
+    climPCA = ee.Image("users/thinkbetween/SC_climatePrincipalComponents_forTesting"),
+    chartGeom = /* color: #00ffff */ee.Geometry.Polygon(
+        [[[-114.5599365234375, 44.472991172602526],
+          [-113.8623046875, 44.4377021634654],
+          [-113.8568115234375, 44.735027899515465],
+          [-114.4720458984375, 44.742831723317565]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var bound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
+Map.addLayer(bound, {}, 'bound', false);
+
+//Set the number of clusters
+var clustNum = 10
+
+//Get datasets as assets
+var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
+var topo = topoAll.clip(sa).select([0,1,4,5,6]);
+var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
+ndvi = ndvi.clip(sa);
+
+//Add layers to map
+Map.addLayer(climate, {}, 'climate',false);
+Map.addLayer(topo, {}, 'topo',false);
+Map.addLayer(ndvi, {}, 'ndvi',false);
+
+//Create composite
+var composite = climate.addBands(topo).addBands(ndvi);
+print(composite);
+
+//Create training data
+var training = composite.sample({
+  scale: 30,
+  numPixels: 10000
+});
+
+//Create clusterer
+/*var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
+  .train({
+    features: training
+  });
+
+//Get kmeans clusters
+var clusterImage = composite.cluster(kmeans, 'kmeans');
+print(clusterImage);
+Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');*/
+
+//For each value of k and for each cluster get the variance
+var kvals = ee.List.sequence({start:1, end:clustNum});
+print(kvals);
+
+/*var compositeVariance = composite.reduce(ee.Reducer.variance());
+print(compositeVariance);
+Map.addLayer(compositeVariance,{}, 'compositeVariance', false);
+
+var KmeansVarianceComposite = clusterImage.addBands(compositeVariance);
+
+var clusterVariance = KmeansVarianceComposite.reduceRegion({
+  reducer: ee.Reducer.mean().unweighted().group({
+    groupField:0,
+    groupName: 'kmeans'
+  }),
+  geometry: clusterImage.geometry(),
+  scale: 30,
+  maxPixels: 1e13
+});
+print(clusterVariance);
+
+//Try to turn the dictionary into a list; may not be necessary
+var clustVarSum = clusterVariance.get('groups')
+print(clustVarSum)
+
+//Extract computed stat from nested list.
+function lookup_stat(list) {
+  var pixelstat = ee.Dictionary(list).get('mean');
+  return pixelstat;
+}
+
+var stat_list = ee.List(clustVarSum).map(lookup_stat);
+print('stat_list',stat_list);
+
+var varianceSum = stat_list.reduce(ee.Reducer.sum())
+print(varianceSum)
+*/
+
+
+var varianceSumList = kvals.map(function(kval){
+  //Create clusterer
+  var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
+    .train({
+     features: training
+    });
+  print(kmeans)
+  //Get kmeans clusters
+  var clusterImage = composite.cluster(kmeans, 'kmeans');
+  //print(clusterImage);
+
+  var compositeVariance = composite.reduce(ee.Reducer.variance());
+  //print(compositeVariance);
+
+  var KmeansVarianceComposite = clusterImage.addBands(compositeVariance);
+
+  var clusterVariance = KmeansVarianceComposite.reduceRegion({
+    reducer: ee.Reducer.mean().unweighted().group({
+      groupField:0,
+      groupName: 'kmeans'
+    }),
+    geometry: clusterImage.geometry(),
+    scale: 30,
+    maxPixels: 1e13
+  });
+  //print(clusterVariance);
+
+  //Try to turn the dictionary into a list; may not be necessary
+  var clustVarSum = clusterVariance.get('groups')
+  print(clustVarSum)
+
+  //Extract computed stat from nested list.
+  function lookup_stat(list) {
+    var pixelstat = ee.Dictionary(list).get('mean');
+    return pixelstat;
+  }
+
+  var stat_list = ee.List(clustVarSum).map(lookup_stat);
+  //print('stat_list',stat_list);
+
+  var varianceSum = stat_list.reduce(ee.Reducer.sum())
+  //print(varianceSum)
+  
+  return varianceSumList; 
+});
+
