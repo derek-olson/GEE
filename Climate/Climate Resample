@@ -1,13 +1,13 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
     imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1},
-    sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-108.731689453125, 41.9921602333763],
-          [-108.7701416015625, 44.48083027856261],
-          [-111.5771484375, 44.50434127765394],
-          [-111.5771484375, 42.0125705565935]]]),
-    precipAsset = ee.Image("users/thinkbetween/BT_prcpDownscale_20180713"),
-    minTempAsset = ee.Image("users/thinkbetween/BT_tempDownscale_20180713");
+    minTempAsset = ee.Image("users/thinkbetween/SC_minTempDownscale_20180709"),
+    precipAsset = ee.Image("users/thinkbetween/SC_precipDownscale_20180709"),
+    sa = /* color: #98ff00 */ee.Geometry.Polygon(
+        [[[-112.52197265625, 46.01985337287632],
+          [-116.136474609375, 45.9511496866914],
+          [-115.718994140625, 43.14909399920127],
+          [-112.049560546875, 43.50075243569041]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
 Map.addLayer(bt, {}, 'bt');
