@@ -68,12 +68,12 @@ print(kvals);
 
 var compositeVariance = composite.reduce(ee.Reducer.variance());
 print(compositeVariance)
-Map.addLayer(compositeVariance,{}, 'compositeVariance')
+Map.addLayer(compositeVariance,{}, 'compositeVariance', false)
 
 var KmeansVarianceComposite = clusterImage.addBands(compositeVariance)
 
 var clusterVariance = KmeansVarianceComposite.reduceRegion({
-  reducer: ee.Reducer.variance().group({
+  reducer: ee.Reducer.mean().unweighted().group({
     groupField:0,
     groupName: 'kmeans'
   }),
