@@ -34,10 +34,6 @@ Map.addLayer(ndvi, {}, 'ndvi',false);
 var composite = climate.addBands(topo).addBands(ndvi);
 print(composite);
 
-//Convert to array?
-/*var array = composite.toArray();
-print(array);*/
-
 //Create training data
 var training = composite.sample({
   scale: 30,
@@ -54,13 +50,6 @@ var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
 var clusterImage = composite.cluster(kmeans, 'kmeans');
 print(clusterImage);
 Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');
-
-/*var clustChart = ui.Chart.image.byClass({image: clusterImage, classBand: 'kmeans', region: chartGeom, classLabels: kmeans, xLabels: 'kmeans'});
-print(clustChart)*/
-/*function clusterData(img, clusterer, clusterRange){
-  
-  return img
-}*/
 
 //For each value of k and for each cluster get the variance
 var kvals = ee.List.sequence({start:1, end:clustNum});
@@ -83,34 +72,21 @@ var clusterVariance = KmeansVarianceComposite.reduceRegion({
 });
 print(clusterVariance);
 
+//Try to turn the dictionary into a list; may not be necessary
 var clustVarSum = clusterVariance.get('groups')
 print(clustVarSum)
 
+//Extract computed stat from nested list.
+function lookup_stat(list) {
+  var pixelstat = ee.Dictionary(list).get('mean');
+  return pixelstat;
+}
 
+var stat_list = ee.List(clustVarSum).map(lookup_stat);
+print('stat_list',stat_list);
 
-
-
-
-/*var variance = ee.List(kvals).map(function(cluster){
-  var variance = clusterVar.aggregate_total_var('bands')
-  return variance;
-});
-print(variance);*/
-
-/*var variance = kvals.map(function(kval){
-  var variance = composite.reduce(ee.Reducer.variance());
-  return variance;
-});
-print(variance);*/
-
-/*var variance = clusterVar.reduceToVectors({
-  reducer:ee.Reducer.variance(), 
-  scale:30, 
-  bestEffort:true, 
-  maxPixels:1e13, 
-});
-print(variance)*/
-
+var varianceSum = stat_list.reduce(ee.Reducer.sum())
+print(varianceSum)
 
 
 
