@@ -1,0 +1,52 @@
+// Load a collection of US counties with census data properties.
+var counties = ee.FeatureCollection('ft:1S4EB6319wWW2sWQDPhDvmSBIVrD3iEmCLYB7nMM');
+
+// Compute sums of the specified properties, grouped by state name.
+var sums = counties
+  .filter(ee.Filter.and(
+    ee.Filter.neq('Census 2000 Population', null),
+    ee.Filter.neq('Census 2000 Housing Units', null)))
+  .reduceColumns({
+    selectors: ['Census 2000 Population', 'Census 2000 Housing Units', 'StateName'],
+    reducer: ee.Reducer.sum().repeat(2).group({
+      groupField: 2,
+      groupName: 'state',
+    })
+});
+
+// Print the resultant Dictionary.
+print(sums);
+
+// Load a region representing the United States
+var region = ee.Feature(
+  ee.FeatureCollection('ft:1tdSwUL7MVpOauSgRzqVTOwdfy17KDbw-1d9omPw')
+  .filter(ee.Filter.eq('Country', 'United States'))
+  .first());
+
+// Load MODIS land cover categories in 2001.
+var landcover = ee.Image('MODIS/051/MCD12Q1/2001_01_01')
+  // Select the IGBP classification band.
+  .select('Land_Cover_Type_1');
+
+// Load nightlights image inputs.
+var nl2001 = ee.Image('NOAA/DMSP-OLS/NIGHTTIME_LIGHTS/F152001')
+  .select('stable_lights');
+var nl2012 = ee.Image('NOAA/DMSP-OLS/NIGHTTIME_LIGHTS/F182012')
+  .select('stable_lights');
+
+// Compute the nightlights decadal difference, add land cover codes.
+var nlDiff = nl2012.subtract(nl2001).addBands(landcover);
+
+// Grouped a mean reducer: change of nightlights by land cover category.
+var means = nlDiff.reduceRegion({
+  reducer: ee.Reducer.mean().group({
+    groupField: 1,
+    groupName: 'code',
+  }),
+  geometry: region.geometry(),
+  scale: 1000,
+  maxPixels: 1e8
+});
+
+// Print the resultant Dictionary.
+print(means);
