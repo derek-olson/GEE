@@ -80,7 +80,7 @@ var variance = test2.reduceRegion({
     groupField:0,
     groupName: 'kmeans'
   }),
-  geometry: test2.geometry(),
+  geometry: clusterImage.geometry(),
   scale: 30,
   maxPixels: 1e13
 });
