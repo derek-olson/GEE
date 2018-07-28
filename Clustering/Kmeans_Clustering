@@ -42,68 +42,21 @@ var training = composite.sample({
 print(training)
 
 //Create clusterer
-/*var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
+var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
   .train({
     features: training
-  });*/
+  });
 
 //Get kmeans clusters
-/*var clusterImage = composite.cluster(kmeans, 'kmeans');
+var clusterImage = composite.cluster(kmeans, 'kmeans');
 print(clusterImage);
-Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');*/
+Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');
 
 //For each value of k and for each cluster get the variance
 var kvals = ee.List.sequence({start:1, end:clustNum});
 print(kvals);
 
-var varianceSums = kvals.map(function(kval){
-  //Create clusterer
-  var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
-    .train({
-      features: training
-    });
-  print(kmeans)
-  //Get kmeans clusters
-  var clusterImage = composite.cluster(kmeans, 'kmeans');
-  //print(clusterImage)
-  
-  //Compute variance
-  var compositeVariance = composite.reduce(ee.Reducer.variance());
-  
-  //Composite kmeans and variance images
-  var KmeansVarianceComposite = clusterImage.addBands(compositeVariance);
-  
-  //Get the average variance by cluster
-  var clusterVariance = KmeansVarianceComposite.reduceRegion({
-    reducer: ee.Reducer.mean().unweighted().group({
-      groupField:0,
-      groupName: 'kmeans'
-    }),
-    geometry: clusterImage.geometry(),
-    scale: 30,
-    maxPixels: 1e13
-  });
-
-  //Try to turn the dictionary into a list; may not be necessary
-  var clustVarSum = clusterVariance.get('groups')
-
-  //Extract computed stat from nested list.
-  function lookup_stat(list) {
-    var pixelstat = ee.Dictionary(list).get('mean');
-    return pixelstat;
-  };
-  
-  //Apply the function to get the nested list
-  var stat_list = ee.List(clustVarSum).map(lookup_stat);
-  
-  //Get the sum of all variances
-  var varianceSum = stat_list.reduce(ee.Reducer.sum());
-  
-  return varianceSums;
-});
-print(varianceSums)
-
-/*var compositeVariance = composite.reduce(ee.Reducer.variance());
+var compositeVariance = composite.reduce(ee.Reducer.variance());
 print(compositeVariance);
 Map.addLayer(compositeVariance,{}, 'compositeVariance', false);
 
@@ -134,7 +87,7 @@ var stat_list = ee.List(clustVarSum).map(lookup_stat);
 print('stat_list',stat_list);
 
 var varianceSum = stat_list.reduce(ee.Reducer.sum())
-print(varianceSum)*/
+print(varianceSum)
 
 
 
