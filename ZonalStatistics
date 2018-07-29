@@ -4,7 +4,8 @@ var naipFactor = 30
 
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
   .filterDate(ee.Date.fromYMD(naipYear,1,1), ee.Date.fromYMD(naipYear,12,31))
-  .filterBounds(sa)
+  .filterBounds(sa);
+naip = naip.reduceResolution(ee.Reducer.mean(),true,1024);
 
 //Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
