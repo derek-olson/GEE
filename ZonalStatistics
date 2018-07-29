@@ -38,8 +38,8 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
 
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
-  reducer: ee.Reducer.mean().combine({
-    reducer2: ee.Reducer.stdDev(),
+  reducer: ee.Reducer.mean().group({groupField:0 , groupName:'zstatfid'}).combine({
+    reducer2: ee.Reducer.stdDev().group({groupField:0 , groupName:'zstatfid'}),
     sharedInputs: true}),
   geometry: segments.geometry(),
   scale: 30,
