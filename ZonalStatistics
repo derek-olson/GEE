@@ -39,7 +39,8 @@ function addNEDTopography(){
   var hill_2 = ee.Terrain.hillshade(elevation,150).rename('hill_2');
   var hill_3 = ee.Terrain.hillshade(elevation,270).rename('hill_3');
   // Add topography bands to image
-  topo = topo.select('elevation','slope','aspect')
+  topo = topo.select('elevation','slope')
+    .addBands(aspectSin).addBands(aspectCos)
     .addBands(aspect_8).addBands(hill_1).addBands(hill_2).addBands(hill_3);
   topo = topo.int16();
   return topo;
