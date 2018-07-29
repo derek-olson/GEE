@@ -36,12 +36,12 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
 //Add segments to map
 //Map.addLayer(segments, {}, 'segments');
 
-//Calculate zonal statistics
+//Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
   reducer: ee.Reducer.mean().combine({
     reducer2: ee.Reducer.stdDev(),
     sharedInputs: true}),
-  geometry: region.geometry(),
+  geometry: segments.geometry(),
   scale: 30,
   maxPixels: 1e8
 });
