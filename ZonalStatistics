@@ -45,8 +45,7 @@ function addNEDTopography(){
 //Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
 var topo = topoAll.clip(sa).select([0,1,4,5,6]);
-var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
-ndvi = ndvi.clip(sa);
+var landsat = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
 
 //Create composite
 var composite = climate.addBands(topo).addBands(landsat);
