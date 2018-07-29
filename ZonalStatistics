@@ -2,12 +2,9 @@
 var naipYear = 2015
 var naipFactor = 30
 
-var year = ee.Date.fromYMD(naipYear);
-print(year);
-
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
-  .filterDate()
-  .filterBounds
+  .filterDate(ee.Date.fromYMD(naipYear,1,1), ee.Date.fromYMD(naipYear,12,31))
+  .filterBounds(sa)
 
 //Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
