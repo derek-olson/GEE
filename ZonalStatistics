@@ -51,5 +51,6 @@ var rf = ee.Classifier.randomForest({
     inputProperties: composite, 
     subsampling: 1,
     subsamplingSeed: 0
-  });
+  })
+  .confusionMatrix();
   
