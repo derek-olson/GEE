@@ -53,3 +53,4 @@ var rf = ee.Classifier.randomForest({
   })
   .confusionMatrix();
   
+var prediction = composite.classify(rf, 'randomForestClassificatiion');
