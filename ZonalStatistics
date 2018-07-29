@@ -30,9 +30,9 @@ function addNEDTopography(){
   var topo = ee.Algorithms.Terrain(elevation);
   // Add 8-direction aspect
   var aspect = topo.select('aspect');
-  aspect = aspect.multiply(Math.PI).divide(180)
-  var aspectSin = aspect.sin()
-  var aspectCos = aspect.cos()
+  var aspectRad = aspect.multiply(Math.PI).divide(180)
+  var aspectSin = aspectRad.sin()
+  var aspectCos = aspectRad.cos()
   var aspect_8 = (aspect.multiply(8).divide(360)).add(1).floor().uint8().rename('aspect_8');
   // Add 3 equally-spaced sun azimuth hillshades
   var hill_1 = ee.Terrain.hillshade(elevation,30).rename('hill_1');
