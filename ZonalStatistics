@@ -30,6 +30,9 @@ function addNEDTopography(){
   var topo = ee.Algorithms.Terrain(elevation);
   // Add 8-direction aspect
   var aspect = topo.select('aspect');
+  aspect = aspect.multiply(Math.PI).divide(180)
+  var aspectSin = aspect.sin()
+  var aspectCos = aspect.cos()
   var aspect_8 = (aspect.multiply(8).divide(360)).add(1).floor().uint8().rename('aspect_8');
   // Add 3 equally-spaced sun azimuth hillshades
   var hill_1 = ee.Terrain.hillshade(elevation,30).rename('hill_1');
@@ -87,6 +90,21 @@ var zstats = nlDiff.reduceRegions({
 // Print the resultant Dictionary.
 //print(zstats);
 
+//Sample the training image at 1000 points to get the training & testing data
+var trainingTesting = trainingImage.sample({
+  region: l5filtered.first().geometry(), 
+  scale: 30, 
+  numPixels: 1000
+});
+
+//Randomly split the data into 60% for training, and 40% for testing
+trainingTesting = trainingTesting.randomColumn('random',484789);
+var training = trainingTesting
+  .filter(ee.Filter.lt('random', 0.6));
+var testing = trainingTesting
+  .filter(ee.Filter.gte('random', 0.6));
+
+//Create randomForest classifier  
 var rf = ee.Classifier.randomForest({
   numberOfTrees: 1000,
   variablesPerSplit: 0,
