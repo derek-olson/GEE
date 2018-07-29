@@ -1,0 +1,27 @@
+//Load reference data
+var ref = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
+
+//Create segments
+var segments = ee.Algorithms.Image.Segmentation.GMeans({
+  image: composite, 
+  numIterations: 10, 
+  pValue: 50, 
+  neighborhoodSize: 0, 
+  gridSize: null,
+  uniqueLabels: true
+});
+
+
+// Calculate zonal statistics
+var means = nlDiff.reduceRegions({
+  reducer: ee.Reducer.mean().group({
+    groupField: 1,
+    groupName: 'code',
+  }),
+  geometry: region.geometry(),
+  scale: 30,
+  maxPixels: 1e8
+});
+
+// Print the resultant Dictionary.
+print(means);
