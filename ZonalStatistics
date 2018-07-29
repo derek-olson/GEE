@@ -1,3 +1,13 @@
+//Get datasets as assets
+var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
+var topo = topoAll.clip(sa).select([0,1,4,5,6]);
+var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
+ndvi = ndvi.clip(sa);
+
+//Create composite
+var composite = climate.addBands(topo).addBands(ndvi);
+print(composite);
+
 //Load reference data
 var ref = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
 
@@ -12,7 +22,7 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
 });
 
 
-// Calculate zonal statistics
+//Calculate zonal statistics
 var means = nlDiff.reduceRegions({
   reducer: ee.Reducer.mean().group({
     groupField: 1,
