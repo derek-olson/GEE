@@ -1,3 +1,14 @@
+//Get NAIP
+var naipYear = 2015
+var naipFactor = 30
+
+var year = ee.Date.fromYMD(naipYear);
+print(year);
+
+var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
+  .filterDate()
+  .filterBounds
+
 //Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
 var topo = topoAll.clip(sa).select([0,1,4,5,6]);
@@ -6,16 +17,16 @@ ndvi = ndvi.clip(sa);
 
 //Create composite
 var composite = climate.addBands(topo).addBands(ndvi);
-print(composite);
+//print(composite);
 
 //Add the composite image to the map
-Map.addLayer(composite, {}, 'composite');
+//Map.addLayer(composite, {}, 'composite');
 
 //Load reference data
 var ref = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
 
 //Add refereence data to the map
-Map.addLayer(ref, {}, 'referenceData');
+//Map.addLayer(ref, {}, 'referenceData');
 
 //Create segments
 var segments = ee.Algorithms.Image.Segmentation.GMeans({
@@ -28,7 +39,7 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
 });
 
 //Add segments to map
-Map.addLayer(segments, {}, 'segments');
+//Map.addLayer(segments, {}, 'segments');
 
 //Calculate zonal statistics
 var zstats = nlDiff.reduceRegions({
@@ -42,7 +53,7 @@ var zstats = nlDiff.reduceRegions({
 });
 
 // Print the resultant Dictionary.
-print(zstats);
+//print(zstats);
 
 var rf = ee.Classifier.randomForest({
   numberOfTrees: 1000,
