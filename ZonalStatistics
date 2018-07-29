@@ -1,4 +1,4 @@
-//Get datasets as assets
+//Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
 var topo = topoAll.clip(sa).select([0,1,4,5,6]);
 var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
@@ -8,8 +8,14 @@ ndvi = ndvi.clip(sa);
 var composite = climate.addBands(topo).addBands(ndvi);
 print(composite);
 
+//Add the composite image to the map
+Map.addLayer(composite, {}, 'composite');
+
 //Load reference data
 var ref = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
+
+//Add refereence data to the map
+Map.addLayer(ref, {}, 'referenceData');
 
 //Create segments
 var segments = ee.Algorithms.Image.Segmentation.GMeans({
@@ -20,6 +26,9 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
   gridSize: null,
   uniqueLabels: true
 });
+
+//Add segments to map
+Map.addLayer(segments, {}, 'segments');
 
 //Calculate zonal statistics
 var zstats = nlDiff.reduceRegions({
