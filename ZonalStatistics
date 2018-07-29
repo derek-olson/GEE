@@ -1,3 +1,10 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-114.1259765625, 39.605688178320804],
+          [-114.14794921875, 36.94989178681327],
+          [-110.32470703125, 36.89719446989036],
+          [-110.54443359375, 39.639537564366684]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Get NAIP 
 var naipYear = 2015
 var naipFactor = 30
