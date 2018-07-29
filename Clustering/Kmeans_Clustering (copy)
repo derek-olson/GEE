@@ -92,7 +92,7 @@ print(varianceSum)
 
 var varianceSumList = kvals.map(function(kval){
   //Create clusterer
-  var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
+  var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
     .train({
      features: training
     });
