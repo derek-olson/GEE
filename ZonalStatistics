@@ -1,11 +1,14 @@
-//Get NAIP
+//Get NAIP 
 var naipYear = 2015
 var naipFactor = 30
+var crs = "EPSG:26912"
 
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
   .filterDate(ee.Date.fromYMD(naipYear,1,1), ee.Date.fromYMD(naipYear,12,31))
   .filterBounds(sa);
 naip = naip.reduceResolution(ee.Reducer.mean(),true,1024);
+var naip_proj = ee.Image(naip.first()).projection();
+var naip_mosaic = naip.mosaic().reproject(naip_proj);
 
 //Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
