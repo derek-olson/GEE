@@ -45,6 +45,7 @@ function addNEDTopography(){
   topo = topo.int16();
   return topo;
 };
+print(topo);
 
 //Get datasets 
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
