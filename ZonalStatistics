@@ -21,7 +21,6 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
   uniqueLabels: true
 });
 
-
 //Calculate zonal statistics
 var means = nlDiff.reduceRegions({
   reducer: ee.Reducer.mean().group({
