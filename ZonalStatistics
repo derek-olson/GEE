@@ -49,7 +49,7 @@ var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
 ndvi = ndvi.clip(sa);
 
 //Create composite
-var composite = climate.addBands(topo).addBands(ndvi);
+var composite = climate.addBands(topo).addBands(landsat);
 //print(composite);
 
 //Add the composite image to the map
