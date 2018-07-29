@@ -5,7 +5,7 @@ var sa = /* color: #d63000 */ee.Geometry.Polygon(
           [-110.32470703125, 36.89719446989036],
           [-110.54443359375, 39.639537564366684]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-//Get datasets 
+//Set up the data
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
 var topo = topoAll.clip(sa).select([0,1,4,5,6]);
 var landsat = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
