@@ -37,11 +37,10 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
 //Map.addLayer(segments, {}, 'segments');
 
 //Calculate zonal statistics
-var zstats = nlDiff.reduceRegions({
-  reducer: ee.Reducer.mean().group({
-    groupField: 1,
-    groupName: 'code',
-  }),
+var zstats = composite.reduceRegions({
+  reducer: ee.Reducer.mean().combine({
+    reducer2: ee.Reducer.stdDev(),
+    sharedInputs: true}),
   geometry: region.geometry(),
   scale: 30,
   maxPixels: 1e8
