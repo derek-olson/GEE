@@ -5,8 +5,8 @@ var sa = /* color: #d63000 */ee.Geometry.Polygon(
           [-108.21533203125, 43.75522505306928],
           [-111.708984375, 43.88205730390537]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
-Map.addLayer(bt, {}, 'bt');
+var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
+Map.addLayer(bound, {}, 'bound');
 
 var resolution = 30
 var projection = 'EPSG:26912'
@@ -40,4 +40,4 @@ function addNEDTopography(){
 };
 
 
-Export.image.toDrive({image: topo, description: 'topoComposite', region: sa, scale: resolution, crs: projection,  maxPixels: 1e13})
+Export.image.toDrive({image: topo, description: 'topoComposite', region: bound, scale: resolution, crs: projection,  maxPixels: 1e13})
