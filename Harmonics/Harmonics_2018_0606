@@ -31,9 +31,9 @@ This script accomplishes several tasks:
 // STEP 0: Define user inputs:
 
 // 1. Specify study area: Study area
-var kaibab = ee.FeatureCollection('ft:1iw0b_8kGvCQE-41GkqVHfETop_m6kbxYjTeLmC0T', 'geometry');
+var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
 
-var studyArea = sa;
+var studyArea = bound;
 // Map.centerObject(studyArea, 6);
 
 // 2. Choose one dependent and number of harmonics (i.e. cycles per year). Options for dependents are:
