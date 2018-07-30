@@ -22,7 +22,7 @@ var composite = climate.addBands(topo).addBands(landsat);
 //Map.addLayer(composite, {}, 'composite');
 
 //Load reference data
-var ref = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
+var ref = ee.FeatureCollection('ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD');
 
 //Add refereence data to the map
 //Map.addLayer(ref, {}, 'referenceData');
