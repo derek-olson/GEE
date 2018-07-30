@@ -15,7 +15,7 @@ var landsat = landsatComposite.clip(bound).select([0,1,2,3,4,5,6,11,12,13]);
 var harmonics = harmonics_full.clip(bound);
 
 //Create composite
-var composite = climate.addBands(topo).addBands(landsat).addBands(harmonics);
+var composite = topo.addBands(landsat).addBands(harmonics);
 print(composite);
 
 //Add the composite image to the map
@@ -32,13 +32,13 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
   image: composite, 
   numIterations: 10, 
   pValue: 50, 
-  neighborhoodSize: 0, 
+  neighborhoodSize: 100, 
   gridSize: null,
   uniqueLabels: true
 });
-
+print(segments)
 //Add segments to map
-//Map.addLayer(segments, {}, 'segments');
+Map.addLayer(segments.randomVisualizer(), {}, 'segments');
 /*
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
