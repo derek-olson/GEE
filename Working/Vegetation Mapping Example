@@ -39,7 +39,7 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
 
 //Add segments to map
 //Map.addLayer(segments, {}, 'segments');
-
+/*
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
   reducer: ee.Reducer.mean().group({groupField:0 , groupName:'zstatfid'}).combine({
@@ -86,4 +86,4 @@ var rf = ee.Classifier.randomForest({
   })
   .confusionMatrix();
   
-var prediction = composite.classify(rf, 'randomForestClassificatiion');
+var prediction = composite.classify(rf, 'randomForestClassificatiion');*/
