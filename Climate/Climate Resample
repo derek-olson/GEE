@@ -1,16 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
-    imageVisParam = {"opacity":1,"bands":["sum"],"min":-3.8157239084991375,"max":-2.0639113836278398,"gamma":1},
-    minTempAsset = ee.Image("users/thinkbetween/SC_minTempDownscale_20180709"),
-    precipAsset = ee.Image("users/thinkbetween/SC_precipDownscale_20180709"),
-    sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-112.52197265625, 46.01985337287632],
-          [-116.136474609375, 45.9511496866914],
-          [-115.718994140625, 43.14909399920127],
-          [-112.049560546875, 43.50075243569041]]]);
+    minTempAsset = ee.Image("users/thinkbetween/Dixie_MinTemp"),
+    precipAsset = ee.Image("users/thinkbetween/Dixie_Precip");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
-Map.addLayer(bt, {}, 'bt');
+var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
+Map.addLayer(bound, {}, 'bound');
 
 //////////////////////////////////////////////////////////////////////////
 //Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
@@ -117,7 +111,7 @@ function downscaler(independents, dependent, sa,kernel,scale,crs){
   
   //Apply model
   var predicted = independentStack.multiply(fit).reduce(ee.Reducer.sum());
-  Map.addLayer(predicted,imageVisParam,'oversampled');
+  Map.addLayer(predicted,{},'oversampled');
 
 exportToDriveWrapper(predicted,exportTempName,sa,scale,crs);
 exportToDriveWrapper(predicted,exportPrecipName,sa,scale,crs);
@@ -155,7 +149,7 @@ exportToDriveWrapper(predicted,exportPrecipName,sa,scale,crs);
   
 }
 
-downscaler(inds, tempIn, sa,kern ,scale,crs)
+downscaler(inds, prcpIn, bound,kern ,scale,crs)
 
 //////////////////////////////////////////////////////////////////////////////////////
 //Function to annualize
@@ -196,7 +190,7 @@ function exportToDriveWrapper(imageForExport,fileName,roi,scale,crs){
 var image = minTempAsset.addBands(precipAsset)//.select(['b2', 'b3', 'b4', 'b5', 'b6', 'b7']);
 
 // Display the input imagery and the region in which to do the PCA.
-var region = sa//image.geometry();
+var region = bound//image.geometry();
 //Map.centerObject(region, 10);
 //Map.addLayer(ee.Image().paint(region, 0, 2), {}, 'Region');
 //Map.addLayer(image, {bands: ['b7', 'b5', 'b4'], min: 0, max: 20000}, 'Original Image');
@@ -209,7 +203,7 @@ var bandNames = image.bandNames();
 // and an SD stretch of the principal components.
 var meanDict = image.reduceRegion({
     reducer: ee.Reducer.mean(),
-    geometry: sa,
+    geometry: bound,
     scale: scale,
     maxPixels: 1e9
 });
@@ -288,8 +282,8 @@ function setNull(img, nodataValue){
   return img
 }
 
-var outImg = pcImage.clip(sa)
+var outImg = pcImage.clip(bound)
 
 setNull(outImg, -32768)
 
-exportToDriveWrapper(pcImage,exportPCName,sa,scale,crs);
+exportToDriveWrapper(pcImage,exportPCName,bound,scale,crs);
