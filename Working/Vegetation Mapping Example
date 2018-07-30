@@ -1,31 +1,31 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-114.1259765625, 39.605688178320804],
-          [-114.14794921875, 36.94989178681327],
-          [-110.32470703125, 36.89719446989036],
-          [-110.54443359375, 39.639537564366684]]]);
+var topoAll = ee.Image("users/thinkbetween/Dixie_topo"),
+    harmonics_full = ee.Image("users/thinkbetween/Dixie_Harmonics"),
+    landsatComposite = ee.Image("users/thinkbetween/Dixie_Composite"),
+    climPCA = ee.Image("users/thinkbetween/Dixie_Climate_PCA");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Add the mapping boundary
 var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
-Map.addLayer(bound, {}, 'boundary')
+Map.addLayer(bound, {}, 'boundary');
 
 //Set up the data
-var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
-var topo = topoAll.clip(sa).select([0,1,4,5,6]);
-var landsat = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
+var climate = climPCA.clip(bound).select([0]).multiply(10000).int16();
+var topo = topoAll.clip(bound);
+var landsat = landsatComposite.clip(bound).select([0,1,2,3,4,5,6,11,12,13]);
+var harmonics = harmonics_full.clip(bound);
 
 //Create composite
-var composite = climate.addBands(topo).addBands(landsat);
-//print(composite);
+var composite = climate.addBands(topo).addBands(landsat).addBands(harmonics);
+print(composite);
 
 //Add the composite image to the map
-//Map.addLayer(composite, {}, 'composite');
+Map.addLayer(composite, {}, 'composite', false);
 
 //Load reference data
 var ref = ee.FeatureCollection('ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD');
 
 //Add refereence data to the map
-//Map.addLayer(ref, {}, 'referenceData');
+Map.addLayer(ref, {}, 'referenceData', false);
 
 //Create segments
 var segments = ee.Algorithms.Image.Segmentation.GMeans({
