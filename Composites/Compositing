@@ -16,15 +16,15 @@ This script accomplishes several tasks:
 *///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
-Map.addLayer(bt, {}, 'bt');
+var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
+Map.addLayer(bound, {}, 'bound');
 
 // STEP 0: Define user inputs:
 // 1. Specify study area: Study area
 // Can provide a fusion table  or asset table (must add .geometry() after it, 
 // or draw a polygon and make StudyRegion = drawnPolygon
 // Also need to specify a crs naip_factor number (http://spatialreference.org)
-var StudyRegion = sa;
+var StudyRegion = bound;
 var crs = 'EPSG:26912';
 // 2. Update the startJulian and endJulian variables to indicate your seasonal constraints. 
 // This supports wrapping for tropics and southern hemisphere.
@@ -124,8 +124,8 @@ var endDate = ee.Date.fromYMD(endYear,1,1).advance(endJulian-1,'day');
 print('Start and end dates:',startDate,endDate);
 
 // STEP 1: Load study region 
-var studyArea = StudyRegion;
-var region = studyArea.bounds(1000).getInfo().coordinates[0];
+var studyArea = bound;
+var region = bound//studyArea.bounds(1000).getInfo().coordinates[0];
 
 /////////////////////////////////////////////////////////////////////////////////
 // STEP 3: Get Landsat 5,8,7 Image Collections
