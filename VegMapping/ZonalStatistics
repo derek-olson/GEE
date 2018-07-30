@@ -1,3 +1,7 @@
+//Add the mapping boundary
+var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
+Map.addLayer(bound, {}, 'boundary')
+
 //Load reference data
 var ref = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W');
 
