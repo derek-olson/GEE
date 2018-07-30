@@ -3,7 +3,7 @@ var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
     minTempAsset = ee.Image("users/thinkbetween/Dixie_MinTemp"),
     precipAsset = ee.Image("users/thinkbetween/Dixie_Precip");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
-var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
+var bound = ee.FeatureCollection('ft:1a8hq6X4cv_OMkx4QKYYsWpbPR_to6sDsJRVESCQW', 'geometry');
 Map.addLayer(bound, {}, 'bound');
 
 //////////////////////////////////////////////////////////////////////////
