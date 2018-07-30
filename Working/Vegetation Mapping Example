@@ -31,7 +31,7 @@ Map.addLayer(ref, {}, 'referenceData', false);
 var segments = ee.Algorithms.Image.Segmentation.GMeans({
   image: composite, 
   numIterations: 10, 
-  pValue: 50, 
+  pValue: 5, 
   neighborhoodSize: 100, 
   gridSize: null,
   uniqueLabels: true
