@@ -1,10 +1,3 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-111.55517578125, 42.58544425738491],
-          [-108.39111328125, 42.342305278572816],
-          [-108.21533203125, 43.75522505306928],
-          [-111.708984375, 43.88205730390537]]]);
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
 var bound = ee.FeatureCollection('ft:1a8hq6X4cv_OMkx4QKYYsWpbPR_to6sDsJRVESCQW', 'geometry');
 Map.addLayer(bound, {}, 'bound');
 
