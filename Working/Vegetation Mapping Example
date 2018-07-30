@@ -36,14 +36,14 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
   gridSize: null,
   uniqueLabels: true
 });
-print(segments)
+print('segments:', segments)
 //Add segments to map
 Map.addLayer(segments.randomVisualizer(), {}, 'segments');
-/*
+
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
-  reducer: ee.Reducer.mean().group({groupField:0 , groupName:'zstatfid'}).combine({
-    reducer2: ee.Reducer.stdDev().group({groupField:0 , groupName:'zstatfid'}),
+  reducer: ee.Reducer.mean().group({groupField:3 , groupName:'clusters'}).combine({
+    reducer2: ee.Reducer.stdDev().group({groupField:3 , groupName:'clusters'}),
     sharedInputs: true}),
   geometry: segments.geometry(),
   scale: 30,
@@ -54,7 +54,7 @@ var zstats = composite.reduceRegions({
 //print(zstats);
 
 //Sample the training image at 1000 points to get the training & testing data
-var trainingTesting = trainingImage.sample({
+/*var trainingTesting = trainingImage.sample({
   region: l5filtered.first().geometry(), 
   scale: 30, 
   numPixels: 1000
