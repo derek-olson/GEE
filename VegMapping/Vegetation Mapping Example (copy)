@@ -35,7 +35,7 @@ var bandList = composite.bandNames()//.length()
 
 /*var outZonalStats = bandList.map(function(band){
   var tempComposite = segSNICComposite.select([0, band]);
-  print('tempComposite:', tempComposite);
+  //print('tempComposite:', tempComposite);
   var zstats = tempComposite.reduceRegion({
     reducer: ee.Reducer.mean().unweighted().group({groupField:0, groupName:'clusters'}),
     scale: 30,
@@ -82,6 +82,12 @@ var training = trainingTesting
 var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
+var training = composite.sampleRegions({
+  collection: ref, 
+  properties: null, 
+  scale:30, 
+  projection: null, 
+  tileScale: 1});
 
 //Create randomForest classifier  
 var rf = ee.Classifier.randomForest({
@@ -94,7 +100,7 @@ var rf = ee.Classifier.randomForest({
   })
   .setOutputMode('CLASSIFICATION')
   .train({
-    features: ref,
+    features: training,
     classProperty:'L1',
     inputProperties: bandList, 
     subsampling: 1,
