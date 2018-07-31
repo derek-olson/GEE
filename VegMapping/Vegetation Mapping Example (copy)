@@ -88,6 +88,8 @@ var training = composite.sampleRegions({
   scale:30, 
   projection: null, 
   tileScale: 1});
+  
+print('training:', training)
 
 //Create randomForest classifier  
 var rf = ee.Classifier.randomForest({
