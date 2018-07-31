@@ -72,15 +72,15 @@ var segSNICComposite = segmentsSNIC.addBands(composite)
 });*/
 
 var bandList = composite.bandNames().length()
-bandList = ee.List.sequence(0,bandList).getInfo()
+bandList = ee.List.sequence(1,bandList).getInfo()
 print('band list:', bandList)
 
 
 var outZonalStats = bandList.map(function(band){
-  var tempComposite = segSNICComposite.select([0, band])
-  print('tempComposite:', tempComposite)
-  var zstats = segSNICComposite.reduceRegion({
-    reducer: ee.Reducer.mean().group({groupField:0, groupName:'clusters'}),
+  var tempComposite = segSNICComposite.select([0, band]);
+  print('tempComposite:', tempComposite);
+  var zstats = tempComposite.reduceRegion({
+    reducer: ee.Reducer.mean().unweighted().group({groupField:0, groupName:'clusters'}),
     scale: 30,
   geometry:segSNICComposite.geometry(),
   maxPixels: 1e13
