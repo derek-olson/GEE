@@ -27,51 +27,7 @@ var ref = ee.FeatureCollection('ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD');
 //Add refereence data to the map
 Map.addLayer(ref, {}, 'referenceData', false);
 
-//Create segments using gmeans
-var segmentsGMEANS = ee.Algorithms.Image.Segmentation.GMeans({
-  image: composite, 
-  numIterations: 10, 
-  pValue: 5, 
-  neighborhoodSize: 100, 
-  gridSize: null,
-  uniqueLabels: true
-});
-print('segmentsGMEANS:', segmentsGMEANS);
-
-//Add segments to map
-Map.addLayer(segmentsGMEANS.randomVisualizer(), {}, 'GMEANS', false);
-
-//Create composite with segments as first band
-var segGmeansComposite = segmentsGMEANS.addBands(composite)
-
-//Create segments using SNIC
-var segmentsSNIC = ee.Algorithms.Image.Segmentation.SNIC({
-  image: composite, 
-  size:5, 
-  compactness: 1, 
-  connectivity: 8, 
-  neighborhoodSize: null, 
-  seeds:null})
-
-print('segmentsSNIC:', segmentsSNIC);
-
-//Add segments to map
-Map.addLayer(segmentsSNIC.randomVisualizer(), {}, 'SNIC', false);
-
-//Create composite with segments as first band
-var segSNICComposite = segmentsSNIC.addBands(composite)
-
-//Calculate zonal statistics - does this need to be mapped????
-/*var zstats = composite.reduceRegions({
-  collection: segmentsSNIC.geometry(),
-  reducer: ee.Reducer.mean().group({groupField:0, groupName:'clusters'}).combine({
-    reducer2: ee.Reducer.stdDev().group({groupField:0, groupName:'clusters'}),
-    sharedInputs: true}),
-  scale: 30,
-  
-});*/
-
-var bandList = composite.bandNames().length()
+/*var bandList = composite.bandNames().length()
 bandList = ee.List.sequence(1,bandList).getInfo()
 print('band list:', bandList)
 
@@ -89,18 +45,31 @@ var outZonalStats = bandList.map(function(band){
   return zstats;
 
 });
-print('zonal stats:', outZonalStats)
+print('zonal stats:', outZonalStats)*/
 
-//Calculate zonal statistics - does this need to be mapped????
-/*var zstats = segSNICComposite.reduceRegion({
-  reducer: ee.Reducer.mean().group({groupField:0, groupName:'clusters'}),
-  scale: 30,
-  geometry:segSNICComposite.geometry(),
-  maxPixels: 1e13
-});
+// Run SNIC on the regular square grid.
+var snic = ee.Algorithms.Image.Segmentation.SNIC({
+  image: composite, 
+  size: 32,
+  compactness: 5,
+  connectivity: 8,
+  neighborhoodSize:256,
+  seeds: seeds
+}).select(["R_mean", "G_mean", "B_mean", "N_mean", "clusters"], ["R", "G", "B", "N", "clusters"])
 
-// Print the resultant Dictionary.
-print('zonal Stats:', zstats);*/
+var clusters = snic.select("clusters")
+Map.addLayer(clusters.randomVisualizer(), {}, "clusters")
+Map.addLayer(snic, {bands: ["R", "G", "B"], min:0, max:1, gamma: 0.8}, "means", false)
+
+// Build and train a classifer using the seed points.
+/*var points2 = snic.select(bands).addBands(cdl2016).updateMask(seeds).sample(geometry, 5)
+var classifier2 = ee.Classifier.randomForest(10).train(points2, "cropland")
+Map.addLayer(snic.classify(classifier2), {min:0, max:254, palette: palette}, "Classified clusters", false)
+Map.addLayer(expandSeeds(seeds), {palette: "white"}, "seeds")*/
+
+// Compute per-cluster stdDev.
+var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
+Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev")
 
 //Sample the training image at 1000 points to get the training & testing data
 /*var trainingTesting = trainingImage.sample({
