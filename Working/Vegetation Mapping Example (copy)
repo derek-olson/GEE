@@ -59,11 +59,11 @@ print('segmentsSNIC:', segmentsSNIC);
 Map.addLayer(segmentsSNIC.randomVisualizer(), {}, 'SNIC', false);
 
 //Create composite with segments as first band
-var segGmeansComposite = 
+var segSNICComposite = segmentsSNIC.addBands(composite)
 
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
-  collection: segments.geometry(),
+  collection: segmentsSNIC.geometry(),
   reducer: ee.Reducer.mean().combine({
     reducer2: ee.Reducer.stdDev(),
     sharedInputs: true}),
