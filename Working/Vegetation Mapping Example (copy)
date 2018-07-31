@@ -71,10 +71,21 @@ var segSNICComposite = segmentsSNIC.addBands(composite)
   
 });*/
 
-var bandList = segSNICComposite.bandNames()
+var bandList = composite.bandNames()
 print('band list:', bandList)
 
-var outZonalStats = 
+var outZonalStats = bandList.map(function(band){
+  var zstats = segSNICComposite.reduceRegion({
+  reducer: ee.Reducer.mean().group({groupField:band, groupName:'clusters'}),
+  scale: 30,
+  geometry:segSNICComposite.geometry(),
+  maxPixels: 1e13
+});
+
+return outZonalStats;
+
+});
+
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = segSNICComposite.reduceRegion({
   reducer: ee.Reducer.mean().group({groupField:0, groupName:'clusters'}),
