@@ -40,55 +40,9 @@ var training = composite.sample({
   numPixels: 10000
 });
 
-//Create clusterer
-/*var kmeans = ee.Clusterer.wekaKMeans({nClusters: clustNum})
-  .train({
-    features: training
-  });
-
-//Get kmeans clusters
-var clusterImage = composite.cluster(kmeans, 'kmeans');
-print(clusterImage);
-Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');*/
-
 //For each value of k and for each cluster get the variance
 var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
 print(kvals);
-
-/*var compositeVariance = composite.reduce(ee.Reducer.variance());
-print(compositeVariance);
-Map.addLayer(compositeVariance,{}, 'compositeVariance', false);
-
-var KmeansVarianceComposite = clusterImage.addBands(compositeVariance);
-
-var clusterVariance = KmeansVarianceComposite.reduceRegion({
-  reducer: ee.Reducer.mean().unweighted().group({
-    groupField:0,
-    groupName: 'kmeans'
-  }),
-  geometry: clusterImage.geometry(),
-  scale: 30,
-  maxPixels: 1e13
-});
-print(clusterVariance);
-
-//Try to turn the dictionary into a list; may not be necessary
-var clustVarSum = clusterVariance.get('groups')
-print(clustVarSum)
-
-//Extract computed stat from nested list.
-function lookup_stat(list) {
-  var pixelstat = ee.Dictionary(list).get('mean');
-  return pixelstat;
-}
-
-var stat_list = ee.List(clustVarSum).map(lookup_stat);
-print('stat_list',stat_list);
-
-var varianceSum = stat_list.reduce(ee.Reducer.sum())
-print(varianceSum)
-*/
-
 
 var varianceSumList = kvals.map(function(kval){
   //print(kval)
@@ -137,4 +91,5 @@ var varianceSumList = kvals.map(function(kval){
   return varianceSum; 
 });
 
-print(varianceSumList)
+print(varianceSumList);
+
