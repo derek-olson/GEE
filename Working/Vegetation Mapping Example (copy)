@@ -27,8 +27,8 @@ var ref = ee.FeatureCollection('ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD');
 //Add refereence data to the map
 Map.addLayer(ref, {}, 'referenceData', false);
 
-//Create segments
-var segments = ee.Algorithms.Image.Segmentation.GMeans({
+//Create segments using gmeans
+var segmentsGMEANS = ee.Algorithms.Image.Segmentation.GMeans({
   image: composite, 
   numIterations: 10, 
   pValue: 5, 
@@ -36,9 +36,30 @@ var segments = ee.Algorithms.Image.Segmentation.GMeans({
   gridSize: null,
   uniqueLabels: true
 });
-print('segments:', segments)
+print('segmentsGMEANS:', segmentsGMEANS);
+
 //Add segments to map
-Map.addLayer(segments.randomVisualizer(), {}, 'segments');
+Map.addLayer(segmentsGMEANS.randomVisualizer(), {}, 'GMEANS', false);
+
+//Create composite with segments as first band
+var segGmeansComposite = segmentsGMEANS.addBands(composite)
+
+//Create segments using SNIC
+var segmentsSNIC = ee.Algorithms.Image.Segmentation.SNIC({
+  image: composite, 
+  size:5, 
+  compactness: 1, 
+  connectivity: 8, 
+  neighborhoodSize: null, 
+  seeds:null})
+
+print('segmentsSNIC:', segmentsSNIC);
+
+//Add segments to map
+Map.addLayer(segmentsSNIC.randomVisualizer(), {}, 'SNIC', false);
+
+//Create composite with segments as first band
+var segGmeansComposite = 
 
 //Calculate zonal statistics - does this need to be mapped????
 var zstats = composite.reduceRegions({
