@@ -23,6 +23,7 @@ Map.addLayer(composite, {}, 'composite', false);
 
 //Load reference data
 var ref = ee.FeatureCollection('ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD');
+print('ref:', ref);
 
 //Add refereence data to the map
 Map.addLayer(ref, {}, 'referenceData', false);
@@ -60,7 +61,12 @@ print('snic:', snic);
 
 var clusters = snic.select("clusters")
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters")
-//Map.addLayer(snic, {bands: ["R", "G", "B"], min:0, max:1, gamma: 0.8}, "means", false)
+
+// Compute per-cluster stdDev.
+var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
+print('stdDev:', stdDev)
+Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev")
+
 
 // Build and train a classifer using the seed points.
 /*var points2 = snic.select(bands).addBands(cdl2016).updateMask(seeds).sample(geometry, 5)
@@ -68,17 +74,6 @@ var classifier2 = ee.Classifier.randomForest(10).train(points2, "cropland")
 Map.addLayer(snic.classify(classifier2), {min:0, max:254, palette: palette}, "Classified clusters", false)
 Map.addLayer(expandSeeds(seeds), {palette: "white"}, "seeds")*/
 
-// Compute per-cluster stdDev.
-var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
-print('stdDev:', stdDev)
-Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev")
-
-//Sample the training image at 1000 points to get the training & testing data
-/*var trainingTesting = trainingImage.sample({
-  region: l5filtered.first().geometry(), 
-  scale: 30, 
-  numPixels: 1000
-});
 
 //Randomly split the data into 60% for training, and 40% for testing
 trainingTesting = trainingTesting.randomColumn('random',484789);
@@ -106,4 +101,4 @@ var rf = ee.Classifier.randomForest({
   })
   .confusionMatrix();
   
-var prediction = composite.classify(rf, 'randomForestClassificatiion');*/
+var prediction = composite.classify(rf, 'randomForestClassificatiion');
