@@ -51,10 +51,10 @@ print('zonal stats:', outZonalStats)*/
 // Run SNIC on the regular square grid.
 var snic = ee.Algorithms.Image.Segmentation.SNIC({
   image: composite, 
-  size: 32,
-  compactness: 5,
+  size: 5,
+  compactness: 20,
   connectivity: 8,
-  neighborhoodSize:256,
+  neighborhoodSize:250,
   seeds: null
 });
 print('snic:', snic);
@@ -76,11 +76,11 @@ Map.addLayer(expandSeeds(seeds), {palette: "white"}, "seeds")*/
 
 
 //Randomly split the data into 60% for training, and 40% for testing
-trainingTesting = trainingTesting.randomColumn('random',484789);
+/*trainingTesting = trainingTesting.randomColumn('random',484789);
 var training = trainingTesting
   .filter(ee.Filter.lt('random', 0.6));
 var testing = trainingTesting
-  .filter(ee.Filter.gte('random', 0.6));
+  .filter(ee.Filter.gte('random', 0.6));*/
 
 //Create randomForest classifier  
 var rf = ee.Classifier.randomForest({
@@ -94,7 +94,7 @@ var rf = ee.Classifier.randomForest({
   .setOutputMode('CLASSIFICATION')
   .train({
     features: ref,
-    classProperty:'levelx',
+    classProperty:'L1',
     inputProperties: composite, 
     subsampling: 1,
     subsamplingSeed: 0
@@ -102,3 +102,4 @@ var rf = ee.Classifier.randomForest({
   .confusionMatrix();
   
 var prediction = composite.classify(rf, 'randomForestClassificatiion');
+print('prediction:', prediction)
