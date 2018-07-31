@@ -28,12 +28,12 @@ print('ref:', ref);
 //Add refereence data to the map
 Map.addLayer(ref, {}, 'referenceData', false);
 
-/*var bandList = composite.bandNames().length()
-bandList = ee.List.sequence(1,bandList).getInfo()
-print('band list:', bandList)
+var bandList = composite.bandNames()//.length()
+//bandList = ee.List.sequence(1,bandList).getInfo()
+//print('band list:', bandList)
 
 
-var outZonalStats = bandList.map(function(band){
+/*var outZonalStats = bandList.map(function(band){
   var tempComposite = segSNICComposite.select([0, band]);
   print('tempComposite:', tempComposite);
   var zstats = tempComposite.reduceRegion({
@@ -82,6 +82,7 @@ var training = trainingTesting
 var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
+
 //Create randomForest classifier  
 var rf = ee.Classifier.randomForest({
   numberOfTrees: 1000,
@@ -95,7 +96,7 @@ var rf = ee.Classifier.randomForest({
   .train({
     features: ref,
     classProperty:'L1',
-    inputProperties: composite, 
+    inputProperties: bandList, 
     subsampling: 1,
     subsamplingSeed: 0
   })
