@@ -72,13 +72,13 @@ var segSNICComposite = segmentsSNIC.addBands(composite)
 });*/
 
 var bandList = composite.bandNames().length()
-bandList = ee.List.sequence(0,bandList)
+bandList = ee.List.sequence(0,bandList).getInfo()
 print('band list:', bandList)
 
 
 var outZonalStats = bandList.map(function(band){
   var tempComposite = segSNICComposite.select([0, band])
-  
+  print('tempComposite:', tempComposite)
   var zstats = segSNICComposite.reduceRegion({
     reducer: ee.Reducer.mean().group({groupField:0, groupName:'clusters'}),
     scale: 30,
@@ -89,10 +89,10 @@ var outZonalStats = bandList.map(function(band){
   return zstats;
 
 });
-print(outZonalStats)
+print('zonal stats:', outZonalStats)
 
 //Calculate zonal statistics - does this need to be mapped????
-var zstats = segSNICComposite.reduceRegion({
+/*var zstats = segSNICComposite.reduceRegion({
   reducer: ee.Reducer.mean().group({groupField:0, groupName:'clusters'}),
   scale: 30,
   geometry:segSNICComposite.geometry(),
@@ -100,7 +100,7 @@ var zstats = segSNICComposite.reduceRegion({
 });
 
 // Print the resultant Dictionary.
-print('zonal Stats:', zstats);
+print('zonal Stats:', zstats);*/
 
 //Sample the training image at 1000 points to get the training & testing data
 /*var trainingTesting = trainingImage.sample({
