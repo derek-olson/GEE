@@ -52,7 +52,7 @@ print(clusterImage);
 Map.addLayer(clusterImage.randomVisualizer(),{}, 'clusterImage');*/
 
 //For each value of k and for each cluster get the variance
-var kvals = ee.List.sequence({start:1, end:clustNum})//.getInfo();
+var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
 print(kvals);
 
 /*var compositeVariance = composite.reduce(ee.Reducer.variance());
@@ -134,6 +134,7 @@ var varianceSumList = kvals.map(function(kval){
   var varianceSum = stat_list.reduce(ee.Reducer.sum())
   //print(varianceSum)
   
-  return varianceSumList; 
+  return varianceSum; 
 });
 
+print(varianceSumList)
