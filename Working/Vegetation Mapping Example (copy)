@@ -54,12 +54,13 @@ var snic = ee.Algorithms.Image.Segmentation.SNIC({
   compactness: 5,
   connectivity: 8,
   neighborhoodSize:256,
-  seeds: seeds
-}).select(["R_mean", "G_mean", "B_mean", "N_mean", "clusters"], ["R", "G", "B", "N", "clusters"])
+  seeds: null
+});
+print('snic:', snic);
 
 var clusters = snic.select("clusters")
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters")
-Map.addLayer(snic, {bands: ["R", "G", "B"], min:0, max:1, gamma: 0.8}, "means", false)
+//Map.addLayer(snic, {bands: ["R", "G", "B"], min:0, max:1, gamma: 0.8}, "means", false)
 
 // Build and train a classifer using the seed points.
 /*var points2 = snic.select(bands).addBands(cdl2016).updateMask(seeds).sample(geometry, 5)
@@ -69,6 +70,7 @@ Map.addLayer(expandSeeds(seeds), {palette: "white"}, "seeds")*/
 
 // Compute per-cluster stdDev.
 var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
+print('stdDev:', stdDev)
 Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev")
 
 //Sample the training image at 1000 points to get the training & testing data
