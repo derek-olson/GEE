@@ -17,7 +17,7 @@ var yearEnd = 2017
 var exportTempName = 'minTempDownscale'
 var exportPrecipName = 'precipDownscale'
 var exportPCName = 'climatePrincipalComponents'
-var kern = ee.Kernel.square(20.5, 'pixels', false);
+var kern = ee.Kernel.square(6.5, 'pixels', false);
 
 // Create a list of weights for a 7x7 kernel.
 /*var list = [ 0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25];
