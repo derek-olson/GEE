@@ -2,7 +2,9 @@
 var topoAll = ee.Image("users/thinkbetween/Dixie_topo"),
     harmonics_full = ee.Image("users/thinkbetween/Dixie_Harmonics"),
     landsatComposite = ee.Image("users/thinkbetween/Dixie_Composite"),
-    climPCA = ee.Image("users/thinkbetween/Dixie_Climate_PCA");
+    climPCA = ee.Image("users/thinkbetween/Dixie_Climate_PCA"),
+    ref2 = ee.FeatureCollection("ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD"),
+    ref = ee.FeatureCollection("users/thinkbetween/Dixie_Field_Ref_Data_Final_2015_10_30");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Add the mapping boundary
 var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
@@ -22,11 +24,12 @@ print('composite:', composite);
 Map.addLayer(composite, {}, 'composite', false);
 
 //Load reference data
-var ref = ee.FeatureCollection('ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD');
-print('ref:', ref);
+print('ref:', ref2);
+var testRef = ref2.propertyNames()
+print('test:', testRef)
 
 //Add refereence data to the map
-Map.addLayer(ref, {}, 'referenceData', false);
+Map.addLayer(ref2, {}, 'referenceData', false);
 
 var bandList = composite.bandNames()//.length()
 //bandList = ee.List.sequence(1,bandList).getInfo()
@@ -83,8 +86,8 @@ var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
 var training = composite.sampleRegions({
-  collection: ref, 
-  properties: ee.List(['L1']), 
+  collection: ref2, 
+  properties: ['L1'], 
   scale:30, 
   projection: null, 
   tileScale: 1});
