@@ -17,7 +17,18 @@ var yearEnd = 2017
 var exportTempName = 'minTempDownscale'
 var exportPrecipName = 'precipDownscale'
 var exportPCName = 'climatePrincipalComponents'
-var kern = ee.Kernel.square(6.5, 'pixels', false);
+//var kern = ee.Kernel.square(6.5, 'pixels', false);
+
+// Create a list of weights for a 7x7 kernel.
+var list = [ 0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25];
+// The center of the kernel is zero.
+var centerList = [0.25, 0.5, 0.75, 0, 0.75, 0.5, 0.25];
+// Assemble a list of lists: the 7x7 kernel weights as a 2-D matrix.
+var lists = [list, list, list, centerList, list, list, list];
+// Create the kernel from the weights.
+var kern = ee.Kernel.fixed(7, 7, lists, -3, -3, false);
+print(kern); 
+
 //////////////////////////////////////////////
 //exportToDriveWrapper(out,exportTempName,region,sa,30,crs);
 //exportToDriveWrapper(predicted,exportPrecipName,sa,region,30,crs);
