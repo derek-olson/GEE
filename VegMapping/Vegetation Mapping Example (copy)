@@ -4,7 +4,8 @@ var topoAll = ee.Image("users/thinkbetween/Dixie_topo"),
     landsatComposite = ee.Image("users/thinkbetween/Dixie_Composite"),
     climPCA = ee.Image("users/thinkbetween/Dixie_Climate_PCA"),
     ref2 = ee.FeatureCollection("ft:1icfdEpQQ6rSYk2G63bAkueANuiX6fmQ_7OqKTaqD"),
-    ref = ee.FeatureCollection("users/thinkbetween/Dixie_Field_Ref_Data_Final_2015_10_30");
+    ref1 = ee.FeatureCollection("users/thinkbetween/Dixie_Field_Ref_Data_Final_2015_10_30"),
+    ref = ee.FeatureCollection("users/thinkbetween/Reference_Data");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Add the mapping boundary
 var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
@@ -24,8 +25,8 @@ print('composite:', composite);
 Map.addLayer(composite, {}, 'composite', false);
 
 //Load reference data
-print('ref:', ref2);
-var testRef = ref2.propertyNames()
+print('ref:', ref1);
+var testRef = ref1.propertyNames()
 print('test:', testRef)
 
 //Add refereence data to the map
