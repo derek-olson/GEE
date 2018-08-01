@@ -40,8 +40,31 @@ var training = composite.sample({
   numPixels: 10000
 });
 
+var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
+  .train({
+    features: training
+  });
+//print(kmeans)
+//Get kmeans clusters
+var clusterImage = composite.cluster(kmeansTest, 'kmeans');
+//print(clusterImage);
+
+var kmeansComposite = clusterImage.addBands(composite)
+print('kmeansComposite:', kmeansComposite)
+
+//Get the variance for each band
+var bandVar = composite.map(function(band){
+  var tempComposite = kmeansComposite.select([0, band]);
+  var bandReducer = tempComposite.select([band]).reduceRegion({
+    reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
+    maxPixels: 1e13
+  })
+  return bandReducer;
+});
+print('band variance:', bandVar)
+
 //For each value of k and for each cluster get the variance
-var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
+/*var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
 print(kvals);
 
 var varianceSumList = kvals.map(function(kval){
@@ -91,5 +114,5 @@ var varianceSumList = kvals.map(function(kval){
   return varianceSum; 
 });
 
-print(varianceSumList);
+print(varianceSumList);*/
 
