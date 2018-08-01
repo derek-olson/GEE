@@ -65,7 +65,7 @@ Map.addLayer(clusters.randomVisualizer(), {}, "clusters")
 // Compute per-cluster stdDev.
 var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
 print('stdDev:', stdDev)
-Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev")
+Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false)
 
 
 // Build and train a classifer using the seed points.
@@ -84,7 +84,7 @@ var testing = trainingTesting
 
 var training = composite.sampleRegions({
   collection: ref, 
-  properties: null, 
+  properties: ee.List(['L1']), 
   scale:30, 
   projection: null, 
   tileScale: 1});
