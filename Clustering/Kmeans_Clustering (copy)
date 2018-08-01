@@ -52,10 +52,15 @@ var clusterImage = composite.cluster(kmeansTest, 'kmeans');
 var kmeansComposite = clusterImage.addBands(composite)
 print('kmeansComposite:', kmeansComposite)
 
+var bands = composite.bandNames().getInfo()
+print('bands:', bands)
+
 //Get the variance for each band
-var bandVar = composite.map(function(band){
+var bandVar = bands.map(function(band){
+  print('band:', band)
   var tempComposite = kmeansComposite.select([0, band]);
-  var bandReducer = tempComposite.select([band]).reduceRegion({
+  print('tempComposite:', tempComposite)
+  var bandReducer = tempComposite.reduceRegion({
     reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
     maxPixels: 1e13
   })
