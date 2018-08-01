@@ -75,7 +75,7 @@ function lookup_stat(list){
 }
 
 var stat_list = ee.List(bandVar).map(lookup_stat);
-  //print('stat_list',stat_list);
+print('stat_list',stat_list);
 
 
 //For each value of k and for each cluster get the variance
