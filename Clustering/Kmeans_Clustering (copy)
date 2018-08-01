@@ -49,30 +49,76 @@ var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
 var clusterImage = composite.cluster(kmeansTest, 'kmeans');
 //print(clusterImage);
 
-var kmeansComposite = clusterImage.addBands(composite)
-print('kmeansComposite:', kmeansComposite)
+var kmeansComposite = clusterImage.addBands(composite);
+print('kmeansComposite:', kmeansComposite);
 
 var bands = composite.bandNames().getInfo()
-print('bands:', bands)
+print('bands:', bands);
 
 //Get the variance for each band
 var bandVar = bands.map(function(band){
-  print('band:', band)
+  print('band:', band);
   var tempComposite = kmeansComposite.select([0, band]);
-  print('tempComposite:', tempComposite)
+  print('tempComposite:', tempComposite);
   var bandReducer = tempComposite.reduceRegion({
     reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
     maxPixels: 1e13
-  })
+  });
   return bandReducer;
 });
-print('band variance:', bandVar)
+print('band variance:', bandVar);
+
+  //Extract computed stat from nested list.
+function lookup_stat(list){
+  var pixelstat = ee.Dictionary(list).get('variance');
+  return pixelstat;
+}
+
+var stat_list = ee.List(bandVar).map(lookup_stat);
+  //print('stat_list',stat_list);
+
 
 //For each value of k and for each cluster get the variance
 /*var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
 print(kvals);
 
 var varianceSumList = kvals.map(function(kval){
+  var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
+  .train({
+    features: training
+  });
+  
+  var clusterImage = composite.cluster(kmeans, 'kmeans');
+  
+  var kmeansComposite = clusterImage.addBands(composite);
+  
+  var bands = composite.bandNames();
+
+  //Get the variance for each band
+  var bandVar = bands.map(function(band){
+    
+    var tempComposite = kmeansComposite.select([0, band]);
+    
+    var bandReducer = tempComposite.reduceRegion({
+      reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
+      maxPixels: 1e13
+    });
+    return bandReducer;
+  });
+  
+  var averageVar = t
+
+});*/
+
+
+
+
+
+
+
+
+
+/*var varianceSumList = kvals.map(function(kval){
   //print(kval)
   //Create clusterer
   var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
@@ -119,5 +165,6 @@ var varianceSumList = kvals.map(function(kval){
   return varianceSum; 
 });
 
-print(varianceSumList);*/
+print(varianceSumList);
 
+*/
