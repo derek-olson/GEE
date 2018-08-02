@@ -21,7 +21,7 @@ var composite = topo.addBands(landsat).addBands(harmonics);
 print('composite:', composite);
 
 //Get a list of the predictor bands
-var bandList = composite.bandNames();//.length()
+var bandList = composite.bandNames().getInfo();//.length()
 //bandList = ee.List.sequence(1,bandList).getInfo()
 //print('band list:', bandList)
 
@@ -33,13 +33,17 @@ var scaledComposite = bandList.map(function(band){
     geometry: composite,
     scale: 30
   });
+  print('min:', min);
   var step1 = inBand.subtract(min);
+  print('step1:', step1)
   var max = inBand.reduceRegion({
     reducer: ee.Reducer.max(),
     geometry: composite,
     scale: 30
   });
+  print('max:', max);
   var step2 = max.subtract(min);
+  print('step2:', step2)
   var scaledBand = step1.divide(step2);
   return scaledBand;
 });
