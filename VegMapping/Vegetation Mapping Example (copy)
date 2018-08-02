@@ -8,7 +8,7 @@ var topoAll = ee.Image("users/thinkbetween/Dixie_topo"),
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Add the mapping boundary
 var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
-Map.addLayer(bound, {}, 'boundary');
+Map.addLayer(bound, {}, 'boundary', false);
 
 //Set up the data
 var climate = climPCA.clip(bound).select([0]).multiply(10000).int16();
@@ -18,7 +18,7 @@ var harmonics = harmonics_full.clip(bound);
 
 //Create composite
 var composite = topo.addBands(landsat).addBands(harmonics);
-print('composite:', composite);
+//print('composite:', composite);
 
 //Add the composite image to the map
 Map.addLayer(composite, {}, 'composite', false);
@@ -41,11 +41,11 @@ var scaledImageList = bandList.map(function(band){
     maxPixels: 1e13
   });
   min = min.get(band);
-  print('min:', min);
+  //print('min:', min);
   
   //Create a constant raster with the min value
   var minBand = ee.Image.constant(min);
-  print('minBand:', minBand)
+  //print('minBand:', minBand)
   //Find the max value
   var max = inBand.reduceRegion({
     reducer: ee.Reducer.max(),
@@ -54,11 +54,11 @@ var scaledImageList = bandList.map(function(band){
     maxPixels: 1e13
   });
   max = max.get(band);
-  print('max:', max);
+  //print('max:', max);
   
   //Create a constant raster with the max value
   var maxBand = ee.Image.constant(max);
-  print('maxBand:', maxBand)
+  //print('maxBand:', maxBand)
   var numerator = inBand.subtract(minBand);
   var denominator = maxBand.subtract(minBand);
   var scaledBands = numerator.divide(denominator);
@@ -71,7 +71,7 @@ var scaledImageList = bandList.map(function(band){
 var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
 scaledImage = scaledImage.clip(bound)
-print('scaledImage:', scaledImage);
+//print('scaledImage:', scaledImage);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Helper function to convert image collection into stack of image bands
