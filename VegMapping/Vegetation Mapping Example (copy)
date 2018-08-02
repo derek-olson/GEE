@@ -25,12 +25,15 @@ var bandList = composite.bandNames();//.length()
 //print('band list:', bandList)
 
 var scaledComposite = bandList.map(function(band){
-  var step1 = composite.select(band).subtract(composite.select(band).reduce(ee.Reducer.min()));
-  var step2 = composite.select(band).reduce(ee.Reducer.max()).subtract(composite.select(band).reduce(ee.Reducer.min()));
+  var inBand = composite.select(band);
+  var min = inBand.reduce(ee.Reducer.min());
+  var step1 = inBand.subtract(min);
+  var max = inBand.reduce(ee.Reducer.max());
+  var step2 = max.subtract(min);
   var scaledBand = step1.divide(step2);
   return scaledBand;
 });
-print('scaled:', scaledBand)
+print('scaled:', scaledComposite);
 print('composite:', composite);
 
 //Add the composite image to the map
