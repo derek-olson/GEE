@@ -18,23 +18,32 @@ var harmonics = harmonics_full.clip(bound);
 
 //Create composite
 var composite = topo.addBands(landsat).addBands(harmonics);
+print('composite:', composite);
 
 //Get a list of the predictor bands
 var bandList = composite.bandNames();//.length()
 //bandList = ee.List.sequence(1,bandList).getInfo()
 //print('band list:', bandList)
 
+//rescale the composite for segmentation
 var scaledComposite = bandList.map(function(band){
   var inBand = composite.select(band);
-  var min = inBand.reduce(ee.Reducer.min());
+  var min = inBand.reduceRegion({
+    reducer: ee.Reducer.min(),
+    geometry: composite,
+    scale: 30
+  });
   var step1 = inBand.subtract(min);
-  var max = inBand.reduce(ee.Reducer.max());
+  var max = inBand.reduceRegion({
+    reducer: ee.Reducer.max(),
+    geometry: composite,
+    scale: 30
+  });
   var step2 = max.subtract(min);
   var scaledBand = step1.divide(step2);
   return scaledBand;
 });
 print('scaled:', scaledComposite);
-print('composite:', composite);
 
 //Add the composite image to the map
 Map.addLayer(composite, {}, 'composite', false);
