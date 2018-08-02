@@ -1,10 +1,3 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #98ff00 */ee.Geometry.Polygon(
-        [[[-115.47454833984375, 47.46523622438362],
-          [-115.389404296875, 47.46337939935778],
-          [-115.38665771484375, 47.51349065484327],
-          [-115.47454833984375, 47.51349065484327]]]);
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
 /////////////////////////////////////////////////////
 //Get NAIP data
 /////////////////////////////////////////////////////
@@ -20,12 +13,12 @@ var region = bound
 
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
   .filterDate(ee.Date.fromYMD(naip_year,1,1),ee.Date.fromYMD(naip_year,12,31))
-  .filterBounds(sa);
+  .filterBounds(bound);
 var naip_proj = ee.Image(naip.first()).projection();
 var naip_mosaic = naip.mosaic().reproject(naip_proj);
 naip_mosaic = naip_mosaic.reduceResolution(ee.Reducer.mean(),true,1024);
 var naip_name = outputName + '_NAIP_' + naip_factor + 'm';
-exportToDriveWrapper(naip_mosaic,naip_name,sa,region,naip_factor,crs);
+exportToDriveWrapper(naip_mosaic,naip_name,bound,region,naip_factor,crs);
 
 Map.addLayer(naip,{},'NAIP',false);
 
