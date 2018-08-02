@@ -20,13 +20,16 @@ var harmonics = harmonics_full.clip(bound);
 var composite = topo.addBands(landsat).addBands(harmonics);
 print('composite:', composite);
 
+//Add the composite image to the map
+Map.addLayer(composite, {}, 'composite', false);
+
 //Get a list of the predictor bands
 var bandList = composite.bandNames().getInfo();//.length()
 //bandList = ee.List.sequence(1,bandList).getInfo()
 //print('band list:', bandList)
 
 //rescale the composite for segmentation
-var scaledImage = bandList.map(function(band){
+var scaledImageList = bandList.map(function(band){
   //Get each band
   var inBand = composite.select(band);
   
@@ -61,10 +64,11 @@ var scaledImage = bandList.map(function(band){
   
   return scaledBands;
 });
-print('scaledImage:', scaledImage);
+print('scaledImage:', scaledImageList);
+
 
 //Add the composite image to the map
-Map.addLayer(composite, {}, 'composite', false);
+Map.addLayer(scaledImage, {}, 'scaledImage', false);
 
 //Remap reference data
 var refPoints = ref.remap(['WA','veg'], [0,1], 'L1')
@@ -75,7 +79,7 @@ Map.addLayer(refPoints, {}, 'referenceData', false);
 
 //Run SNIC on the regular square grid
 var snic = ee.Algorithms.Image.Segmentation.SNIC({
-  image: composite, 
+  image: scaledImage, 
   size: 25,
   compactness: 20,
   connectivity: 8,
