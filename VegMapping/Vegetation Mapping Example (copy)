@@ -69,7 +69,7 @@ var scaledImageList = bandList.map(function(band){
 //Get the list of images to a single multiband image
 var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
-print('scaledImageL:', scaledImage);
+print('scaledImage:', scaledImage);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Helper function to convert image collection into stack of image bands
