@@ -1,0 +1,23 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var naip = ee.Image("users/thinkbetween/Dixie_NAIP_10m");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//Create seeds
+var seeds = ee.Algorithms.Image.Segmentation.seedGrid(12);
+
+//Run SNIC on the regular square grid
+var snic = ee.Algorithms.Image.Segmentation.SNIC({
+  image: naip, 
+  size: 3,
+  compactness: 0,
+  connectivity: 8,
+  neighborhoodSize:150,
+  seeds: seeds
+});
+print('snic:', snic);
+
+//Add the segments to the map
+var crs = 'EPSG:26912';
+var scale = 30;
+var clusters = snic.select("clusters").reproject(crs, null, scale);
+//print('clusters:', clusters);
+Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
