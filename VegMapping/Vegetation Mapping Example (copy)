@@ -26,7 +26,7 @@ var bandList = composite.bandNames().getInfo();//.length()
 //print('band list:', bandList)
 
 //rescale the composite for segmentation
-var scaledComposite = bandList.map(function(band){
+var scaledImage = bandList.map(function(band){
   //Get each band
   var inBand = composite.select(band);
   
@@ -37,10 +37,12 @@ var scaledComposite = bandList.map(function(band){
     scale: 30,
     maxPixels: 1e13
   });
-  print('min:', min);
+  min = min.get(band)
+  //print('min:', min);
   
   //Create a constant raster with the min value
   var minBand = ee.Image.constant(min);
+  //print('minBand:', minBand)
   //Find the max value
   var max = inBand.reduceRegion({
     reducer: ee.Reducer.max(),
@@ -48,17 +50,18 @@ var scaledComposite = bandList.map(function(band){
     scale: 30,
     maxPixels: 1e13
   });
-  print('max:', max);
+  max = max.get(band)
+  //print('max:', max);
   
   //Create a constant raster with the max value
   var maxBand = ee.Image.constant(max);
-  
+  //print('maxBand:', maxBand)
   var scaledBands = inBand.subtract(minBand);
   scaledBands = scaledBands.divide(maxBand.subtract(minBand));
   
   return scaledBands;
 });
-print('scaled:', scaledComposite);
+print('scaledImage:', scaledImage);
 
 //Add the composite image to the map
 Map.addLayer(composite, {}, 'composite', false);
