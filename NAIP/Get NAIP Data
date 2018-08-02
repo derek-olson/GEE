@@ -8,11 +8,15 @@ var sa = /* color: #98ff00 */ee.Geometry.Polygon(
 /////////////////////////////////////////////////////
 //Get NAIP data
 /////////////////////////////////////////////////////
+//Add the mapping boundary
+var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
+Map.addLayer(bound, {}, 'boundary', false);
+
 var naip_year = 2015;
 var crs = "EPSG:26912"
 var naip_factor = 10
-var outputName = 'MT'
-var region = sa
+var outputName = 'Dixie'
+var region = bound
 
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
   .filterDate(ee.Date.fromYMD(naip_year,1,1),ee.Date.fromYMD(naip_year,12,31))
