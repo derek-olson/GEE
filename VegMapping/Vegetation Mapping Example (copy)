@@ -40,7 +40,7 @@ var scaledImageList = bandList.map(function(band){
     scale: 30,
     maxPixels: 1e13
   });
-  min = min.get(band)
+  min = min.get(band);
   //print('min:', min);
   
   //Create a constant raster with the min value
@@ -53,7 +53,7 @@ var scaledImageList = bandList.map(function(band){
     scale: 30,
     maxPixels: 1e13
   });
-  max = max.get(band)
+  max = max.get(band);
   //print('max:', max);
   
   //Create a constant raster with the max value
@@ -64,14 +64,29 @@ var scaledImageList = bandList.map(function(band){
   
   return scaledBands;
 });
-print('scaledImage:', scaledImageList);
+//print('scaledImageList:', scaledImageList);
 
+//Get the list of images to a single multiband image
+var scaledImage = ee.ImageCollection(scaledImageList);
+scaledImage = newCollectionToImage(scaledImage);
+print('scaledImageL:', scaledImage);
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to convert image collection into stack of image bands
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
 
 //Add the composite image to the map
 Map.addLayer(scaledImage, {}, 'scaledImage', false);
 
 //Remap reference data
-var refPoints = ref.remap(['WA','veg'], [0,1], 'L1')
+var refPoints = ref.remap(['WA','veg'], [0,1], 'L1');
 print('refPoints:', refPoints);
 
 //Add refereence data to the map
@@ -90,15 +105,15 @@ var snic = ee.Algorithms.Image.Segmentation.SNIC({
 
 //Add the segments to the map
 var crs = 'EPSG:26912';
-var scale = 30
-var clusters = snic.select("clusters").reproject(crs, null, scale)
-print('clusters:', clusters)
-Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false)
+var scale = 30;
+var clusters = snic.select("clusters").reproject(crs, null, scale);
+print('clusters:', clusters);
+Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
 
 //Compute per-cluster stdDev
-var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
+var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256);
 //print('stdDev:', stdDev)
-Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false)
+Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false);
 
 //Randomly split the data into 60% for training, and 40% for testing
 /*trainingTesting = trainingTesting.randomColumn('random',484789);
@@ -115,7 +130,7 @@ var training = composite.sampleRegions({
   projection: null, 
   tileScale: 1});
   
-print('training:', training)
+print('training:', training);
 
 //Create randomForest classifier  
 var rf = ee.Classifier.randomForest({
@@ -137,4 +152,4 @@ var rf = ee.Classifier.randomForest({
 
 //Predict across the composite  
 var prediction = composite.classify(rf, 'randomForestClassificatiion');
-print('prediction:', prediction)
+print('prediction:', prediction);
