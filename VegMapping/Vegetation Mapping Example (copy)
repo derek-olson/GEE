@@ -81,6 +81,7 @@ function newCollectionToImage(collection){
   stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
   return stack;
 }
+////////////////////////////////////////////////////////////////////////////////
 
 //Add the composite image to the map
 Map.addLayer(scaledImage, {}, 'scaledImage', false);
