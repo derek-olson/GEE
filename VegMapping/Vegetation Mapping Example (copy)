@@ -4,7 +4,8 @@ var topoAll = ee.Image("users/thinkbetween/Dixie_topo"),
     landsatComposite = ee.Image("users/thinkbetween/Dixie_Composite"),
     climPCA = ee.Image("users/thinkbetween/Dixie_Climate_PCA"),
     ref1 = ee.FeatureCollection("users/thinkbetween/Dixie_Field_Ref_Data_Final_2015_10_30"),
-    ref = ee.FeatureCollection("users/thinkbetween/Reference_Data");
+    ref = ee.FeatureCollection("users/thinkbetween/Reference_Data"),
+    naip = ee.Image("users/thinkbetween/Dixie_NAIP_10m");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Add the mapping boundary
 var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
@@ -113,7 +114,7 @@ print('snic:', snic);
 var crs = 'EPSG:26912';
 var scale = 30;
 var clusters = snic.select("clusters").reproject(crs, null, scale);
-print('clusters:', clusters);
+//print('clusters:', clusters);
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
 
 //Compute per-cluster stdDev
@@ -127,6 +128,9 @@ var training = trainingTesting
   .filter(ee.Filter.lt('random', 0.6));
 var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
+
+//Create training data
+
 
 //Create training data
 var training = composite.sampleRegions({
