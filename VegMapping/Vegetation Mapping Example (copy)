@@ -25,17 +25,17 @@ Map.addLayer(composite, {}, 'composite', false);
 
 //Remap reference data
 var refPoints = ref.remap(['WA','veg'], [0,1], 'L1')
-
-print('ref:', refPoints);
+print('refPoints:', refPoints);
 
 //Add refereence data to the map
-Map.addLayer(ref, {}, 'referenceData', false);
+Map.addLayer(refPoints, {}, 'referenceData', false);
 
+//Get a list of the predictor bands
 var bandList = composite.bandNames()//.length()
 //bandList = ee.List.sequence(1,bandList).getInfo()
 //print('band list:', bandList)
 
-//Run SNIC on the regular square grid.
+//Run SNIC on the regular square grid
 var snic = ee.Algorithms.Image.Segmentation.SNIC({
   image: composite, 
   size: 5,
@@ -46,10 +46,11 @@ var snic = ee.Algorithms.Image.Segmentation.SNIC({
 });
 //print('snic:', snic);
 
+//Add the segments to the map
 var clusters = snic.select("clusters")
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false)
 
-// Compute per-cluster stdDev.
+//Compute per-cluster stdDev
 var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
 //print('stdDev:', stdDev)
 Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false)
@@ -61,6 +62,7 @@ var training = trainingTesting
 var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
+//Create training data
 var training = composite.sampleRegions({
   collection: refPoints, 
   properties: ['L1'], 
@@ -88,6 +90,7 @@ var rf = ee.Classifier.randomForest({
     subsamplingSeed: 0
   })
   .confusionMatrix();
-  
+
+//Predict across the composite  
 var prediction = composite.classify(rf, 'randomForestClassificatiion');
 print('prediction:', prediction)
