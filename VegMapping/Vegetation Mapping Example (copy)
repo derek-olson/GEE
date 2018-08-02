@@ -19,15 +19,14 @@ var harmonics = harmonics_full.clip(bound);
 
 //Create composite
 var composite = topo.addBands(landsat).addBands(harmonics);
-print('composite:', composite);
+//print('composite:', composite);
 
 //Add the composite image to the map
 Map.addLayer(composite, {}, 'composite', false);
 
 //Load reference data
-print('ref:', ref1);
-var testRef = ref1.propertyNames()
-print('test:', testRef)
+//print('ref:', ref);
+
 
 //Add refereence data to the map
 Map.addLayer(ref2, {}, 'referenceData', false);
@@ -61,14 +60,14 @@ var snic = ee.Algorithms.Image.Segmentation.SNIC({
   neighborhoodSize:250,
   seeds: null
 });
-print('snic:', snic);
+//print('snic:', snic);
 
 var clusters = snic.select("clusters")
-Map.addLayer(clusters.randomVisualizer(), {}, "clusters")
+Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false)
 
 // Compute per-cluster stdDev.
 var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256)
-print('stdDev:', stdDev)
+//print('stdDev:', stdDev)
 Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false)
 
 
@@ -87,7 +86,7 @@ var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
 var training = composite.sampleRegions({
-  collection: ref2, 
+  collection: ref, 
   properties: ['L1'], 
   scale:30, 
   projection: null, 
