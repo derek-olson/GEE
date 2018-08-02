@@ -30,16 +30,18 @@ var scaledComposite = bandList.map(function(band){
   var inBand = composite.select(band);
   var min = inBand.reduceRegion({
     reducer: ee.Reducer.min(),
-    geometry: composite,
-    scale: 30
+    geometry: composite.geometry(),
+    scale: 30,
+    maxPixels: 1e13
   });
   print('min:', min);
   var step1 = inBand.subtract(min);
   print('step1:', step1)
   var max = inBand.reduceRegion({
     reducer: ee.Reducer.max(),
-    geometry: composite,
-    scale: 30
+    geometry: composite.geometry(),
+    scale: 30,
+    maxPixels: 1e13
   });
   print('max:', max);
   var step2 = max.subtract(min);
