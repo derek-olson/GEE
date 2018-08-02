@@ -95,16 +95,19 @@ print('refPoints:', refPoints);
 //Add refereence data to the map
 Map.addLayer(refPoints, {}, 'referenceData', false);
 
+//Create seeds
+var seeds = ee.Algorithms.Image.Segmentation.seedGrid(12);
+
 //Run SNIC on the regular square grid
 var snic = ee.Algorithms.Image.Segmentation.SNIC({
   image: scaledImage, 
-  size: 75,
-  compactness: 2,
+  size: 3,
+  compactness: 0,
   connectivity: 8,
-  neighborhoodSize:250,
-  seeds: null
+  neighborhoodSize:150,
+  seeds: seeds
 });
-//print('snic:', snic);
+print('snic:', snic);
 
 //Add the segments to the map
 var crs = 'EPSG:26912';
