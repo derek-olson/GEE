@@ -18,7 +18,7 @@ var harmonics = harmonics_full.clip(bound);
 
 //Create composite
 var composite = topo.addBands(landsat).addBands(harmonics);
-//print('composite:', composite);
+print('composite:', composite);
 
 //Add the composite image to the map
 Map.addLayer(composite, {}, 'composite', false);
@@ -37,8 +37,8 @@ var bandList = composite.bandNames()//.length()
 
 //Run SNIC on the regular square grid
 var snic = ee.Algorithms.Image.Segmentation.SNIC({
-  image: composite, 
-  size: 5,
+  image: composite.select([16]), 
+  size: 25,
   compactness: 20,
   connectivity: 8,
   neighborhoodSize:250,
@@ -47,7 +47,10 @@ var snic = ee.Algorithms.Image.Segmentation.SNIC({
 //print('snic:', snic);
 
 //Add the segments to the map
-var clusters = snic.select("clusters")
+var crs = 'EPSG:26912';
+var scale = 30
+var clusters = snic.select("clusters").reproject(crs, null, scale)
+print('clusters:', clusters)
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false)
 
 //Compute per-cluster stdDev
@@ -81,7 +84,6 @@ var rf = ee.Classifier.randomForest({
   outOfBagMode: false,
   seed: 0
   })
-  .setOutputMode('CLASSIFICATION')
   .train({
     features: training,
     classProperty:'L1',
