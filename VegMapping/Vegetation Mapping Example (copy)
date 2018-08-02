@@ -98,8 +98,8 @@ Map.addLayer(refPoints, {}, 'referenceData', false);
 //Run SNIC on the regular square grid
 var snic = ee.Algorithms.Image.Segmentation.SNIC({
   image: scaledImage, 
-  size: 25,
-  compactness: 20,
+  size: 75,
+  compactness: 2,
   connectivity: 8,
   neighborhoodSize:250,
   seeds: null
