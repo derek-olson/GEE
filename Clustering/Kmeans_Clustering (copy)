@@ -99,7 +99,8 @@ function newCollectionToImage(collection){
 //Create training data
 var training = scaledImage.sample({
   scale: 30,
-  numPixels: 10000
+  numPixels: 10000,
+  geometry: composite.geometry()
 });
 
 /*var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
