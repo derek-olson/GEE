@@ -26,9 +26,9 @@ var ndvi = LCMS.normalizedDifference(['nir','red']).multiply(10000).int16();
 ndvi = ndvi.clip(sa);
 
 //Add layers to map
-Map.addLayer(climate, {}, 'climate',false);
-Map.addLayer(topo, {}, 'topo',false);
-Map.addLayer(ndvi, {}, 'ndvi',false);
+//Map.addLayer(climate, {}, 'climate',false);
+//Map.addLayer(topo, {}, 'topo',false);
+//Map.addLayer(ndvi, {}, 'ndvi',false);
 
 //Create composite
 var composite = climate.addBands(topo).addBands(ndvi);
@@ -82,6 +82,7 @@ var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
 scaledImage = scaledImage.clip(bound);
 print('scaledImage:', scaledImage);
+Map.addLayer(scaledImage, {}, 'scaledImage');
 
 ////////////////////////////////////////////////////////////////////////////////
 //Helper function to convert image collection into stack of image bands
@@ -125,7 +126,7 @@ var kVar = kvals.map(function(kval){
   print('kmeans:', kmeans);
   
   //Get kmeans clusters
-  var clusterImage = composite.cluster(kmeansTest, 'kmeans');
+  var clusterImage = scaledImage.cluster(kmeans, 'kmeans');
   print('clusterImage:', clusterImage);  
   
   //Get the variance for each band
