@@ -17,7 +17,7 @@ var bound = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W')
 Map.addLayer(bound, {}, 'bound', false);
 
 //Set the number of clusters
-var clustNum = 10
+var clustNum = 10;
 
 //Get datasets as assets
 var climate = climPCA.clip(sa).select([0]).multiply(10000).int16();
@@ -32,31 +32,133 @@ Map.addLayer(ndvi, {}, 'ndvi',false);
 
 //Create composite
 var composite = climate.addBands(topo).addBands(ndvi);
-print(composite);
+print('composite:', composite);
+
+//Get a list of the band names
+var bands = composite.bandNames().getInfo();
+print('bands:', bands);
+
+//rescale the composite for segmentation
+var scaledImageList = bands.map(function(band){
+  //Get each band
+  var inBand = composite.select(band);
+  
+  //Find the min value
+  var min = inBand.reduceRegion({
+    reducer: ee.Reducer.min(),
+    geometry: composite.geometry(),
+    scale: 30,
+    maxPixels: 1e13
+  });
+  min = min.get(band);
+  //print('min:', min);
+  
+  //Create a constant raster with the min value
+  var minBand = ee.Image.constant(min);
+  //print('minBand:', minBand)
+  //Find the max value
+  var max = inBand.reduceRegion({
+    reducer: ee.Reducer.max(),
+    geometry: composite.geometry(),
+    scale: 30,
+    maxPixels: 1e13
+  });
+  max = max.get(band);
+  //print('max:', max);
+  
+  //Create a constant raster with the max value
+  var maxBand = ee.Image.constant(max);
+  //print('maxBand:', maxBand)
+  var numerator = inBand.subtract(minBand);
+  var denominator = maxBand.subtract(minBand);
+  var scaledBands = numerator.divide(denominator);
+  
+  return scaledBands;
+});
+print('scaledImageList:', scaledImageList);
+
+//Get the list of images to a single multiband image
+var scaledImage = ee.ImageCollection(scaledImageList);
+scaledImage = newCollectionToImage(scaledImage);
+scaledImage = scaledImage.clip(bound);
+print('scaledImage:', scaledImage);
+
+////////////////////////////////////////////////////////////////////////////////
+//Helper function to convert image collection into stack of image bands
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
+////////////////////////////////////////////////////////////////////////////////
 
 //Create training data
-var training = composite.sample({
+var training = scaledImage.sample({
   scale: 30,
   numPixels: 10000
 });
 
-var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
+/*var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
+  .train({
+    features: training
+  });*/
+//print(kmeans)
+//Get kmeans clusters
+//var clusterImage = composite.cluster(kmeansTest, 'kmeans');
+//print(clusterImage);
+
+//var kmeansComposite = clusterImage.addBands(composite);
+//print('kmeansComposite:', kmeansComposite);
+
+//Iterate through each cluster size and get the sum of the average
+//cluster variance for each value of K
+var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
+
+var kVar = kvals.map(function(kval){
+  var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
   .train({
     features: training
   });
-//print(kmeans)
-//Get kmeans clusters
-var clusterImage = composite.cluster(kmeansTest, 'kmeans');
-//print(clusterImage);
+  print('kmeans:', kmeans);
+  
+  //Get kmeans clusters
+  var clusterImage = composite.cluster(kmeansTest, 'kmeans');
+  print('clusterImage:', clusterImage);  
+  
+  //Get the variance for each band
+  var bandVar = bands.map(function(band){
+    //print('band:', band);
+    var tempComposite = kmeansComposite.select([0, band]);
+    //print('tempComposite:', tempComposite);
+    var bandReducer = tempComposite.reduceRegion({
+      reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
+      maxPixels: 1e13
+    });
+    return bandReducer;
+  
+  });
+  print('band variance:', bandVar);
 
-var kmeansComposite = clusterImage.addBands(composite);
-print('kmeansComposite:', kmeansComposite);
+  //Extract computed stat from nested list.
+  function lookup_stat(list){
+    var pixelstat = ee.Dictionary(ee.List(ee.Dictionary(list).get('groups')).get(0)).get('variance');
+    return pixelstat;
+  }
 
-var bands = composite.bandNames().getInfo()
-print('bands:', bands);
+  var stat_list = ee.List(bandVar).map(lookup_stat);
+  //print('stat_list',stat_list);
+ 
+});
+
+
+
+
 
 //Get the variance for each band
-var bandVar = bands.map(function(band){
+/*var bandVar = bands.map(function(band){
   print('band:', band);
   var tempComposite = kmeansComposite.select([0, band]);
   print('tempComposite:', tempComposite);
@@ -75,7 +177,12 @@ function lookup_stat(list){
 }
 
 var stat_list = ee.List(bandVar).map(lookup_stat);
-print('stat_list',stat_list);
+print('stat_list',stat_list);*/
+
+
+
+
+
 
 
 //For each value of k and for each cluster get the variance
