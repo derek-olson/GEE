@@ -137,9 +137,10 @@ var kVar = kvals.map(function(kval){
     //print('band:', band);
     var tempComposite = kmeansComposite.select([0, band]);
     //print('tempComposite:', tempComposite);
-    var bandReducer = tempComposite.reduceRegion({
-      reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
-      maxPixels: 1e13
+    var bandReducer = tempComposite.reduceConnectedComponents({
+      reducer: ee.Reducer.variance(),
+      labelBand: null,
+      maxSize: 256
     });
     return bandReducer;
   
