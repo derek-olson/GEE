@@ -80,7 +80,7 @@ print('scaledImageList:', scaledImageList);
 //Get the list of images to a single multiband image
 var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
-scaledImage = scaledImage.clip(bound).reproject('EPSG:26912');
+scaledImage = scaledImage.clip(sa).reproject('EPSG:26912');
 print('scaledImage:', scaledImage);
 Map.addLayer(scaledImage, {}, 'scaledImage');
 
