@@ -146,13 +146,14 @@ var kVar = kvals.map(function(kval){
     var tempComposite = kmeansComposite.select([0, band]);
     //print('tempComposite:', tempComposite);
     var bandReducer = tempComposite.reduceConnectedComponents({
-      reducer: ee.Reducer.variance(),
-      labelBand: null,
+      reducer: ee.Reducer.variance().combine({
+      reducer2: ee.Reducer.mean()}),
+      labelBand: 'kmeans',
       maxSize: 256
     });
     return bandReducer;
   });
-  //print('band variance:', kVar);
+  print('band variance:', bandVar);
   
   var stat_list = ee.List(bandVar).map(lookup_stat);
   //print('stat_list',stat_list);
