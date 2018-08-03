@@ -159,7 +159,7 @@ var kVar = kvals.map(function(kval){
   varBands = newCollectionToImage(varBands);
   print(varBands)
   
-  var kAvg = stat_list.reduce(ee.Reducer.mean());
+  var kAvg = varBands.reduce(ee.Reducer.sum());
   
   return kAvg;
 });
