@@ -126,12 +126,12 @@ Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
 //Map.addLayer(stdDevSNIC, {min:0, max:0.1}, "StdDev_SNIC", false);
 
 //Compute per-cluster mean
-var mean = scaledImage.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.mean(), null, 256);
+var mean = dixieSegments.addBands(scaledImage).reduceConnectedComponents(ee.Reducer.mean(), null, 256);
 print('mean:', mean)
 Map.addLayer(mean, {min:0, max:0.1}, "mean", false);
 
 //Compute per-cluster stdDev
-var stdDev = scaledImage.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.stdDev(), null, 256);
+var stdDev = dixieSegments.addBands(scaledImage).reduceConnectedComponents(ee.Reducer.stdDev(), null, 256);
 print('stdDev:', stdDev)
 Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false);
 
