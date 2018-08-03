@@ -165,3 +165,4 @@ var rf = ee.Classifier.randomForest({
 //Predict across the composite  
 var prediction = composite.classify(rf, 'randomForestClassificatiion');
 print('prediction:', prediction);
+
