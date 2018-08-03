@@ -155,8 +155,9 @@ var kVar = kvals.map(function(kval){
   });
   print('band variance:', bandVar);
   
-  var stat_list = ee.List(bandVar).map(lookup_stat);
-  print('stat_list',stat_list);
+  var varBands = ee.ImageCollection(bandVar);
+  varBands = newCollectionToImage(varBands);
+  print(varBands)
   
   var kAvg = stat_list.reduce(ee.Reducer.mean());
   
