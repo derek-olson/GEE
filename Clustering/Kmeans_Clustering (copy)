@@ -80,7 +80,7 @@ var scaledImageList = bands.map(function(band){
 //Get the list of images to a single multiband image
 var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
-scaledImage = scaledImage.clip(sa).reproject('EPSG:26912');
+scaledImage = scaledImage.clip(sa)//.reproject('EPSG:26912');
 //print('scaledImage:', scaledImage);
 Map.addLayer(scaledImage, {}, 'scaledImage');
 
@@ -124,7 +124,7 @@ function lookup_stat(list){
 
 //Iterate through each cluster size and get the sum of the average
 //cluster variance for each value of K
-var kvals = ee.List.sequence({start:1, end:clustNum})//.getInfo();
+var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
 
 var kVar = kvals.map(function(kval){
   var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
@@ -160,7 +160,7 @@ var kVar = kvals.map(function(kval){
   return stat_list;
 });
 
-
+print('kvar:', kVar)
 
 
 
