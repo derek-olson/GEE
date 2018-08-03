@@ -1,6 +1,3 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var naip = ee.Image("users/thinkbetween/Dixie_NAIP_10m");
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
 //Create seeds
 var seeds = ee.Algorithms.Image.Segmentation.seedGrid(12);
 
