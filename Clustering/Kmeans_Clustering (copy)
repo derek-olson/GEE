@@ -157,11 +157,12 @@ var kVar = kvals.map(function(kval){
   
   var varBands = ee.ImageCollection(bandVar);
   varBands = newCollectionToImage(varBands);
-  print(varBands)
+  print('varBands:', varBands)
   
-  var kAvg = varBands.reduce(ee.Reducer.sum());
+  var kSum = varBands.reduce(ee.Reducer.sum());
+  print('ksum:', kSum)
   
-  return kAvg;
+  return kSum;
 });
 
 //print('kvar:', kVar);
