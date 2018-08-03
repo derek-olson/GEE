@@ -121,17 +121,17 @@ var clusters = snic.select("clusters").reproject(crs, null, scale);
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
 
 //Compute per-cluster stdDev
-//var stdDevSNIC = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256);
+//var stdDevSNIC = scaledImage.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256);
 //print('stdDevSNIC:', stdDevSNIC)
 //Map.addLayer(stdDevSNIC, {min:0, max:0.1}, "StdDev_SNIC", false);
 
 //Compute per-cluster mean
-var mean = composite.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.mean(), null, 256);
+var mean = scaledImage.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.mean(), null, 256);
 print('mean:', mean)
 Map.addLayer(mean, {min:0, max:0.1}, "mean", false);
 
 //Compute per-cluster stdDev
-var stdDev = composite.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.stdDev(), null, 256);
+var stdDev = scaledImage.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.stdDev(), null, 256);
 print('stdDev:', stdDev)
 Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false);
 
@@ -144,7 +144,7 @@ var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
 //Create zonal stats composite
-var zstats = snic.addBands(stdDev);
+var zstats = mean.addBands(stdDev);
 print('zonal stats:', zstats);
 
 
