@@ -165,7 +165,7 @@ var kVar = kvals.map(function(kval){
   return kSum;
 });
 
-//print('kvar:', kVar);
+print('kvar:', kVar);
 
 
 
