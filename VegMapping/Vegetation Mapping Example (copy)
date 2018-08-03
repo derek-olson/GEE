@@ -129,7 +129,9 @@ var training = trainingTesting
 var testing = trainingTesting
   .filter(ee.Filter.gte('random', 0.6));*/
 
-//Create training data
+//Create zonal stats composite
+var zstats = snic.addBands(stdDev);
+print('zonal stats:', zstats);
 
 
 //Create training data
