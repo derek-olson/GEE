@@ -6,8 +6,10 @@ var topoAll = ee.Image("users/thinkbetween/Dixie_topo"),
     naip = ee.Image("users/thinkbetween/Dixie_NAIP_10m"),
     ref1 = ee.FeatureCollection("users/thinkbetween/Dixie_Field_Ref_Data_Final_2015_10_30"),
     ref = ee.FeatureCollection("users/thinkbetween/Reference_Data"),
-    Dixie_Segments = ee.FeatureCollection("users/thinkbetween/Dixie_NF_Final_Segments");
+    dixieSegments = ee.Image("users/thinkbetween/Dixie_Segments_Raster");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+Map.addLayer(dixieSegments.randomVisualizer(), {}, 'segs', false);
+
 //Add the mapping boundary
 var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
 Map.addLayer(bound, {}, 'boundary', false);
@@ -119,9 +121,20 @@ var clusters = snic.select("clusters").reproject(crs, null, scale);
 Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
 
 //Compute per-cluster stdDev
-var stdDev = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256);
-//print('stdDev:', stdDev)
+//var stdDevSNIC = composite.addBands(clusters).reduceConnectedComponents(ee.Reducer.stdDev(), "clusters", 256);
+//print('stdDevSNIC:', stdDevSNIC)
+//Map.addLayer(stdDevSNIC, {min:0, max:0.1}, "StdDev_SNIC", false);
+
+//Compute per-cluster mean
+var mean = composite.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.mean(), null, 256);
+print('mean:', mean)
+Map.addLayer(mean, {min:0, max:0.1}, "mean", false);
+
+//Compute per-cluster stdDev
+var stdDev = composite.addBands(dixieSegments).reduceConnectedComponents(ee.Reducer.stdDev(), null, 256);
+print('stdDev:', stdDev)
 Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false);
+
 
 //Randomly split the data into 60% for training, and 40% for testing
 /*trainingTesting = trainingTesting.randomColumn('random',484789);
@@ -133,6 +146,7 @@ var testing = trainingTesting
 //Create zonal stats composite
 var zstats = snic.addBands(stdDev);
 print('zonal stats:', zstats);
+
 
 //Create training data
 var training = composite.sampleRegions({
@@ -165,4 +179,3 @@ var rf = ee.Classifier.randomForest({
 //Predict across the composite  
 var prediction = composite.classify(rf, 'randomForestClassificatiion');
 print('prediction:', prediction);
-
