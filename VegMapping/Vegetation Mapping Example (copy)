@@ -76,7 +76,7 @@ var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
 scaledImage = scaledImage.clip(bound)
 //print('scaledImage:', scaledImage);
-
+scaledImage = scaledImage.multiply(10000).int16()
 ////////////////////////////////////////////////////////////////////////////////
 // Helper function to convert image collection into stack of image bands
 function newCollectionToImage(collection){
