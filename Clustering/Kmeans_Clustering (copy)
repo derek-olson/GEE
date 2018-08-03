@@ -153,14 +153,14 @@ var kVar = kvals.map(function(kval){
     });
     return bandReducer;
   });
-  //print('band variance:', bandVar);
+  print('band variance:', bandVar);
   
   var varBands = ee.ImageCollection(bandVar);
-  varBands = newCollectionToImage(varBands);
-  //print('varBands:', varBands)
+  //varBands = newCollectionToImage(varBands);
+  print('varBands:', varBands)
   
   var kSum = varBands.reduce(ee.Reducer.sum());
-  //print('ksum:', kSum)
+  print('ksum:', kSum)
   
   return kSum;
 });
