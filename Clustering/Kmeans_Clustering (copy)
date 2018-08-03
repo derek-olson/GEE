@@ -80,7 +80,7 @@ print('scaledImageList:', scaledImageList);
 //Get the list of images to a single multiband image
 var scaledImage = ee.ImageCollection(scaledImageList);
 scaledImage = newCollectionToImage(scaledImage);
-scaledImage = scaledImage.clip(bound);
+scaledImage = scaledImage.clip(bound).reproject('EPSG:26912');
 print('scaledImage:', scaledImage);
 Map.addLayer(scaledImage, {}, 'scaledImage');
 
@@ -99,9 +99,8 @@ function newCollectionToImage(collection){
 //Create training data
 var training = scaledImage.sample({
   scale: 30,
-  numPixels: 10000,
-  geometry: composite.geometry()
-});
+  numPixels: 10000
+  });
 
 /*var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
   .train({
@@ -129,6 +128,9 @@ var kVar = kvals.map(function(kval){
   //Get kmeans clusters
   var clusterImage = scaledImage.cluster(kmeans, 'kmeans');
   print('clusterImage:', clusterImage);  
+  
+  var kmeansComposite = clusterImage.addBands(scaledImage);
+  print('kmeansComposite:', kmeansComposite);
   
   //Get the variance for each band
   var bandVar = bands.map(function(band){
