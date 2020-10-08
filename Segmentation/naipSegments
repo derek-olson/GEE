@@ -1,23 +1,61 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var naip = ee.Image("users/thinkbetween/Dixie_NAIP_10m");
+var naip = ee.Image("users/thinkbetween/Dixie_NAIP_10m"),
+    landsat = ee.Image("users/thinkbetween/Dixie_Composite"),
+    harmonics = ee.Image("users/thinkbetween/Dixie_Harmonics");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+// create multiband image
+var composite = landsat.addBands(harmonics);
+
 //Create seeds
-var seeds = ee.Algorithms.Image.Segmentation.seedGrid(12);
+var seeds = ee.Algorithms.Image.Segmentation.seedGrid(150);
 
 //Run SNIC on the regular square grid
-var snic = ee.Algorithms.Image.Segmentation.SNIC({
+var snicSegments = ee.Algorithms.Image.Segmentation.SNIC({
   image: naip, 
-  size: 3,
-  compactness: 0,
+  size: 1500,
+  compactness: 10,
   connectivity: 8,
-  neighborhoodSize:150,
+  neighborhoodSize:500,
   seeds: seeds
 });
-print('snic:', snic);
+print('snic:', snicSegments);
 
 //Add the segments to the map
 var crs = 'EPSG:26912';
 var scale = 30;
-var clusters = snic.select("clusters").reproject(crs, null, scale);
-//print('clusters:', clusters);
-Map.addLayer(clusters.randomVisualizer(), {}, "clusters", false);
+var segments = snicSegments.select("clusters").reproject(crs, null, scale);
+Map.addLayer(segments.randomVisualizer(), {}, "segments", false);
+
+var segmentsComposite = segments.addBands(composite);
+
+//Compute per-cluster mean
+var mean = segmentsComposite.reduceConnectedComponents(ee.Reducer.mean(), null, 256);
+print('mean:', mean)
+Map.addLayer(mean, {min:0, max:0.1}, "mean", false);
+
+//Compute per-cluster stdDev
+var stdDev = segmentsComposite.reduceConnectedComponents(ee.Reducer.stdDev(), null, 256);
+print('stdDev:', stdDev)
+Map.addLayer(stdDev, {min:0, max:0.1}, "StdDev", false);
+
+
+//Create training data - these shoud be rescaled first
+/*var training = composite.sample({
+  scale: 30,
+  numPixels: 10000
+  });
+
+// create clusterer
+var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
+  .train({
+    features: training
+  });
+  print('kmeans:', kmeans);
+  
+var segmentsComposite = segments.addBands(composite);*/
+
+
+
+
+
+

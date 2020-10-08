@@ -1,6 +1,6 @@
-var gmet = ee.ImageCollection('IDAHO_EPSCOR/GRIDMET')
-          .filterDate(ee.Date.fromYMD(1994,1,1),ee.Date.fromYMD(2015,12,31))
-          .select('pr');
+var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(1989,1,1),ee.Date.fromYMD(2018,12,31))
+          .select('prcp');
 
 function annualizeCollection(c,reducer){
   c = c.sort('system:time_start');
@@ -9,13 +9,13 @@ function annualizeCollection(c,reducer){
   var years = ee.List.sequence(startDate.get('year'),endDate.get('year'));
   
   return ee.ImageCollection.fromImages(years.map(function(yr){
-    return c.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31)).reduce(reducer).set('system:time_start',ee.Date.fromYMD(yr,6,1).millis())
-  }))
+    return c.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31)).reduce(reducer).set('system:time_start',ee.Date.fromYMD(yr,6,1).millis());
+  }));
 }
 
-var annualPrecipSum = annualizeCollection(gmet,ee.Reducer.sum())
-Map.addLayer(annualPrecipSum)
+var annualPrecipSum = annualizeCollection(dmet,ee.Reducer.sum());
+//Map.addLayer(annualPrecipSum)
 var annualMeanPrecip = annualPrecipSum.mean();
-Map.addLayer(annualMeanPrecip)
-var Rfac = annualMeanPrecip.pow(1.61).multiply(.0483)
-Map.addLayer(Rfac)
+//Map.addLayer(annualMeanPrecip)
+var Rfac = annualMeanPrecip.pow(1.61).multiply(0.0483);
+Map.addLayer(Rfac, {min: 0, max:11145, palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']}, 'R Factor', true);

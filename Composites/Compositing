@@ -16,15 +16,13 @@ This script accomplishes several tasks:
 *///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
-Map.addLayer(bound, {}, 'bound');
 
 // STEP 0: Define user inputs:
 // 1. Specify study area: Study area
 // Can provide a fusion table  or asset table (must add .geometry() after it, 
 // or draw a polygon and make StudyRegion = drawnPolygon
 // Also need to specify a crs naip_factor number (http://spatialreference.org)
-var StudyRegion = bound;
+var StudyRegion = sa;
 var crs = 'EPSG:26912';
 // 2. Update the startJulian and endJulian variables to indicate your seasonal constraints. 
 // This supports wrapping for tropics and southern hemisphere.
@@ -44,13 +42,13 @@ var endYear = 2017;
 var timebuffer = 15;
 
 // 5. Set up Names for the export
-var outputName = 'Salmon_Challis'; 
+var outputName = 'Output_Name'; 
 
 // 6. Choose medoid or median compositing method. 
 // Median tends to be smoother, while medoid retains 
 // single date of observation across all bands
 // Specify compositing method (median or medoid)
-var compositingMethod = 'median';
+var compositingMethod = 'medoid';
 
 // 7. Choose Top of Atmospheric (TOA) or Surface Reflectance (SR) 
 // Specify TOA or SR
@@ -124,8 +122,8 @@ var endDate = ee.Date.fromYMD(endYear,1,1).advance(endJulian-1,'day');
 print('Start and end dates:',startDate,endDate);
 
 // STEP 1: Load study region 
-var studyArea = bound;
-var region = bound//studyArea.bounds(1000).getInfo().coordinates[0];
+var studyArea = StudyRegion;
+var region = StudyRegion;
 
 /////////////////////////////////////////////////////////////////////////////////
 // STEP 3: Get Landsat 5,8,7 Image Collections
@@ -222,7 +220,7 @@ ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo().map(function
     'includeSLCOffL7': includeSLCOffL7
   });
   
-  print(composite);
+  print('compostie', composite);
 
 //Export the composite. 
 //////////////////////////////////////////////////////////////////////////////
@@ -647,3 +645,4 @@ function exportToAssetWrapper(imageForExport,assetName,assetPath,pyramidingPolic
 AUTHORS: Ian Housman, Joshua Goldstein, Karis Tenneson, GEE Team
 Function contributors: Carson Stam, Matt Hancher, Gennadii Donchyts
 */
+

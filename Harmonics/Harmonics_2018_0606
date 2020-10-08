@@ -1,9 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-93.8067626953125, 47.8094654494779],
-          [-91.439208984375, 46.90524554642921],
-          [-89.197998046875, 48.18806348121142],
-          [-93.515625, 48.70183766127341]]]);
+var sa = ee.FeatureCollection("users/thinkbetween/RB_studyArea");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*/////////////////////////////////////////////////////////////////////////////
 SERVIR-MEKONG 2016
@@ -31,9 +27,9 @@ This script accomplishes several tasks:
 // STEP 0: Define user inputs:
 
 // 1. Specify study area: Study area
-var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
+var bound = sa//ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV', 'geometry');
 
-var studyArea = bound;
+var studyArea = sa;
 // Map.centerObject(studyArea, 6);
 
 // 2. Choose one dependent and number of harmonics (i.e. cycles per year). Options for dependents are:
@@ -74,7 +70,7 @@ var includeL7 = false;
 var versionNumber = 2;
 
 // Choose export path root
-var exportPathRoot = 'projects/servir-mekong/Harmonics/Harmonics_' + dependent;
+var exportPathRoot = 'users/thinkbetween';
 
 // 5. Cloud and cloud shadow masking parameters.
 // cloudThresh: If using the cloudScoreTDOMShift method-Threshold for cloud 
@@ -228,10 +224,8 @@ ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo().map(function
   var exportName = 'Harmonics_' + dependent + '_' + startYearT + '_' + endYearT;
   var exportPath = exportPathRoot + '/' + exportName;
   print(harmonicOutput, exportPath);
-  
- // asyncExportToAssetWrapper(harmonicOutput,exportName,exportPath,'mean',
- //   studyArea,30,'EPSG:4326');
-  Export.image.toDrive({image: harmonicOutput, description: 'HarmonicTrendCoefficients',maxPixels:1e13, crs:'EPSG:26915', scale:30, });
+
+  Export.image.toDrive({image: harmonicOutput, description: 'HarmonicTrendCoefficients', region: sa, maxPixels:1e13, crs:'EPSG:26910', scale:30, });
   
   // STEP 8: Display re-formatted Landsat imagery. 
   ///////////////////////////////////////////////////////////////////////////////

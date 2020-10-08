@@ -1,0 +1,414 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-106.3083627801227, 40.41096075538884],
+          [-106.3083627801227, 39.843947070564525],
+          [-105.4459360223102, 39.843947070564525],
+          [-105.4459360223102, 40.41096075538884]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//######################################################################################################## 
+//#                                                                                                    #\\
+//#                                LANDTRENDR CHANGE MAPPER GUI                                        #\\
+//#                                                                                                    #\\
+//########################################################################################################
+
+
+// date: 2018-06-11
+// author: Justin Braaten | jstnbraaten@gmail.com
+//         Zhiqiang Yang  | zhiqiang.yang@oregonstate.edu
+//         Robert Kennedy | rkennedy@coas.oregonstate.edu
+// website: https://github.com/eMapR/LT-GEE
+
+
+
+
+
+var ltgee = require('users/emaprlab/public:Modules/LandTrendr.js');  
+
+
+
+//####################################################################################
+//########### ACTION HANDLER FUNCTION ################################################
+//####################################################################################
+var outName = 'AR_LandTrendr_Loss_Greatest_1984_2018_mag100_mmu5';
+var region = sa;
+var scale = 30;
+var crs = 'EPSG: 26912';
+
+var mapDisturbance = function(){
+  // get landtrendr run parameters
+  var runParams = ltgee.getParams(paramPanel);
+  var startYear = ltgee.getYears(yearPanel).startYear;
+  var endYear = ltgee.getYears(yearPanel).endYear;
+  var startDay = ltgee.getDays(datePanel).startDay;
+  var endDay = ltgee.getDays(datePanel).endDay;
+  var index = ltgee.getIndexSelect(indexPanel);
+  var maskThese = ltgee.getMaskSelect(maskPanel);
+  var lon = ltgee.getCoords(coordsPanel).lon;
+  var lat = ltgee.getCoords(coordsPanel).lat;
+  var buffer = ltgee.getBuffer(bufferPanel);
+  var aoi = ee.Geometry.Point(lon, lat)
+                         .buffer(buffer*1000)
+                         .bounds();
+  
+  // center the map on the point
+  map.centerObject(aoi, 11);
+
+  // run landtrendr and get the segmenation information
+  var lt = ltgee.runLT(startYear, endYear, startDay, endDay, aoi, index, [], runParams, maskThese); //maskThese
+  //var segInfo = ltgee.getSegmentData(lt, index);
+
+
+  // get disturbance mapping parameters
+  var distParams = {};
+  distParams.index = index;
+  //distParams.segInfo = segInfo;
+  distParams.delta = changeTypeFilter.widgets().get(1).getValue();
+  distParams.sort = distTypeFilter.widgets().get(1).getValue();
+  
+  
+  var distYearsFilter = ltgee.getYears(yearFilter);
+  distParams.year = {
+    checked: yearFilter.widgets().get(0).getValue(), 
+    start: parseInt(distYearsFilter.startYear), 
+    end: parseInt(distYearsFilter.endYear)
+  };
+  
+  distParams.mag = {
+    checked: magFilter.widgets().get(0).getValue(),
+    value: parseFloat(magFilter.widgets().get(1).widgets().get(1).getValue()),
+    operator: magFilter.widgets().get(1).widgets().get(3).getValue().toString()
+  };
+  
+  distParams.dur = {
+    checked: durFilter.widgets().get(0).getValue(),
+    value: parseFloat(durFilter.widgets().get(1).widgets().get(1).getValue()),
+    operator: durFilter.widgets().get(1).widgets().get(3).getValue().toString()
+  };
+
+  distParams.preval = {
+    checked: prevalFilter.widgets().get(0).getValue(),
+    value: parseFloat(prevalFilter.widgets().get(1).widgets().get(1).getValue()),
+    operator: prevalFilter.widgets().get(1).widgets().get(3).getValue().toString()
+  };
+
+  distParams.mmu = {
+    checked: mmuFilter.widgets().get(0).getValue(),
+    value: parseInt(mmuFilter.widgets().get(1).getValue())
+  };
+  
+  // get the disturbance map layers
+  var distImg = ltgee.getChangeMap(lt, distParams);
+
+  // set visualization dictionaries
+  var yodVizParms = {
+    min: 1985, //distParams.year.start+1,
+    max: 2017, //distParams.year.end,
+    palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']
+  };
+  
+  var magVizParms = {
+    min: 0, //distParams.mag.year1,
+    max: 1000,
+    palette: ['#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']
+  };
+  
+  var durVizParms = {
+    min: 1,
+    max: 10,
+    palette: ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF']
+  };
+  
+  var preValVizParms = {
+    min: 200, //distParams.preval.value,
+    max: 800,
+    palette: ['#F1F1F1', '#FFC9B8', '#FFC183', '#E1BB4E', '#B4B61A', '#7EAF12', '#26A63A']
+  };
+  
+  
+  // display the disturbance attribute maps 
+  //map.layers().set(0, ui.Map.Layer(distImg.select(['preval']), preValVizParms, 'Pre-dist Value')); // add pre-disturbacne spectral index value to map
+  map.layers().set(0, ui.Map.Layer(distImg.select(['dur']), durVizParms, 'Duration'));             // add disturbance duration to map
+  map.layers().set(1, ui.Map.Layer(distImg.select(['mag']), magVizParms, 'Magnitude'));            // add magnitude to map
+  map.layers().set(2, ui.Map.Layer(distImg.select(['yod']), yodVizParms, 'Year of Detection'));    // add disturbance year of detection to map
+  
+  Export.image.toDrive({image: distImg.select(['dur']), description: outName+'_Duration', region: region, scale:scale, crs:crs, maxPixels:1e13});
+  Export.image.toDrive({image: distImg.select(['mag']), description: outName+'_Magnitude', region: region, scale:scale, crs:crs, maxPixels:1e13});
+  Export.image.toDrive({image: distImg.select(['yod']), description: outName+'_Year_of_Detection', region: region, scale:scale, crs:crs, maxPixels:1e13});
+  
+  return {lt:lt, distImg:distImg, index:index};
+};
+
+
+var chartPoint = function(lt, pixel, index, indexFlip) {
+  var pixelTimeSeriesData = ltgee.ltPixelTimeSeriesArray(lt, pixel, indexFlip);
+  return ui.Chart(pixelTimeSeriesData.ts, 'LineChart',
+            {
+              'title' : 'Index: '+index + ' | Fit RMSE:'+ (Math.round(pixelTimeSeriesData.rmse * 100) / 100).toString(),
+              'hAxis': 
+                {
+                  'format':'####'
+                },
+              'vAxis':
+                {
+                  'maxValue': 1000,
+                  'minValue': -1000   
+                }
+            },
+            {'columns': [0, 1, 2]}
+          );
+};
+
+
+//####################################################################################
+//########### UI ELEMENT CONSTRUCTION ################################################
+//####################################################################################
+
+
+// SET UP PRIMARY PANELS
+// control panel
+var controlPanel = ui.Panel({
+  layout: ui.Panel.Layout.flow('vertical'),
+  style: {width: '340px'}
+});
+
+// map panel
+var map = ui.Map();
+map.style().set({cursor:'crosshair'});
+map.setOptions('HYBRID');
+
+// plot panel
+var plotsPanelLabel = ui.Panel([
+  ui.Label('Instructions', {fontWeight: 'bold'}),
+  ui.Label('1) Define mapping options in control panel'),
+  ui.Label('2) Click a point or enter & submit coordinates'),
+  ui.Label('3) Check the "Inspector" box and click a point for info'),
+  ui.Label('* Wait patiently for map and point info to load'),
+  ui.Label('* Click here for more information', {}, 'https://goo.gl/uDk4GY'),
+  ui.Label('____________________________________________________'),
+]);
+var inspectorCheck = ui.Checkbox({label:'Inspector', value:0, style:{fontWeight: 'bold'}});
+var yodLabel = ui.Label('');
+var magLabel = ui.Label('');
+var durLabel = ui.Label('');
+var prevaLabel = ui.Label('');
+var rateLabel = ui.Label('');
+var plotPanel = ui.Panel(null, null, {stretch: 'horizontal'});
+var warningPanel = ui.Label('');
+var plotPanelParent = ui.Panel([
+  plotsPanelLabel, 
+  inspectorCheck, 
+  yodLabel,
+  magLabel,
+  durLabel,
+  prevaLabel,
+  rateLabel,
+  plotPanel,
+  warningPanel], null, {width: '350px'});
+
+
+// SET UP SECONDARY PANELS
+var yearPanel = ltgee.yearPanel();
+var datePanel = ltgee.datePanel();
+var indexPanel = ltgee.indexSelectPanel();
+var maskPanel = ltgee.maskSelectPanel();
+var bufferPanel = ltgee.bufferPanel();
+var coordsPanel = ltgee.coordsPanel();
+//var inspectorCheck = ui.Checkbox({label:'Inspector mode', value:0, style:{fontWeight: 'bold', position:'top-left'}});
+
+var paramPanel = ltgee.paramPanel();
+
+
+// disturbance mapping panel
+var changeTypeList = ['Loss','Gain'];
+var changeTypeFilter = ui.Panel(
+  [ui.Label({value:'Select Vegetation Change Type:', style:{color:'blue'}}),ui.Select({items:changeTypeList, value:'Loss', style:{stretch: 'horizontal'}})], ui.Panel.Layout.Flow('horizontal')
+);
+
+var distTypeList = ['Greatest','Least','Newest','Oldest','Fastest','Slowest'];
+var distTypeFilter = ui.Panel(
+  [ui.Label({value:'Select Vegetation Change Sort:', style:{color:'blue'}}),ui.Select({items:distTypeList, value:'Greatest', style:{stretch: 'horizontal'}})], ui.Panel.Layout.Flow('horizontal')
+);
+
+
+var yearFilter = ltgee.yearPanel();
+yearFilter.remove(yearFilter.widgets().get(0));
+yearFilter.insert(0, ui.Checkbox({label:'Filter by Year:', style:{color:'blue'}}));
+yearFilter.widgets().get(1).style().set('padding', '0px 0px 0px 20px');
+yearFilter.widgets().get(2).style().set('padding', '0px 0px 0px 20px');
+
+var opList = ['>', '<'];
+var magFilter = ui.Panel(
+  [
+    ui.Checkbox({label:'Filter by Magnitude:', style:{color:'blue'}}),
+    ui.Panel(
+      [
+        ui.Label('Value:'),
+        ui.Textbox({value:100, style:{stretch: 'horizontal'}}),
+        ui.Label('Operator:'),
+        ui.Select({items:opList, value:'>', style:{stretch: 'horizontal'}})
+      ], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal', padding: '0px 0px 0px 20px'})
+  ],
+  null,
+  {stretch: 'horizontal'}
+);
+
+
+var durFilter = ui.Panel(
+  [
+    ui.Checkbox({label:'Filter by Duration:', style:{color:'blue'}}),
+    ui.Panel(
+      [
+        ui.Label('Value:'),
+        ui.Textbox({value:4, style:{stretch: 'horizontal'}}),
+        ui.Label('Operator:'),
+        ui.Select({items:opList, value:'<', style:{stretch: 'horizontal'}})
+      ], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal', padding: '0px 0px 0px 20px'})
+  ],
+  null,
+  {stretch: 'horizontal'}
+);
+
+var prevalFilter = ui.Panel(
+  [
+    ui.Checkbox({label:'Filter by Pre-Dist Value:', style:{color:'blue'}}),
+    ui.Panel(
+      [
+        ui.Label('Value:'),
+        ui.Textbox({value:400, style:{stretch: 'horizontal'}}),
+        ui.Label('Operator:'),
+        ui.Select({items:opList, value:'>', style:{stretch: 'horizontal'}})
+      ], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal', padding: '0px 0px 0px 20px'})
+  ],
+  null,
+  {stretch: 'horizontal'}
+);
+
+
+var mmuFilter = ui.Panel(
+  [
+    ui.Checkbox({label:'Filter by MMU:', style:{color:'blue'}}),
+    ui.Textbox({value:11, style:{stretch: 'horizontal'}}) 
+  ],
+  ui.Panel.Layout.Flow('horizontal'),
+  {stretch: 'horizontal'}
+);
+
+
+var distParams = ui.Panel(
+  [
+    ui.Label('Define Change Mapping Parameters',{fontWeight: 'bold'}),
+    changeTypeFilter,
+    distTypeFilter,
+    yearFilter,
+    magFilter,
+    durFilter,
+    prevalFilter,
+    mmuFilter
+  ]
+);
+
+var submitButton = ltgee.submitButton();
+
+
+
+
+//####################################################################################
+//########### BIND FUNCTIONS TO ACTIONS ##############################################
+//####################################################################################
+
+var changeMap;
+var ltMap;
+var ltIndex;
+var dirty = 0;
+map.onClick(function(coords) {
+  // if in inspector mode, don't do anything - just get out
+  if(inspectorCheck.getValue() === true){
+    if(dirty === 0){
+      plotPanelParent.widgets().get(8).clear();
+      plotPanelParent.widgets().get(8).setValue('Warning: No change has been mapped. Turn "Inspector" off & click a point on the map, or enter & sumbit a coordinates to map change');
+      return;
+    }
+    var point = ee.Geometry.Point(coords.lon, coords.lat);
+    var pixel = point.buffer(15).bounds();
+    var result = ltgee.getPixelInfo(changeMap, pixel);
+    plotPanelParent.widgets().get(2).setValue('Year:      '+result.yod);
+    plotPanelParent.widgets().get(3).setValue('Magnitude: '+Math.round(result.mag));
+    plotPanelParent.widgets().get(4).setValue('Duration:  '+Math.round(result.dur));
+    plotPanelParent.widgets().get(5).setValue('Pre-value: '+Math.round(result.preval));
+    plotPanelParent.widgets().get(6).setValue('Rate:      '+Math.round(result.rate));
+    
+    var indexFlip = ltgee.indexFlipper(ltIndex);
+    var chart = chartPoint(ltMap, pixel, ltIndex, indexFlip);
+    plotPanel = plotPanel.clear();
+    plotPanel.add(chart);
+  } else{  
+    // change the coords in the box
+    coordsPanel.widgets().get(1).widgets().get(1).setValue(coords.lon);
+    coordsPanel.widgets().get(1).widgets().get(3).setValue(coords.lat);
+    
+    // draw disturbance layers
+    var changeObj = mapDisturbance();
+    changeMap = changeObj.distImg;
+    ltMap = changeObj.lt;
+    ltIndex = changeObj.index;
+    dirty = 1;
+  }
+  
+  
+
+});
+
+submitButton.onClick(function(){
+  var changeObj = mapDisturbance();
+  changeMap = changeObj.distImg;
+  ltMap = changeObj.lt;
+  ltIndex = changeObj.index;
+  dirty = 1;
+});
+
+
+
+
+
+
+//####################################################################################
+//########### UI DRAWING #############################################################
+//####################################################################################
+
+// add panels to interface
+controlPanel.add(yearPanel);
+controlPanel.add(datePanel);
+controlPanel.add(indexPanel);
+controlPanel.add(maskPanel);
+controlPanel.add(coordsPanel);
+//controlPanel.add(inspectorCheck);
+controlPanel.add(bufferPanel);
+controlPanel.add(distParams);
+controlPanel.add(paramPanel);
+controlPanel.add(submitButton);
+//map.add(inspectorCheck)
+
+/*
+map.add(ui.Label({
+  value: 'Click a point',
+  style: {position: 'top-center'}
+}));
+
+map.add(ui.Label({
+  value: 'Info: https://goo.gl/gGL3Dd',
+  style: {position: 'bottom-right'}
+}));
+*/
+
+ui.root.clear();
+ui.root.add(controlPanel);
+ui.root.add(map);
+ui.root.add(plotPanelParent);
+

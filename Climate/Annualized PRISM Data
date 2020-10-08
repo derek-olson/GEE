@@ -1,0 +1,80 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var prism = ee.ImageCollection("OREGONSTATE/PRISM/AN81m"),
+    conus = ee.FeatureCollection("users/thinkbetween/Conus_bounds"),
+    sa = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-131.7625, 42.670075906032764],
+          [-115.76640624999999, 21.109815468721234],
+          [-74.98515624999999, 23.629123404411168],
+          [-60.74687499999999, 46.66805947408802],
+          [-129.213671875, 50.50273514155546]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var region = sa;
+var scale = 4500;
+var crs = 'EPSG:5070';
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////// 
+// create the baseline precip data
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// select precipitation band from the prism data
+var precip = prism.select(0);
+print(precip);
+// get the annual sum
+var precip_baseline_sum = annualizer(precip, 1900, 1983, ee.Reducer.sum());
+print('precip sum', precip_baseline_sum);
+// get the baseline mean
+var precip_baseline_mean = precip_baseline_sum.reduce(ee.Reducer.mean());
+print('precip_baseline_mean', precip_baseline_mean);
+Map.addLayer(precip_baseline_mean,{min:1, max:704},'precip_baseline_mean');
+Export.image.toDrive({image: precip_baseline_mean, description: 'precip_1900_1983_mean_prismMonthly_Winter', region: region, scale: scale, crs: crs, maxPixels:1e13});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// create the contemporary precip data
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// get the annual sum
+var precip_1984_1999_sum = annualizer(precip, 1984, 1999, ee.Reducer.sum());
+print('precip 1984_1999 sum', precip_1984_1999_sum);
+// get the contemporary mean
+var precip_1984_1999_mean = precip_1984_1999_sum.reduce(ee.Reducer.mean());
+print('precip_1984_1999_mean', precip_1984_1999_mean);
+Map.addLayer(precip_1984_1999_mean,{min:1, max:1053},'precip_1984_1999_mean');
+Export.image.toDrive({image: precip_1984_1999_mean, description: 'precip_1984_1999_mean_prismMonthly_Winter', region: region, scale: scale, crs: crs, maxPixels:1e13});
+
+// get the annual sum
+var precip_2000_2017_sum = annualizer(precip, 2000, 2017, ee.Reducer.sum());
+print('precip 2000_2017 sum', precip_2000_2017_sum);
+// get the contemporary mean
+var precip_2000_2017_mean = precip_2000_2017_sum.reduce(ee.Reducer.mean());
+print('precip_2000_2017_mean', precip_2000_2017_mean);
+Map.addLayer(precip_2000_2017_mean,{min:1, max:1053},'precip_2000_2017_mean');
+Export.image.toDrive({image: precip_2000_2017_mean, description: 'precip_2000_2017_mean_prismMonthly_Winter', region: region, scale: scale, crs: crs, maxPixels:1e13});
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// temperature 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+var temp = prism.select(1);
+var average_baseline_temp = annualizer(temp, 1900, 1983, ee.Reducer.mean()).mean();
+var test = average_baseline_temp.reduceRegion({reducer:ee.Reducer.mean(), geometry:conus, scale:4500});
+print('test', test);
+Map.addLayer(average_baseline_temp, {min:0.5, max:25}, 'average_baseline_temp');
+Export.image.toDrive({image: average_baseline_temp, description: 'average_1900_1983_temp_prismMonthly_Winter', region: region, scale: scale, crs: crs, maxPixels:1e13});
+
+var average_1984_1999_temp = annualizer(temp, 1984, 1999, ee.Reducer.mean()).mean();
+Map.addLayer(average_1984_1999_temp, {min:2, max:26}, 'average_1984_1999_temp');
+Export.image.toDrive({image: average_1984_1999_temp, description: 'average_1984_1999_temp_prismMonthly_Winter', region: region, scale: scale, crs: crs, maxPixels:1e13});
+
+var average_2000_2017_temp = annualizer(temp, 2000, 2017, ee.Reducer.mean()).mean();
+Map.addLayer(average_2000_2017_temp, {min:2, max:26}, 'average_2000_2017_temp');
+Export.image.toDrive({image: average_2000_2017_temp, description: 'average_2000_2017_temp_prismMonthly_Winter', region: region, scale: scale, crs: crs, maxPixels:1e13});
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// functions - modify the months below to change the season - won't work for winter
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// returns a collection of annualized data
+function annualizer(collection, startYear, endYear, reducer){
+  var years = ee.List.sequence(startYear, endYear);
+  return ee.ImageCollection.fromImages(years.map(function(year){
+    return collection.filterDate(ee.Date.fromYMD(ee.Number(year).subtract(1), 12,1), ee.Date.fromYMD(year,2,28)).reduce(reducer);
+  }));
+}

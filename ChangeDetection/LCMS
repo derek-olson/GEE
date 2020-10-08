@@ -3,10 +3,11 @@ var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"
     imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
     imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
     sa = /* color: #d63000 */ee.Geometry.Polygon(
-        [[[-108.5888671875, 42.01665183556825],
-          [-108.52294921875, 44.402391829093915],
-          [-111.5771484375, 44.48083027856261],
-          [-111.708984375, 42.01665183556825]]]);
+        [[[-121.03984374999999, 42.21606796424604],
+          [-120.16093749999999, 36.725410982800305],
+          [-114.53593749999999, 35.37534369566547],
+          [-113.78886718749999, 36.44311350012563],
+          [-113.87675781249999, 42.281127635051625]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*//////////////////////////////////////////////////////////////////////////////
 DESCRIPTION:
@@ -22,12 +23,12 @@ This script accomplishes several tasks:
 // 1. Specify study area: Study area
 // Can specify a country, provide a fusion table  or asset table (must add 
 // .geometry() after it), or draw a polygon and make studyArea = drawnPolygon
-var roi = ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W').geometry().bounds();
+var roi = sa//ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W').geometry().bounds();
 Map.addLayer(roi, {}, 'roi', false)
 var studyArea = sa;
 
-var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
-Map.addLayer(bt, {}, 'bt');
+//var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+//Map.addLayer(bt, {}, 'bt');
 // 2. Update the startJulian and endJulian variables to indicate your seasonal 
 // constraints. This supports wrapping for tropics and southern hemisphere.
 // startJulian: Starting Julian date 
@@ -48,7 +49,7 @@ var endYear = 2018;
 var timebuffer = 0;
 
 // 5. Set up Names for the export
-var outputName = 'SalmonChallis'; 
+var outputName = 'BobMarshall'; 
 
 // 6. Provide location composites will be exported to
 var exportPathRoot = 'users/thinkbetween';
@@ -307,6 +308,25 @@ function simpleTDOM2(collection,zScoreThresh,shadowSumThresh,contractPixels,
 function addIndices(img){
   img = img.addBands(img.normalizedDifference(['nir', 'red']).rename('NDVI'));
   img = img.addBands(img.normalizedDifference(['nir', 'swir2']).rename('NBR'));
+  img = img.addBands(img.normalizedDifference(['red','green']).rename('NDCI'));
+  img = img.addBands(img.normalizedDifference(['red','swir2']).rename('NDII'));
+  img = img.addBands(img.normalizedDifference(['swir1','nir']).rename('NDFI'));
+  
+  var bsi = img.expression(
+  '((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE))', {
+    'BLUE': img.select('blue'),
+    'RED': img.select('red'),
+    'NIR': img.select('nir'),
+    'SWIR1': img.select('swir1')
+  }).float();
+  img = img.addBands(bsi.rename('BSI'));
+  
+  var hi = img.expression(
+    'SWIR1 / SWIR2',{
+      'SWIR1': img.select('swir1'),
+      'SWIR2': img.select('swir2')
+    }).float();
+  img = img.addBands(hi.rename('HI'));  
   return img;
 }
 
@@ -371,7 +391,7 @@ function compositeTimeSeries(startYear,endYear,timebuffer){
     
     // Get export bands
     var exportBands = ee.List(['blue','green','red','nir','swir1','temp','swir2',
-      'NDVI','NBR']);
+      'NDVI','NBR', 'BSI', 'HI', 'NDFI', 'NDII', 'NDCI']);
     
     // Compute median or medoid
     var composite;
@@ -819,8 +839,8 @@ var lsT = ls.map(function(img){
 // STEP 5: Prepare composite for export
 // Get min bands
 ///////////////////////////////////////////////////////////////////////////////
-var minBands = ee.List(['blue','green','red','nir','swir1','temp','swir2']);
-var medoidBands = ee.List(['blue','green','red','nir','swir1','swir2']);
+var minBands = ee.List(['blue','green','red','nir','swir1','temp','swir2', 'NDVI', 'NBR', 'BSI', 'HI', 'NDII', 'NDFI', 'NDCI']);
+var medoidBands = ee.List(['blue','green','red','nir','swir1','swir2', 'NDVI', 'NBR', 'BSI', 'HI', 'NDII', 'NDFI', 'NDCI']);
 var composite;
 var composite_pre;
 

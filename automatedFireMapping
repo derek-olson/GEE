@@ -1,0 +1,99 @@
+// KIM - get rid of the first two images in the collection- they wrap to the year before
+// This code assumes the fire season starts on Jan 1 - if the fire season wraps the code will need to 
+// be modified
+/////////////////////////////////////////////////////////////
+//Parameters
+var zScores = ee.ImageCollection(ee.ImageCollection('projects/servir-mekong/CambodiaFireEmissions/zp-Collection').sort('system:time_start').toList(10000).slice(2,100));
+var analysisPeriod = 32;
+
+// add a zero before the month and day of the year
+function zeroPad(n){
+  var out = ee.Algorithms.If(n.lt(10),ee.String('0').cat(ee.String(n)),ee.String(n));
+  return out;
+}
+
+function getYearMonthDay(y,m,d){
+  m = ee.Number(m);
+  m = zeroPad(m);
+  
+  d = ee.Number(d);
+  d = zeroPad(d);
+  
+  y = ee.String(y);
+  return ee.Number.parse(y.cat(m).cat(d));
+}
+
+// get MODIS fire mask 
+function getMODISFire(startDate,endDate){
+  //Bring in MYD14/MOD14
+  var modisFireAqua = ee.ImageCollection('MODIS/006/MYD14A2').select([0])
+                      .filterDate(startDate,endDate);
+  var modisFireTerra = ee.ImageCollection('MODIS/006/MOD14A2').select([0])
+                      .filterDate(startDate,endDate);
+  var modisFire = ee.ImageCollection(modisFireAqua.merge(modisFireTerra));
+  
+ 
+  //Reclassify data and add year, month, day, and a unique year-month-day bands
+  function reclassify(img){
+    var remapped = img.remap([0,1,2,3,4,5,6,7,8,9],[0,0,0,1,1,1,1,2,3,4]).rename(['confidence']);
+    var d = ee.Date(img.get('system:time_start'));
+    var y = d.get('year');
+    var m = d.get('month');
+    var day =d.get('day');
+    var ymd = ee.Number(getYearMonthDay(y,m,day));
+    
+    y = ee.Image(y).int16().rename(['year']);
+    m = ee.Image(m).int16().rename(['month']);
+    ymd = ee.Image(ee.Number(ymd)).int64().rename(['yearMonthDay']);
+    day = ee.Image(day).int16().rename(['day']);
+    
+    var out = remapped.addBands(y).addBands(m).addBands(day).addBands(ymd);
+    out = out.updateMask(remapped.gte(2));
+    return out;
+  }
+  //Recode it, and find the year, month, and day- then add it to the map
+  modisFire = modisFire.map(reclassify).qualityMosaic('confidence');
+  // Map.addLayer(modisFire,{'min':2,'max':4,'palette':'FF0,F00','bands':'year'},'Fires',false);
+  return modisFire;
+}
+
+// create MODIS mask
+function ppZP(img){
+  var d = ee.Date(img.get('system:time_start'));
+  var endDate = d.advance(analysisPeriod/2,'day');
+  var startDate = ee.Date.fromYMD(d.get('year'),1,1);
+  var startYMD = ee.Number(getYearMonthDay(startDate.get('year'),startDate.get('month'),startDate.get('day')));
+  var endYMD = ee.Number(getYearMonthDay(endDate.get('year'),endDate.get('month'),endDate.get('day')));
+  var modisFireMask = getMODISFire(startDate,endDate);
+  //update the mask
+  var newMask = img.mask().reduce(ee.Reducer.min()).and(modisFireMask.mask().reduce(ee.Reducer.min()));
+  //Threshold P value
+  newMask = newMask.and(img.select(['pval_temporal']).lte(0.05));
+  img = img.addBands(modisFireMask).mask(newMask);
+  return img.set({
+    'modisStartDate':startYMD,
+    'modisEndDate':endYMD
+  });
+}
+
+// mask the z score collection
+var zScoresMasked = zScores.map(ppZP);
+print('zScoresMasked:', zScoresMasked);
+
+// get dates for aggregating histogram reducer
+var startStartDate = ee.Number(zScoresMasked.aggregate_min('modisStartDate'));
+var endEndDate = ee.Number(zScoresMasked.aggregate_max('modisEndDate'));
+print('collection start/end dates:', startStartDate,endEndDate);
+
+// get all fires
+var allFires = zScoresMasked.select(['yearMonthDay']);
+print('allFires', allFires);
+
+// get fires coresponding with first 32 day period 
+var firstFirePeriod = ee.Image(allFires.first());
+
+// display fires on the map
+Map.addLayer(allFires, {min: 20140109, max: 20180322}, 'allFires');
+Map.addLayer(firstFirePeriod.randomVisualizer(), {}, 'firstFirePeriod');
+
+

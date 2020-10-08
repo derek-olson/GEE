@@ -1,0 +1,48 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sentinel1 = ee.ImageCollection("COPERNICUS/S1_GRD"),
+    roi = 
+    /* color: #0b4a8b */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-128.93244152685406, 49.853456582234784],
+          [-128.93244152685406, 24.228774298354395],
+          [-69.95783215185406, 24.228774298354395],
+          [-69.95783215185406, 49.853456582234784]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SAR Vegetation Indicies
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var vh = sentinel1
+  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
+  .filter(ee.Filter.eq('instrumentMode', 'IW'))
+  .filterDate('2018-06-01', '2018-09-30');
+print('vh', vh.first());
+
+var vhAscending = vh.filter(ee.Filter.eq('orbitProperties_pass', 'ASCENDING'));
+var vhDescending = vh.filter(ee.Filter.eq('orbitProperties_pass', 'DESCENDING'));  
+
+var composite = ee.Image.cat([
+  vhAscending.select('VH').mean(),
+  ee.ImageCollection(vhAscending.select('VV').merge(vhDescending.select('VV'))).mean(),
+  vhDescending.select('VH').mean()
+]).focal_median();
+
+print('VH', composite);
+
+Map.addLayer(composite, {min:-20, max:10}, 'compositeVH');
+
+var composite2 = ee.Image.cat([
+  vhAscending.select('VH').merge(vhDescending.select('VH')).mean(),
+  ee.ImageCollection(vhAscending.select('VV').merge(vhDescending.select('VV'))).mean()
+]).focal_median();
+
+print('composite 2', composite2);
+Map.addLayer(composite2, {min:-35, max:-5}, 'composite 2')
+
+var cr = composite2.select('VH').divide(composite2.select('VV'));
+Map.addLayer(cr)

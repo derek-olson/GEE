@@ -1,0 +1,132 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var dryCool = ee.ImageCollection("projects/servir-mekong/usgs_sr_composites/drycool"),
+    dryHot = ee.ImageCollection("projects/servir-mekong/usgs_sr_composites/dryhot"),
+    rainy = ee.ImageCollection("projects/servir-mekong/usgs_sr_composites/rainy");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// var predictors = ee.ImageCollection("projects/servir-mekong/CambodiaFireEmissions/forest-mapping-ls-ts");
+// predictors = predictors.select([0,1,2,3,4,5]);
+// print(predictors);
+
+// filter the collections to get only the median images
+dryCool = dryCool.filter(ee.Filter.stringContains({leftField: 'compositingMethod', rightValue: 'Medoid'}));
+print('dryCool', dryCool);
+dryHot = dryHot.filter(ee.Filter.stringContains({leftField: 'compositingMethod', rightValue: 'Medoid'}));
+print('dryHot', dryHot);
+rainy = rainy.filter(ee.Filter.stringContains({leftField: 'compositingMethod', rightValue: 'Medoid'}));
+print('rainy', rainy);
+
+// get only the images that correspond to 2017 and remove thermal bands
+var dryCool2017 = dryCool.filter(ee.Filter.stringContains({leftField: 'system:index', rightValue: '2017'}));
+dryCool2017 = dryCool2017.first().select(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14);
+print('dryCool2017', dryCool2017);
+var dryHot2017 = dryHot.filter(ee.Filter.stringContains({leftField: 'system:index', rightValue: '2017'}));
+dryHot2017 = dryHot2017.first().select(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14);
+print('dryHot2017', dryHot2017);
+var rainy2017 = rainy.filter(ee.Filter.stringContains({leftField: 'system:index', rightValue: '2017'}));
+rainy2017 = rainy2017.first().select(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14);
+print('rainy2017', rainy2017);
+
+// create a single image with predictor bands
+//var changePredictors2017 = 
+
+// define a study area
+var sa = predictors.geometry();
+
+// set a threshold for forest cover
+var covThresh = 20;
+
+// get predictor rasters as multi-band image
+//var predictors = dx_comp.addBands(dx_har.clip(sa));
+//print('predictors', predictors);
+
+// choose classifier 
+var classifier = ee.Classifier.randomForest;
+
+// choose classifier parameters
+var classifierParameters = {numberOfTrees:500};
+
+// choose classifier output mode: CLASSIFICATION, REGRESSION, PROBABILITY
+var mode = 'CLASSIFICATION';
+
+// choose projection
+var crs = 'EPSG:32648';
+
+// choose resolution
+var scale = 30;
+
+// choose export name
+var exportName = 'Forest_NonForest';
+
+// set the sample size
+var sampleSize = 1000;
+
+// get the Hansen modeled tree cover in the year 2000 as the reference data
+var referenceData = ee.Image('UMD/hansen/global_forest_change_2017_v1_5').select(0);
+referenceData = referenceData.gt(covThresh).clip(sa);
+print('referenceData', referenceData);
+
+// get landsat data from the year 2000 to use as explanatory variables in a random forest model
+var xVars = predictors.filterMetadata('system:time_start', 'equals', 959817600000);
+// convert it from an image collection to an image
+xVars = xVars.median();
+print('xVars', xVars);
+
+// create the composite image to be sampled
+var sampleImage = referenceData.addBands(xVars);
+
+// Sample the training image to get the training data
+var trainingData = sampleImage.sample({
+  region: sa, 
+  scale: 30, 
+  numPixels: sampleSize
+});
+print('training data', trainingData);
+
+// get the model input properties
+var inputProperties = ee.Feature(trainingData.first()).propertyNames();
+inputProperties = inputProperties.remove('system:index');
+print('inputProperties', inputProperties);
+
+// get column name of reference field as a string
+var responseField = 'treecover2000';
+  
+// create the random forest classifier  
+var model = classifier(classifierParameters).setOutputMode(mode).train({
+  features: trainingData,
+  classProperty: responseField,
+  inputProperties: inputProperties, 
+  subsampling: 1,
+  subsamplingSeed: 0});
+print('model', model);
+
+// get confusion matrix
+var confusionMatrix = model.confusionMatrix();
+print('confusionMatrix', confusionMatrix)
+  
+// map the classification function across each image in a collection 
+var test = predictors.map(function(img){return classificationWrapper(img,model)});
+print('test:', test)
+
+// export the classified result
+//Export.image.toDrive({image: test[1], description: exportName, region: sa, scale: scale, crs: crs, maxPixels: 1e13});
+
+// add the classified result to the map
+Map.addLayer(test.select(0), {min:0, max:1}, 'forest');
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// classification 
+///////////////////////////////////////////////////////////////////////////////////////////////
+function classificationWrapper(image, model){
+  image = ee.Image(image);
+
+  // apply the model to each image in the collection
+  var applyModel = image.classify(model);
+  
+  return applyModel;
+}
+
+
+
+
+
+

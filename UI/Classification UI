@@ -1,0 +1,235 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Import libraries
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var getImgLib = require('users/USFS_GTAC/modules:getImagesLib.js');  
+var getTopographyLib = require('users/thinkbetween/default:getTopographyLib.js');  
+var changeDetectionLib = require('users/USFS_GTAC/modules:changeDetectionLib.js');  
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get assets
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var folders = ee.data.getAssetRoots();
+var folder = folders[0].id;
+print('user folder name', folder);
+
+var params = {
+  id: folder
+};
+print('params', params);
+var data = ee.data.getList(params);
+print('data', data);
+
+var assetList = data.map(function(item){
+  return item.id;
+});
+print('asset list', assetList);
+
+// create a list of study areas
+var studyAreaList = ui.Panel(
+  [ui.Label({value:'Select Study Area:', style:{color:'blue'}}),ui.Select({items:assetList, value:null, style:{stretch: 'horizontal'}})], ui.Panel.Layout.Flow('horizontal')
+);
+
+// get the study area value from the study area list
+var studyArea = studyAreaList.widgets().get(1).onChange(function(value){
+  var sa = studyAreaList.widgets().get(1).getValue();
+  print('study area', sa);
+  var saBounds = ee.FeatureCollection(sa).geometry().bounds();
+  print('study area bounds', saBounds);
+  return sa, saBounds;
+});
+
+// set up the reference field list
+var refColumnList = ui.Select({style:{stretch: 'horizontal'},onChange: function(value){
+  var refColumn = value;
+  print('reference column', refColumn);
+  return refColumn;
+  }
+});
+
+// Function to return which reference column value
+// var refColVal = refColumnList.onChange(function(value){
+//   var getRefColVal = refColumnList.getValue();
+//   return getRefColVal;
+// });
+// print('refColVal', refColVal)
+
+//create a list of potential reference point files
+var refPointList = ui.Select({items:assetList, 
+value:null, style:{stretch: 'horizontal'},
+onChange: function(value){
+  var refPoints = ee.FeatureCollection(value).getInfo();
+  print('refPoints', refPoints);
+  var fields = refPoints.columns;
+  print('fields', fields);
+  var refFields = ee.Dictionary(fields).keys().getInfo();
+  print('refFields', refFields);
+  refColumnList.items().reset(refFields);
+  }
+});
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Set up labels
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var refListLabel = ui.Label({value:'Select Reference Points:', style:{color:'blue'}});
+var refColLabel = ui.Label({value:'Select Reference Column:', style:{color:'blue'}});
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Topography Panel
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var topoPanel = function(){
+  var topoSectionLabel = ui.Label('Topographic Data:', {fontWeight: 'bold'});
+  
+  var elevation = ui.Checkbox({label:'Elevation', style:{color:'blue'}});
+  var slope = ui.Checkbox({label:'Slope', style:{color:'blue'}});
+  var cosAspect = ui.Checkbox({label:'Cos Aspect', style:{color:'blue'}});
+  var sinAspect = ui.Checkbox({label:'Sin Aspect', style:{color:'blue'}});
+  
+  return ui.Panel(
+    [
+      topoSectionLabel,
+      ui.Panel([elevation, slope, cosAspect, sinAspect], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal'})
+    ]
+  );
+};
+
+var topographyPanel = topoPanel();
+
+// Function to return which topographic derivatives to use
+var elevVal = topographyPanel.widgets().get(1).widgets().get(0).onChange(function(checked){
+  var getElev = topographyPanel.widgets().get(1).widgets().get(0).getValue();
+  print('elevation', getElev);
+  return getElev;
+});
+
+var slopVal = topographyPanel.widgets().get(1).widgets().get(1).onChange(function(checked){
+  var getSlope = topographyPanel.widgets().get(1).widgets().get(1).getValue();
+  print('slope', getSlope);
+  return getSlope;
+});
+
+var sinAsp = topographyPanel.widgets().get(1).widgets().get(3).onChange(function(checked){
+  var getsinAsp = topographyPanel.widgets().get(1).widgets().get(3).getValue();
+  print('sin aspect', getsinAsp);
+  return getsinAsp;
+});
+
+var cosAsp = topographyPanel.widgets().get(1).widgets().get(2).onChange(function(checked){
+  var getcosAsp = topographyPanel.widgets().get(1).widgets().get(2).getValue();
+  print('cos aspect', getcosAsp);
+  return getcosAsp;
+});
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Landsat Panel
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var lsatPanel = function(){
+  var lsat1label = ui.Label('Get Landsat Data:', {fontWeight:'bold'});
+  var lsat1Include = ui.Checkbox({label: 'Use Landsat Time Period 1', style:{color: 'blue'}});
+  
+  var yearSectionLabel1 = ui.Label('Define Year Range',{fontWeight: 'bold'});
+  
+  var startYearLabel1 = ui.Label('Start Year:');
+  var startYearslider1 = ui.Slider({min:1984, max:2018, value:1984, step:1});
+  startYearslider1.style().set('stretch', 'horizontal');
+  
+  var endYearLabel1 = ui.Label('End Year:');
+  var endYearslider1 = ui.Slider({min:1984, max:2018, value:2018, step:1});
+  endYearslider1.style().set('stretch', 'horizontal');
+  
+  var lsat2Include = ui.Checkbox({label: 'Use Landsat Time Period 2', style:{color: 'blue'}});
+  
+  var yearSectionLabel2 = ui.Label('Define Year Range',{fontWeight: 'bold'});
+  
+  var startYearLabel2 = ui.Label('Start Year:');
+  var startYearslider2 = ui.Slider({min:1984, max:2018, value:1984, step:1});
+  startYearslider2.style().set('stretch', 'horizontal');
+  
+  var endYearLabel2 = ui.Label('End Year:');
+  var endYearslider2 = ui.Slider({min:1984, max:2018, value:2018, step:1});
+  endYearslider2.style().set('stretch', 'horizontal');
+  
+  var j1Date1Label = ui.Label('Begin Julian Date', {color: 'blue'});
+  var j1Date2Label = ui.Label('End Julian Date', {color: 'blue'});
+  var j1Date1 = ui.Textbox({style:{stretch: 'horizontal', width:'50px'}});
+  var j1Date2 = ui.Textbox({style:{stretch: 'horizontal', width:'50px'}});
+  
+  return ui.Panel(
+    [
+      lsat1label,
+      ui.Panel([lsat1Include, j1Date1Label, j1Date1, j1Date2Label, j1Date2]),
+      yearSectionLabel1,
+      ui.Panel([startYearLabel1, startYearslider1], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal'}), 
+      ui.Panel([endYearLabel1, endYearslider1], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal'}),
+      lsat2Include,
+      yearSectionLabel2,
+      ui.Panel([startYearLabel2, startYearslider2], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal'}), 
+      ui.Panel([endYearLabel2, endYearslider2], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal'})
+    ] 
+  );
+};
+
+var lsatPanelWidgets = lsatPanel();
+
+// Function to return whether to use Landsat time period 1
+lsatPanelWidgets.widgets().get(1).widgets().get(0).onChange(function(checked){
+  var getLsat1 = lsatPanelWidgets.widgets().get(1).widgets().get(0).getValue();
+  print('use landsat time period 1', getLsat1);
+  return getLsat1;
+});
+
+// Function to return Landsat time period 1 years
+lsatPanelWidgets.widgets().get(5).onChange(function(checked){
+  var getLsat2Year = lsatPanelWidgets.widgets().get(5).getValue();
+  print('use landsat time period 2', getLsat2Year);
+  return getLsat2Year;
+});
+
+//print(lsatPanelWidgets[0]);
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Landsat Derivatives
+var lsatDerivativesPanel = function(){
+  var lsatDerivativesLabel = ui.Label('Landsat Derivatives:', {fontWeight: 'bold'});
+  
+  var allBands = ui.Checkbox({label:'Landsat Bands', style:{color:'blue'}});
+  var tassleCap = ui.Checkbox({label:'Tasseled Cap', style:{color:'blue'}});
+  var NDVI = ui.Checkbox({label:'NDVI', style:{color:'blue'}});
+  var NBR = ui.Checkbox({label:'NBR', style:{color:'blue'}});
+  
+  return ui.Panel(
+    [
+      lsatDerivativesLabel,
+      ui.Panel([allBands, tassleCap, NDVI, NBR], ui.Panel.Layout.Flow('horizontal'), {stretch: 'horizontal'})
+    ]
+  );
+};
+
+var lDPanel = lsatDerivativesPanel();
+
+// Function to return whether to use Landsat derivatives or not
+// lsat1Panel.widgets().get(1).onChange(function(checked){
+//   var getLsat1 = lsat1Panel.widgets().get(1).getValue();
+//   print(getLsat1);
+//   return getLsat1;
+// });
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Run Random Forests
+var runRF = ui.Panel(
+  [ui.Label({value:'Run Random Forests:', style:{color:'blue'}}),ui.Button('Click to Run')], ui.Panel.Layout.Flow('horizontal')
+);
+
+// SET UP PRIMARY PANELS
+// control panel
+var controlPanel = ui.Panel({
+  layout: ui.Panel.Layout.flow('vertical'),
+  style: {width: '600px'}
+});
+ui.root.add(controlPanel);
+controlPanel.add(studyAreaList);
+controlPanel.add(refListLabel);
+controlPanel.add(refPointList);
+controlPanel.add(refColLabel);
+controlPanel.add(refColumnList);
+controlPanel.add(topographyPanel);
+controlPanel.add(lsatPanelWidgets);
+controlPanel.add(lDPanel);
+controlPanel.add(runRF);

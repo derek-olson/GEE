@@ -1,0 +1,35 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageCollection = ee.ImageCollection("MODIS/006/MOD14A2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var targetYear = 2018;
+
+// Run findAFire function
+var hotspots = findAFire();
+print(hotspots);
+
+//Find location of fire
+function findAFire(){
+
+  //Bring in MYD14/MOD14
+  var modisFireAqua = ee.ImageCollection('MODIS/006/MYD14A2').select([0]);
+  var modisFireTerra = ee.ImageCollection('MODIS/006/MOD14A2').select([0]);
+  var modisFire = ee.ImageCollection(modisFireAqua.merge(modisFireTerra));
+  var singleYear = modisFire.filter(ee.Filter.calendarRange(targetYear,targetYear,'year'));
+ 
+  //Reclassify data and add year
+  function reclassify(img){
+    var remapped = img.remap([0,1,2,3,4,5,6,7,8,9],[0,0,0,1,1,1,1,2,3,4]).rename(['confidence']);
+    var d = ee.Date(img.get('system:time_start'));
+    var y = ee.Image(d.get('year')).int16().rename(['year']);
+    var m = ee.Image(d.get('month')).int16().rename(['month']);
+    var day = ee.Image(d.get('day')).int16().rename(['day']);
+    var out = remapped.addBands(y).addBands(m).addBands(day);
+    out = out.updateMask(remapped.gte(2));
+    return out;
+  }
+  
+  //Recode it, and find the year, month, and day- then add it to the map
+  singleYear = singleYear.map(reclassify);
+  Map.addLayer(singleYear.qualityMosaic('confidence'),{'min':2,'max':4,'palette':'FF0,F00','bands':'year'},'Fires-'+targetYear.toString());
+  return singleYear.mosaic();
+}

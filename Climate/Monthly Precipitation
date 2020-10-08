@@ -1,0 +1,30 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var daymet_precip = daymet.select(1);
+
+function seasonal_precip(precip){
+  var start_year = 1999;
+  var end_year = 2018;
+  var years = ee.List.sequence(start_year, end_year);
+  var months = ee.List.sequence(1, 12);
+  
+  return ee.ImageCollection(ee.FeatureCollection(years.map(function(year){
+    return ee.ImageCollection.fromImages(months.map(function(month){
+      return precip.filter(ee.Filter.date(ee.Date.fromYMD(year,month,1), ee.Date.fromYMD(year,month,28))).sum().set('system:time_start', ee.Date.fromYMD(year, month,1).millis());
+    }));
+  })).flatten());
+  
+}
+
+var monthly_precip = seasonal_precip(daymet_precip);
+print(monthly_precip);
+Map.addLayer(monthly_precip);
+
+var months = ee.List.sequence(1, 12);
+var test =  ee.ImageCollection(months.map(function(month){
+  return monthly_precip.filter(ee.Filter.calendarRange(month, ee.Number(month).add(1),'month')).reduce(ee.Reducer.mean()).set('system:time_start', ee.Date.fromYMD(2018, month,1).millis());
+}));
+
+print(test, 'test');
+Map.addLayer(test);

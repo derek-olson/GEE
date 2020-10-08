@@ -1,0 +1,119 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var dx_har = ee.Image("users/thinkbetween/Dixie_Harmonics"),
+    dx_comp = ee.Image("users/thinkbetween/Dixie_Composite");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var predictors = ee.ImageCollection("projects/servir-mekong/CambodiaFireEmissions/forest-mapping-ls-ts");
+predictors = predictors.select([0,1,2,3,4,5]);
+print(predictors);
+
+// define a study area
+var sa = predictors.geometry();
+
+// set a threshold for forest cover
+var covThresh = 20;
+
+// get predictor rasters as multi-band image
+//var predictors = dx_comp.addBands(dx_har.clip(sa));
+//print('predictors', predictors);
+
+// choose classifier 
+var classifier = ee.Classifier.randomForest;
+
+// choose classifier parameters
+var classifierParameters = {numberOfTrees:500};
+
+// choose classifier output mode: CLASSIFICATION, REGRESSION, PROBABILITY
+var mode = 'CLASSIFICATION';
+
+// choose projection
+var crs = 'EPSG:32648';
+
+// choose resolution
+var scale = 30;
+
+// choose export name
+var exportName = 'Forest_NonForest';
+
+// set the sample size
+var sampleSize = 1000;
+
+var forest = ee.Image('UMD/hansen/global_forest_change_2017_v1_5').select(0);
+var referenceData = forest.gt(covThresh).clip(sa);
+print(forest)
+
+var test = predictors.map(function(img){return classificationWrapper(img,classifier,classifierParameters,mode,crs,null,scale)});
+print(test)
+// // run the classification function
+// var out = classificationWrapper(predictors, classifier, classifierParameters, mode, crs, null, scale);
+// print('out', out);
+
+// // export the classified result
+// Export.image.toDrive({image: out[1], description: exportName, region: sa, scale: scale, crs: crs, maxPixels: 1e13});
+
+// // add the classified result to the map
+// Map.addLayer(out[1], {min:0, max:1}, 'forest');
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// classification 
+///////////////////////////////////////////////////////////////////////////////////////////////
+function classificationWrapper(image, classifier, classifierParameters, mode, crs, transform, scale){
+  image = ee.Image(image);
+  // get the Hansen forest change data and use it as reference data
+  
+  // print('Reference Data:', referenceData);
+  // Map.addLayer(referenceData, {}, 'Reference Data');
+  
+  // combine reference and explanatory data
+  var composite = referenceData.addBands(image);
+  // print(composite)
+  
+  // get column name of reference field as a string
+  var responseField = 'treecover2000';
+  
+  // Sample the training image to get the training data
+  var trainingData = composite.sample({
+    region: predictors.geometry(), 
+    scale: 30, 
+    numPixels: sampleSize
+  });
+  //print('trainingTesting', trainingTesting)
+  
+  // create a feature to get the reference data properties
+  var ref = forest.sample({region: composite.geometry(), scale: 30, numPixels: 10});
+  
+  // separate out the explanatory fields from the response fields
+  var inputProperties = ee.Feature(trainingData.first()).propertyNames();
+  // print('inputProperties:', inputProperties);
+  var refDataProperties = ee.Feature(ref.first()).propertyNames();
+  // print('refDataProperties:', refDataProperties);
+  inputProperties = inputProperties.removeAll(refDataProperties);
+  // print('inputProperties:', inputProperties);
+  
+  var model = classifier(classifierParameters).setOutputMode(mode).train({
+    features: trainingData,
+    classProperty: responseField,
+    inputProperties: inputProperties, 
+    subsampling: 1,
+    subsamplingSeed: 0});
+  
+  var applyModel = image.classify(model);
+  //Map.addLayer(applyModel, {}, 'Classified Raster');
+  
+  // get confusion matrix
+  var confusionMatrix = model.confusionMatrix();
+  // print('Confusion Matrix:', confusionMatrix);
+  
+  // get users and users accuracy
+  // var correctNonforest = confusionMatrix.getInfo()[0][0];
+  // var incorrectForest = confusionMatrix.getInfo()[0][1];
+  // var correctForest = confusionMatrix.getInfo()[1][1];
+  // var incorrectNonforest = confusionMatrix.getInfo()[1][0];
+  // var totalCorrect = ee.Number(correctNonforest).add(ee.Number(correctForest));
+  // var totalIncorrect = ee.Number(incorrectNonforest).add(ee.Number(incorrectForest));
+  // var modelAccuracy = totalCorrect.divide(sampleSize).multiply(100);
+  // print('Model Accuracy:', modelAccuracy);
+  
+  return applyModel;//[model, applyModel];
+}
+
+

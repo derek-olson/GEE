@@ -1,0 +1,97 @@
+//set study area
+sa = 'some geometry'
+
+//Set the number of clusters
+var clustNum = 2;
+
+//Create a multiband composite
+var composite = 'some composite'
+
+//Get a list of the band names
+var bands = composite.bandNames().getInfo()
+var bandsLength = composite.bandNames().length()//.getInfo();
+bandsLength = ee.List.sequence({start:1, end: bandsLength.subtract(1)})
+//print('bands:', bands);
+
+//Rescale the composite for segmentation
+var scaledImageList = bands.map(function(band){
+  //Get each band
+  var inBand = composite.select(band);
+  
+  //Find the min value
+  var min = inBand.reduceRegion({
+    reducer: ee.Reducer.min(),
+    geometry: composite.geometry(),
+    scale: 30,
+    maxPixels: 1e13
+  });
+  min = min.get(band);
+  
+  //Create a constant raster with the min value
+  var minBand = ee.Image.constant(min);
+  
+  //Find the max value
+  var max = inBand.reduceRegion({
+    reducer: ee.Reducer.max(),
+    geometry: composite.geometry(),
+    scale: 30,
+    maxPixels: 1e13
+  });
+  max = max.get(band);
+  
+  //Create a constant raster with the max value
+  var maxBand = ee.Image.constant(max);
+  var numerator = inBand.subtract(minBand);
+  var denominator = maxBand.subtract(minBand);
+  var scaledBands = numerator.divide(denominator);
+  
+  return scaledBands;
+});
+print('scaledImageList:', scaledImageList);
+
+//Get the list of images to a multiband image
+var scaledImage = ee.ImageCollection(scaledImageList);
+scaledImage = newCollectionToImage(scaledImage);
+scaledImage = scaledImage.clip(sa)//.reproject('EPSG:26912');
+print('scaledImage:', scaledImage);
+Map.addLayer(scaledImage, {}, 'scaledImage');
+
+//Create training data
+var training = scaledImage.sample({
+  scale: 30,
+  numPixels: 10000
+  });
+
+//Create the clusterer
+var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
+  .train({
+    features: training
+  });
+  print('kmeans:', kmeans);
+  
+//Get kmeans clusters
+var clusterImage = scaledImage.cluster(kmeans, 'kmeans');
+print('clusterImage:', clusterImage);  
+
+////////////////////////////////////////////////////////////////////////////////////
+//Extract computed stat from nested list.
+function lookup_stat(list){
+  var pixelstat = ee.Dictionary(ee.List(ee.Dictionary(list).get('groups')).get(0)).get('variance');
+  return pixelstat;
+}
+////////////////////////////////////////////////////////////////////////////////////  
+
+////////////////////////////////////////////////////////////////////////////////////
+//Helper function to convert image collection into stack of image bands
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
+////////////////////////////////////////////////////////////////////////////////////
+
+
+

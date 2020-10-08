@@ -1,0 +1,1075 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageVisParam = {"opacity":1,"bands":["R","G","B"],"min":24.20937806016994,"max":147.0837327661342,"gamma":1},
+    imageVisParam2 = {"opacity":1,"bands":["red","green","blue"],"min":124.52288933789487,"max":2996.7901946443835,"gamma":1},
+    imageVisParam3 = {"opacity":1,"bands":["red","green","blue"],"min":124.69065950378689,"max":3122.8412528086974,"gamma":1},
+    BM = ee.Image("users/thinkbetween/BM_Composite"),
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-111.99462890625, 48.60385760823255],
+          [-114.532470703125, 48.683707571653635],
+          [-114.488525390625, 46.78501604269253],
+          [-111.7529296875, 46.800059446787316]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/*//////////////////////////////////////////////////////////////////////////////
+DESCRIPTION:
+This script accomplishes several tasks:
+ 1) Loads study region 
+ 2) Gathers Landsat 4,5,7,8 imagery for a specified season
+ 3) Masks shadows and clouds 
+ 4) Exports composite to asset
+
+*///////////////////////////////////////////////////////////////////////////////
+// Define user parameters:
+
+// 1. Specify study area: Study area
+// Can specify a country, provide a fusion table  or asset table (must add 
+// .geometry() after it), or draw a polygon and make studyArea = drawnPolygon
+var roi = sa//ee.FeatureCollection('ft:1UuFquverkIKyJf09aDxGdFU9Y4V3jVIkLhwZ2J-W').geometry().bounds();
+Map.addLayer(roi, {}, 'roi', false)
+var studyArea = sa;
+Map.addLayer(BM, {}, 'BM')
+//var bt = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
+//Map.addLayer(bt, {}, 'bt');
+// 2. Update the startJulian and endJulian variables to indicate your seasonal 
+// constraints. This supports wrapping for tropics and southern hemisphere.
+// startJulian: Starting Julian date 
+// endJulian: Ending Julian date
+var startJulian = 190;
+var endJulian = 250; 
+
+// 3. Specify start and end years for all analyses
+// More than a 3 year span should be provided for time series methods to work 
+// well. If using Fmask as the cloud/cloud shadow masking method, this does not 
+// matter
+var startYear = 1984;
+var endYear = 2018;
+
+// 4. Specify an annual buffer to include imagery from the same season 
+// timeframe from the prior and following year. timeBuffer = 1 will result 
+// in a 3 year moving window
+var timebuffer = 0;
+
+// 5. Set up Names for the export
+var outputName = 'BobMarshall'; 
+
+// 6. Provide location composites will be exported to
+var exportPathRoot = 'users/thinkbetween';
+
+// 7. Choose medoid or median compositing method. 
+// Median tends to be smoother, while medoid retains 
+// single date of observation across all bands
+// Specify compositing method (median or medoid)
+var compositingMethod = 'medoid';
+
+// 8. Choose Top of Atmospheric (TOA) or Surface Reflectance (SR) 
+// Specify TOA or SR
+var toaOrSR = 'SR';
+
+// 9. Choose whether to include Landat 7
+// Generally only included when data are limited
+var includeSLCOffL7 = false;
+
+// 10. Choose cloud/cloud shadow masking method
+// Choices are fmask, cloudScoreTDOM, or hybrid to run cloudScore, fmask cloud 
+// mask, TDOM, and then fmask cloud shadow 
+var cloudcloudShadowMaskingMethod = 'cloudScoreTDOM';
+
+// 11. Cloud and cloud shadow masking parameters.
+// If cloudScoreTDOM is chosen
+// cloudScoreThresh: If using the cloudScoreTDOMShift method-Threshold for cloud 
+//    masking (lower number masks more clouds.  Between 10 and 30 generally 
+//    works best)
+var cloudScoreThresh = 20;
+
+// Percentile of cloud score to pull from time series to represent a minimum for 
+// the cloud score over time for a given pixel. Reduces comission errors over 
+// cool bright surfaces. Generally between 5 and 10 works well. 0 generally is a
+// bit noisy
+var cloudScorePctl = 5; 
+
+// zScoreThresh: Threshold for cloud shadow masking- lower number masks out 
+//    less. Between -0.8 and -1.2 generally works well
+var zScoreThresh = -1;
+
+// shadowSumThresh: Sum of IR bands to include as shadows within TDOM and the 
+//    shadow shift method (lower number masks out less)
+var shadowSumThresh = 0.35;
+
+// contractPixels: The radius of the number of pixels to contract (negative 
+//    buffer) clouds and cloud shadows by. Intended to eliminate smaller cloud 
+//    patches that are likely errors
+// (1.5 results in a -1 pixel buffer)(0.5 results in a -0 pixel buffer)
+// (1.5 or 2.5 generally is sufficient)
+var contractPixels = 0.5; 
+
+// dilatePixels: The radius of the number of pixels to dilate (buffer) clouds 
+//    and cloud shadows by. Intended to include edges of clouds/cloud shadows 
+//    that are often missed
+// (1.5 results in a 1 pixel buffer)(0.5 results in a 0 pixel buffer)
+// (2.5 or 3.5 generally is sufficient)
+var dilatePixels = 0.5;
+// Metadata tag
+var versionNumber = 1;
+
+// End user parameters
+////////////////////////////////////////////////////////////////////////////////
+
+// Define visualization parameters
+var vizParamsFalse = {
+  'min': 0.1, 
+  'max': [0.3,0.4,0.4], 
+  'bands': 'swir1,nir,red', 
+  'gamma': 1.6
+};
+
+var vizParamsTrue = {
+  'min': 0.02, 
+  'max': [0.2,0.2,0.2], 
+  'bands': 'red,green,blue', 
+  'gamma': 1.6
+};
+
+// Prep client-side region for exporting
+var region = studyArea.bounds(1000).getInfo().coordinates[0];
+
+// Prepare dates
+if (startJulian > endJulian) {
+  endJulian = endJulian + 365;
+}
+var startDate = ee.Date.fromYMD(startYear,1,1).advance(startJulian-1,'day');
+var endDate = ee.Date.fromYMD(endYear,1,1).advance(endJulian-1,'day');
+print('Start and end dates:', startDate, endDate);
+
+toaOrSR = toaOrSR.toUpperCase();
+
+////////////////////////////////////////////////////////////////////////////////
+// FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////
+// Function for acquiring Landsat TOA image collection
+function getImageCollection(studyArea,startDate,endDate,startJulian,endJulian,
+  toaOrSR,includeSLCOffL7){
+  
+  // Set up bands and corresponding band names
+  var sensorBandDict = {
+    'L8TOA': ee.List([1,2,3,4,5,9,6,'BQA']),
+    'L7TOA': ee.List([0,1,2,3,4,5,7,'BQA']),
+    'L5TOA': ee.List([0,1,2,3,4,5,6,'BQA']),
+    'L4TOA': ee.List([0,1,2,3,4,5,6,'BQA']),
+    'L8SR': ee.List([1,2,3,4,5,7,6,'pixel_qa']),
+    'L7SR': ee.List([0,1,2,3,4,5,6,'pixel_qa']),
+    'L5SR': ee.List([0,1,2,3,4,5,6,'pixel_qa']),
+    'L4SR': ee.List([0,1,2,3,4,5,6,'pixel_qa']),
+  };
+  
+  var sensorBandNameDict = {
+    'TOA': ee.List(['blue','green','red','nir','swir1','temp','swir2','BQA']),
+    'SR': ee.List(['blue','green','red','nir','swir1','temp', 'swir2','pixel_qa'])
+  };
+  
+  // Set up collections
+  var collectionDict = {
+    'L8TOA': 'LANDSAT/LC08/C01/T1_TOA',
+    'L7TOA': 'LANDSAT/LE07/C01/T1_TOA',
+    'L5TOA': 'LANDSAT/LT05/C01/T1_TOA',
+    'L8SR': 'LANDSAT/LC08/C01/T1_SR',
+    'L7SR': 'LANDSAT/LE07/C01/T1_SR',
+    'L5SR': 'LANDSAT/LT05/C01/T1_SR'
+  };
+  
+  var multImageDict = {
+    'TOA': ee.Image([1,1,1,1,1,1,1,1]),
+    'SR': ee.Image([0.0001,0.0001,0.0001,0.0001,0.0001,0.1,0.0001,1])
+  };
+  
+  // Get Landsat data
+  var l5s = ee.ImageCollection(collectionDict['L5'+ toaOrSR])
+    .filterDate(startDate,endDate)
+    .filter(ee.Filter.calendarRange(startJulian,endJulian))
+    .filterBounds(studyArea)
+    .select(sensorBandDict['L5'+ toaOrSR],sensorBandNameDict[toaOrSR]);
+  
+  var l8s = ee.ImageCollection(collectionDict['L8'+ toaOrSR])
+    .filterDate(startDate,endDate)
+    .filter(ee.Filter.calendarRange(startJulian,endJulian))
+    .filterBounds(studyArea)
+    .select(sensorBandDict['L8'+ toaOrSR],sensorBandNameDict[toaOrSR]);
+  
+  var ls; var l7s;
+  if (includeSLCOffL7) {
+    print('Including All Landsat 7');
+    l7s = ee.ImageCollection(collectionDict['L7'+toaOrSR])
+      .filterDate(startDate,endDate)
+      .filter(ee.Filter.calendarRange(startJulian,endJulian))
+      .filterBounds(studyArea)
+      .select(sensorBandDict['L7'+ toaOrSR],sensorBandNameDict[ toaOrSR]);
+  } else {
+    print('Only including SLC On Landat 7');
+    l7s = ee.ImageCollection(collectionDict['L7'+toaOrSR])
+      .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2003,5,31))
+      .filterDate(startDate,endDate)
+      .filter(ee.Filter.calendarRange(startJulian,endJulian))
+      .filterBounds(studyArea)
+      .select(sensorBandDict['L8'+ toaOrSR],sensorBandNameDict[toaOrSR]);
+  }
+  
+  // Merge collections
+  ls = ee.ImageCollection(l5s.merge(l7s).merge(l8s));
+  
+  // Make sure all bands have data
+  ls = ls.map(function(img){
+    img = img.updateMask(img.mask().reduce(ee.Reducer.min()));
+    return img.multiply(multImageDict[toaOrSR])
+      .copyProperties(img,['system:time_start']).copyProperties(img);
+  });
+  
+  return ls;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to apply an expression and linearly rescale the output.
+// Used in the landsatCloudScore function below.
+function rescale(img, exp, thresholds) {
+  return img.expression(exp, {img: img})
+    .subtract(thresholds[0]).divide(thresholds[1] - thresholds[0]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Compute a cloud score and adds a band that represents the cloud mask.  
+// This expects the input image to have the common band names: 
+// ["red", "blue", etc], so it can work across sensors.
+function landsatCloudScore(img) {
+  // Compute several indicators of cloudiness and take the minimum of them.
+  var score = ee.Image(1.0);
+  // Clouds are reasonably bright in the blue band.
+  score = score.min(rescale(img, 'img.blue', [0.1, 0.3]));
+ 
+  // Clouds are reasonably bright in all visible bands.
+  score = score.min(rescale(img, 'img.red + img.green + img.blue', [0.2, 0.8]));
+   
+  // Clouds are reasonably bright in all infrared bands.
+  score = score.min(
+    rescale(img, 'img.nir + img.swir1 + img.swir2', [0.3, 0.8]));
+
+  // Clouds are reasonably cool in temperature.
+  score = score.min(rescale(img,'img.temp', [300, 290]));
+
+  // However, clouds are not snow.
+  var ndsi = img.normalizedDifference(['green', 'swir1']);
+  score = score.min(rescale(ndsi, 'img', [0.8, 0.6]));
+  
+  // var ss = snowScore(img).select(['snowScore']);
+  // score = score.min(rescale(ss, 'img', [0.3, 0]));
+  
+  score = score.multiply(100).byte();
+  score = score.clamp(0,100);
+  return score;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Functions for applying fmask to SR data
+////////////////////////////////////////////////////////////////////////////////
+function cFmaskCloud(img){
+  var cloud = img.select('pixel_qa').bitwiseAnd(32).neq(0);
+  return img.updateMask(cloud.not());
+}
+function cFmaskCloudShadow(img){
+  var cloud_shadow = img.select('pixel_qa').bitwiseAnd(8).neq(0);
+  return img.updateMask(cloud_shadow.not());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Function for finding dark outliers in time series.
+// Original concept written by Carson Stam and adapted by Ian Housman.
+// Adds a band that is a mask of pixels that are dark, and dark outliers.
+////////////////////////////////////////////////////////////////////////////////
+function simpleTDOM2(collection,zScoreThresh,shadowSumThresh,contractPixels,
+  dilatePixels){
+  var shadowSumBands = ['nir','swir1'];
+  
+  // Get some pixel-wise stats for the time series
+  var irStdDev = collection.select(shadowSumBands).reduce(ee.Reducer.stdDev());
+  var irMean = collection.select(shadowSumBands).mean();
+  
+  // Mask out dark dark outliers
+  collection = collection.map(function(img){
+    var zScore = img.select(shadowSumBands).subtract(irMean).divide(irStdDev);
+    var irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum());
+    var TDOMMask = zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2)
+      .and(irSum.lt(shadowSumThresh));
+    TDOMMask = TDOMMask.focal_min(contractPixels).focal_max(dilatePixels);
+    return img.updateMask(TDOMMask.not());
+  });
+  
+  return collection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Function for adding common indices
+////////////////////////////////////////////////////////////////////////////////
+function addIndices(img){
+  img = img.addBands(img.normalizedDifference(['nir', 'red']).rename('NDVI'));
+  img = img.addBands(img.normalizedDifference(['nir', 'swir2']).rename('NBR'));
+  img = img.addBands(img.normalizedDifference(['red','green']).rename('NDCI'));
+  img = img.addBands(img.normalizedDifference(['red','swir2']).rename('NDII'));
+  img = img.addBands(img.normalizedDifference(['swir1','nir']).rename('NDFI'));
+  img = img.addBands(img.normalizedDifference(['swir1','green']).rename('NDRO'));
+  
+  var bsi = img.expression(
+  '((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE))', {
+    'BLUE': img.select('blue'),
+    'RED': img.select('red'),
+    'NIR': img.select('nir'),
+    'SWIR1': img.select('swir1')
+  }).float();
+  img = img.addBands(bsi.rename('BSI'));
+  
+  var hi = img.expression(
+    'SWIR1 / SWIR2',{
+      'SWIR1': img.select('swir1'),
+      'SWIR2': img.select('swir2')
+    }).float();
+  img = img.addBands(hi.rename('HI'));  
+  return img;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Function for computing the mean squared difference medoid from an image 
+// collection
+////////////////////////////////////////////////////////////////////////////////
+function medoidMosaicMSD(inCollection,medoidIncludeBands) {
+  // Find band names in first image
+  var f = ee.Image(inCollection.first());
+  var bandNames = f.bandNames();
+  var bandNumbers = ee.List.sequence(1,bandNames.length());
+  
+  if (medoidIncludeBands === undefined || medoidIncludeBands === null) {
+    medoidIncludeBands = bandNames;
+  }
+  // Find the median
+  var median = inCollection.select(medoidIncludeBands).median();
+  
+  // Find the squared difference from the median for each image
+  var medoid = inCollection.map(function(img){
+    var diff = ee.Image(img).select(medoidIncludeBands).subtract(median)
+      .pow(ee.Image.constant(2));
+    return diff.reduce('sum').addBands(img);
+  });
+  
+  // Minimize the distance across all bands
+  medoid = ee.ImageCollection(medoid)
+    .reduce(ee.Reducer.min(bandNames.length().add(1)))
+    .select(bandNumbers,bandNames);
+
+  return medoid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to export a provided image to an EE asset
+////////////////////////////////////////////////////////////////////////////////
+function exportToAssetWrapper(imageForExport,assetName,assetPath,
+  pyramidingPolicy,roi,region,scale,crs){
+  //Make sure image is clipped to roi in case it's a multi-part polygon
+  imageForExport = imageForExport.clip(roi);
+  assetName = assetName.replace(/\s+/g,'-');//Get rid of any spaces
+  
+  Export.image.toAsset(imageForExport, assetName, assetPath, 
+    {'.default': pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Create composites for each year within startYear and endYear range
+////////////////////////////////////////////////////////////////////////////////
+function compositeTimeSeries(startYear,endYear,timebuffer){
+  var ts = ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo()
+    .map(function(year){
+    // Set up dates
+    var startYearT = year-timebuffer;
+    var endYearT = year+timebuffer;
+    var startDateT = ee.Date.fromYMD(startYearT,1,1).advance(startJulian-1,'day');
+    var endDateT = ee.Date.fromYMD(endYearT,1,1).advance(endJulian-1,'day');
+  
+    // Filter images for given date range
+    var lsT = ls.filterDate(startDateT,endDateT);
+    
+    // Get export bands
+    var exportBands = ee.List(['blue','green','red','nir','swir1','temp','swir2',
+      'NDVI','NBR', 'BSI', 'HI', 'NDFI', 'NDII', 'NDCI', 'NDRO']);
+    
+    // Compute median or medoid
+    var composite;
+    lsT = lsT.select(exportBands);
+    if (compositingMethod.toLowerCase() === 'median') {
+      composite = lsT.median();
+    }
+    else {
+      composite = medoidMosaicMSD(lsT,['blue','green','red','nir','swir1','swir2']);
+    }
+    
+    return composite.clip(studyArea).set('system:time_start',ee.Date.fromYMD(year,6,1).millis());
+  });
+  return ee.ImageCollection(ts);
+}
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to convert image collection into stack of image bands
+////////////////////////////////////////////////////////////////////////////////
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
+////////////////////////////////////////////////////////////////////////////////
+// Function to export composite collection
+////////////////////////////////////////////////////////////////////////////////
+function exportCollection(collection,startYear,endYear,timebuffer){
+  var years = ee.List.sequence(startYear+timebuffer,endYear-timebuffer).getInfo()
+    .map(function(year){
+    // Set up dates
+    var startYearT = year-timebuffer;
+    var endYearT = year+timebuffer;
+    
+    // Get yearly composite
+    var composite = collection.filter(ee.Filter.calendarRange(year,year,'year'));
+    composite = ee.Image(composite.first());
+    
+    // Display the Landsat composite
+    Map.addLayer(composite, vizParamsTrue, year.toString() + ' True Color ' + 
+      toaOrSR, false);
+    Map.addLayer(composite, vizParamsFalse, year.toString() + ' False Color ' + 
+      toaOrSR, false);
+  
+    // Reformat data for export
+    var compositeBands = composite.bandNames();
+    var nonDivideBands = ee.List(['temp']);
+    var composite10k = composite.select(compositeBands.removeAll(nonDivideBands))
+      .multiply(10000);
+    composite = composite10k.addBands(composite.select(nonDivideBands))
+      .select(compositeBands).int16();
+
+    // Add metadata, cast to integer, and export composite
+    composite = composite.set({
+      'system:time_start': ee.Date.fromYMD(year,6,1).millis(),
+      'date': ee.Date.fromYMD(year,6,1),
+      'source': toaOrSR,
+      'startJulian': startJulian,
+      'endJulian': endJulian,
+      'compositingMethod': compositingMethod,
+      'cloudcloudShadowMaskingMethod': cloudcloudShadowMaskingMethod,
+      'includeSLCOffL7': includeSLCOffL7
+    });
+  
+    // Export the composite 
+    // Set up export name and path
+    var exportName = outputName + '_Landsat_' + toaOrSR + '_' + compositingMethod + 
+      '_' + cloudcloudShadowMaskingMethod+'_' + startYearT + '_' + endYearT+'_' + 
+      startJulian + '_' + endJulian ;
+    
+    var exportPath = exportPathRoot + '/' + exportName;
+    // print('Write down the Asset ID:', exportPath);
+  
+    exportToAssetWrapper(composite,exportName,exportPath,'mean',
+      studyArea,region,30,'EPSG:26912');
+    });
+}
+////////////////////////////////////////////////////////////////////////////////
+// Function to export a provided image to an EE asset
+function asyncExportToAssetWrapper(
+  imageForExport,assetName,assetPath,pyramidingPolicy,roi,scale,crs){
+  //Make sure image is clipped to roi in case it's a multi-part polygon
+  //imageForExport = imageForExport.clip(roi);
+  assetName = assetName.replace(/\s+/g,'-');//Get rid of any spaces
+  
+  //Asynchronous approach to gathering converting server-side vectors to 
+  //client-side without locking the browser
+  roi.evaluate(function(roiInfo){
+    var roiType = roiInfo.type.toString();
+    //If it is a Polygon geometry...
+    if( roiType === 'Polygon'){
+      roi.bounds(1000).evaluate(function(polygonInfo){
+        var region = polygonInfo.coordinates[0];
+        Export.image.toAsset(imageForExport, assetName, assetPath, 
+        {'.default':pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+      });
+    }
+    //If it is a MultiPolygon gometry.....
+    else if( roiType === 'MultiPolygon'){
+      roi.bounds(1000).evaluate(function(multiPolygonInfo){
+        var region = multiPolygonInfo.coordinates[0];
+        Export.image.toAsset(imageForExport, assetName, assetPath, 
+        {'.default':pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+      });
+    }
+    //If it is a FeatureCollection.....
+    else if( roiType === 'FeatureCollection'){
+      roi.geometry(1000).bounds(1000).evaluate(function(featureCollectionInfo){
+        var region = featureCollectionInfo.coordinates[0];
+        Export.image.toAsset(imageForExport, assetName, assetPath, 
+        {'.default':pyramidingPolicy}, null, region, scale, crs, null, 1e13);
+      });
+    }
+    //Alert user if not supported
+    else(
+    alert('Type of feature is "'+roiType+ '". This is not handled\nIf a ' + 
+    'Feature, can manually cast to featureCollections by using: ' + 
+    'ee.FeatureCollection([myFeature])')
+    );
+  });
+}
+////////////////////////////////////////////////////////////////////////////////
+// END FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////
+
+// Get Landsat image collection
+var ls = getImageCollection(studyArea,startDate,endDate,startJulian,endJulian,
+  toaOrSR,includeSLCOffL7);
+
+// Apply relevant cloud masking methods
+if (cloudcloudShadowMaskingMethod.toLowerCase() === 'cloudscoretdom' || 
+  cloudcloudShadowMaskingMethod.toLowerCase() === 'hybrid' || 
+  toaOrSR.toLowerCase() === 'toa') {
+  print('Running cloudScore');
+  // Add cloudScore
+  var ls = ls.map(function(img){
+    var cs = landsatCloudScore(img).rename(['cloudScore']);
+    return img.addBands(cs);
+  });
+  // Find low cloud score pctl for each pixel to avoid comission errors
+  var minCloudScore = ls.select(['cloudScore'])
+    .reduce(ee.Reducer.percentile([cloudScorePctl]));
+
+  // Apply cloudScore
+  var ls = ls.map(function(img){
+    var cloudMask = img.select(['cloudScore']).subtract(minCloudScore)
+      .lt(cloudScoreThresh)
+      .focal_max(contractPixels).focal_min(dilatePixels).rename('cloudMask');
+    return img.updateMask(cloudMask);
+  });
+}
+
+if ((cloudcloudShadowMaskingMethod.toLowerCase() === 'fmask' || 
+  cloudcloudShadowMaskingMethod.toLowerCase() === 'hybrid') && 
+  toaOrSR.toLowerCase() != 'toa') {
+  print('Extracting cFmask cloud masks');
+  ls = ls.map(cFmaskCloud);
+}
+
+if (cloudcloudShadowMaskingMethod.toLowerCase() === 'cloudscoretdom' || 
+  cloudcloudShadowMaskingMethod.toLowerCase() === 'hybrid' || 
+  toaOrSR.toLowerCase() === 'toa') {
+  print('Running TDOM');
+  // Find and mask out dark outliers
+  ls = simpleTDOM2(ls,zScoreThresh,shadowSumThresh,contractPixels,dilatePixels);
+}
+
+if ((cloudcloudShadowMaskingMethod.toLowerCase() === 'fmask' || 
+  cloudcloudShadowMaskingMethod.toLowerCase() === 'hybrid') && 
+  toaOrSR.toLowerCase() != 'toa') {
+  print('Extracting cFmask cloud shadow masks');
+  ls = ls.map(cFmaskCloudShadow);
+}
+
+// Add common indices
+ls = ls.map(addIndices);
+
+// Create composite time series
+var ts = compositeTimeSeries(startYear,endYear,timebuffer);
+// print(ts)
+
+// var first = ee.Image(ts.first());
+// Map.addLayer(first,vizParamsFalse,'First',false);
+// var last = ee.Image(ts.sort('system:time_start',false).first());
+// Map.addLayer(last,vizParamsFalse,'Last',false);
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//Landtrendr processing
+//Written by Yang Zhiqiang
+/****************** Post Processing **********************/
+/** 
+* Extract maximum 6 segment outputs
+*/
+var getLTSegments = function(ltresult) {
+  
+  var zeros = ee.Image(ee.Array([[0,0,0,0,0,0,0],
+                              [0,0,0,0,0,0,0],
+                              [0,0,0,0,0,0,0]]));
+  var lbls = [['doy','raw','ftv'],['1','2','3','4','5','6','7']];
+ 
+  var vmask = ltresult.arraySlice(0,3,4);
+
+  var result = ltresult.arrayMask(vmask)
+                      .arraySlice(0, 0, 3)
+                      .addBands(zeros)
+                      .toArray(1)
+                      .arraySlice(1, 0, 7)
+                      .arrayFlatten(lbls, '');
+  
+  var resultC = result.select(ee.List.sequence(7,20));
+  var resultT = result.select(ee.List.sequence(0,6)).int16();
+  resultC = resultC.multiply(10000).int16();
+  result = resultT.addBands(resultC);
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//Function to produce Landtrendr outputs
+///////////////////////////////////////////////////////////////////////////////
+function getLT(indexName, annualLandsat,nameEnd,run_params,outputRepository){
+  
+  var sign = indexName[1];
+  indexName = indexName[0];
+  var ts = annualLandsat.select(indexName);
+  
+  //Set up timeseries for respective index/band
+    ts = ts.map(function(img){
+    var out = img.multiply(sign);
+    out = out.set('system:time_start',img.get('system:time_start'));
+    return out;});
+
+  // Map.addLayer(ts,{},'timeSeries '+indexName,false);
+  run_params.timeSeries = ts;
+  print('Running lt with following params:',run_params);
+  //Run Landtrendr
+  var lt =ee.Algorithms.TemporalSegmentation.LandTrendr(run_params).select('LandTrendr');
+ 
+  //Convert array into exportable object
+  var dist = getLTSegments(lt);
+   
+    //Break LT output apart for exporting
+   var years = dist.select(ee.List.sequence(0,6));
+   var raw = dist.select(ee.List.sequence(7,13));
+   var ftv = dist.select(ee.List.sequence(14,20));
+   
+  // Map.addLayer(years,{},'Years',false);
+  //Export LT parts.  Years is resampled using a mode reducer for EE tile pyramids
+  //All others use mean
+  // exportImage(years,'LT_'+indexName + '_'+nameEnd+'_Years',30,'mode',region,outputRepository);
+  // exportImage(raw,'LT_'+indexName + '_'+nameEnd+'_RAW',30,'mean',region,outputRepository);
+  // exportImage(ftv,'LT_'+indexName + '_'+nameEnd+'_FTV',30,'mean',region,outputRepository);
+ return [years,ftv];
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//Function for parsing output from LT into useful change data
+///////////////////////////////////////////////////////////////////////////////
+function parseLTAsset(years,ftv,forestMask,changeThresh,indexName,startYear,endYear){
+  if(startYear === undefined || startYear === null){startYear = 1985}
+  if(endYear === undefined || endYear === null){endYear = 2016}
+
+  //Apply forest mask 
+  years = years.updateMask(forestMask);
+  ftv = ftv.updateMask(forestMask);
+  
+  
+  //Mask any anomalous year values
+  years = years.where(years.lt(1984).or(years.gt(2018)),0);
+ 
+  //Get the vertex count
+  var vertexCount = years.neq(0).reduce(ee.Reducer.sum());
+  // Map.addLayer(vertexCount,{'min':2,'max':6},'vertex count',false);
+  
+  //Convert back to array
+  ftv = ftv.toArray();
+  years = years.toArray();
+  
+  //Get the vertex years and mask the fitted and year values 
+  var m = years.neq(0);
+  years = years.arrayMask(m);
+  ftv = ftv.arrayMask(m);
+  
+  //Slice off the left and right years
+  var yearsLeft = years.arraySlice(0,0,-1);
+  var yearsRight = years.arraySlice(0,1,null);
+  
+  //Do the same for the fitted values
+  var ftvLeft = ftv.arraySlice(0,0,-1);
+  var ftvRight = ftv.arraySlice(0,1,null);
+  
+  
+  //Get the difference between years and fitted values
+  var yDiff = yearsRight.subtract(yearsLeft);
+  var ftvDiff = ftvRight.subtract(ftvLeft);
+  
+  //Set up a name end
+  var nameEnd = indexName + '_' + startYear.toString() + '_' + endYear.toString();
+  
+  //Sort the differences
+  var diffSort = ftvDiff.multiply(-1).arraySort();
+
+  //Iterate across the top 3 differences to find change
+  var indexes = [0,1,2];
+  var yearChanges = [];
+  indexes.map(function(i){
+    var diffSortT = diffSort.updateMask(vertexCount.subtract(i).gt(1));
+    var diffT = diffSortT.arrayGet(i).multiply(-1);
+    var isDiff = ftvDiff.eq(diffT);
+    var yearChangeT = yearsRight.arrayMask(isDiff).arrayReduce(ee.Reducer.first(),[0]).arrayFlatten([['year_'+nameEnd]]);
+  
+    var isChangeT = diffT.gt(changeThresh).and(vertexCount.gt(2)).and(yearChangeT.gt(startYear)).and(yearChangeT.lt(endYear));
+    yearChangeT = yearChangeT.updateMask(isChangeT);
+    // Map.addLayer(yearChangeT,{'min':startYear,'max':endYear,'palette':'FF0,F00'},'is change '+i.toString(),false);
+    yearChanges.push(yearChangeT);
+  });
+  
+  //Convert to image collection
+  yearChanges = ee.ImageCollection(yearChanges);
+  
+  // Map.addLayer(diffSort)
+  // var maxChange = ftvDiff.arrayReduce(ee.Reducer.max(),[0]).arrayFlatten([['changeMag_'+nameEnd]]);
+  
+  // var isMax = ftvDiff.gte(maxChange.subtract(0.0001));
+  // // Map.addLayer(maxChange)
+  // var yearChange = yearsRight.arrayMask(isMax).arrayReduce(ee.Reducer.first(),[0]).arrayFlatten([['year_'+nameEnd]]);
+  // var onsetValue = ftvLeft.arrayMask(isMax).arrayReduce(ee.Reducer.first(),[0]).arrayFlatten([['onsetValue_'+nameEnd]]);
+  // var postValue = ftvRight.arrayMask(isMax).arrayReduce(ee.Reducer.first(),[0]).arrayFlatten([['endValue_'+nameEnd]]);
+  // var duration = yearsRight.subtract(yearsLeft).arrayMask(isMax).arrayReduce(ee.Reducer.first(),[0]).arrayFlatten([['duration_'+nameEnd]]);
+  // var isChange = maxChange.gt(changeThresh).and(vertexCount.gt(2)).and(yearChange.gt(startYear)).and(yearChange.lt(endYear));
+  // var magnitude = postValue.subtract(onsetValue);
+
+  // Map.addLayer(yearChange.updateMask(isChange),{'min':startYear,'max':endYear,'palette':'FF0,F00'},'LandTrendr Change Year '+nameEnd,false);
+  // Map.addLayer(duration.updateMask(isChange),{'min':1,'max':5,'palette':'ca0020,f4a582,f7f7f7,92c5de,0571b0'},'Duration ' + nameEnd,false);
+  // Map.addLayer(magnitude.updateMask(isChange),{'min':1500,'max':4000,'palette':'00F,F00'},'Magnitude ' + nameEnd,false);
+  // var td = ee.Image(endYear).subtract(yearChange).updateMask(isChange);
+  // Map.addLayer(td,{'min':1,'max':endYear-startYear,'palette':'00F,F00'},'Time Since Disturbance ' + nameEnd,false);
+  
+  // return [maxChange.addBands(onsetValue).addBands(postValue).addBands(duration),yearChange];
+  return yearChanges;
+  
+}
+///////////////////////////////////////////////////////////////////////////////
+//Lt parameters
+///////////////////////////////////////////////////////////////////////////////
+var changeThresh = 2000;//Threshold for visualizing change (change > changeThresh).Generally 1000-2000 works well.  Lower numbers map more change.
+
+//LT run params
+var run_params = {
+  maxSegments: 6,
+  spikeThreshold: 0.9,
+  vertexCountOvershoot: 3,
+  preventOneYearRecovery: true,
+  recoveryThreshold: 0.25,
+  pvalThreshold: 0.05,
+  bestModelProportion: 0.75,
+  minObservationsNeeded: 6
+};
+
+//Set up mask for values that are included in LT analysis
+//Currently is the max NDVI in the time series of composites has to be gt 0.6
+var mask = ee.ImageCollection(ts).select(['NDVI']).reduce(ee.Reducer.percentile([100])).gt(0.6);
+// Map.addLayer(mask.updateMask(mask),{'min':1,'max':1},'NDVI Mask',false);
+
+//Choose index to be used in LT analysis
+var index = 'NBR';
+ts = ee.ImageCollection(ts).select([index]);
+//Map.addLayer(ts,{},'Time Series',false);
+
+//Run LT
+var results = getLT([index,-1],ts,'temp',run_params,exportPathRoot);
+
+//Parse LT results
+var years = results[0];
+var ftv = results[1];
+var yearChanges =parseLTAsset(years,ftv,mask,changeThresh,index,startYear,endYear);
+
+//Bring in MTBS
+var mtbs = ee.ImageCollection('users/ianhousman/MTBS/Collection');
+
+function fireToYear(img){
+  var yr = ee.Date(img.get('system:time_start')).get('year');
+  return ee.Image.constant(yr).updateMask(img.gt(0).focal_max(1.5)).uint16().rename('firedate');
+}
+
+mtbs = mtbs.map(fireToYear);
+
+var conusChange = ee.ImageCollection('projects/glri-phase3/science-team-outputs/conus-lcms-2018')
+
+conusChange = conusChange.map(function(img){
+    var yr = ee.Date(img.get('system:time_start')).get('year')
+    var change = img.gt(30);
+    var conusChangeYr = ee.Image(yr).updateMask(change).rename(['change']).int16()
+    return img.mask(ee.Image(1)).addBands(conusChangeYr);
+  }) 
+var lcms_conus = conusChange.select([1]);
+
+
+var changePIF = conusChange.select(0).max().lt(5);
+Map.addLayer(changePIF.updateMask(changePIF), {}, 'changePIFs');
+
+
+
+// Get the earliest (min) and latest (max) fire and LT years
+var firemin = mtbs.min();
+var firemax = mtbs.max();
+
+//Use just Landtrendr
+// var yearChangeMin = yearChanges.min();
+// var yearChangeMax = yearChanges.max();
+// var changeMin = ee.Image(9999).where(yearChangeMin.mask(),yearChangeMin);
+// var changeMax = ee.Image(0).where(yearChangeMax.mask(),yearChangeMax);
+
+// Map.addLayer(changeMin.updateMask(changeMin.neq(9999)),{min:1984,max:2014},'Earliest LT Year',false);
+// Map.addLayer(changeMax.updateMask(changeMax.neq(0)),{min:1984,max:2014},'Latest LT Year',false);
+
+//Use CONUS LCMS
+var yearChangeMin = lcms_conus.min();
+var yearChangeMax = lcms_conus.max();
+var changeMin = ee.Image(9999).where(yearChangeMin.mask(),yearChangeMin);
+var changeMax = ee.Image(0).where(yearChangeMax.mask(),yearChangeMax);
+
+Map.addLayer(changeMin.updateMask(changeMin.neq(9999)),{min:1984,max:2014},'Earliest LCMS Year',false);
+Map.addLayer(changeMax.updateMask(changeMax.neq(0)),{min:1984,max:2014},'Latest LCMS Year',false);
+
+//Use MTBS
+var changeMin = changeMin.where(firemin.mask(),firemin);
+var changeMax = changeMax.where(firemax.mask(),firemax);
+Map.addLayer(changeMin.updateMask(changeMin.neq(9999)),{min:1984,max:2014},'Earliest MTBS or LCMS Year',false);
+Map.addLayer(changeMax.updateMask(changeMax.neq(0)),{min:1984,max:2014},'Latest MTBS or LCMS Year',false);
+
+
+// Update images so that year is prior to earliest mtbs/LT disturbance
+// or year is >= 30 years after latest disturbance
+var lsT = ls.map(function(img){
+  var yr = ee.Date(img.get('system:time_start')).get('year');
+  yr = ee.Image.constant(yr);
+  // img = img.updateMask(yr.lt(firedate));
+  img = img.updateMask(yr.lt(changeMin).or(yr.gte(changeMax.add(30))));
+  return img;
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// STEP 5: Prepare composite for export
+// Get min bands
+///////////////////////////////////////////////////////////////////////////////
+var minBands = ee.List(['blue','green','red','nir','swir1','temp','swir2', 'NDVI', 'NBR', 'BSI', 'HI', 'NDII', 'NDFI', 'NDCI', 'NDRO']);
+var medoidBands = ee.List(['blue','green','red','nir','swir1','swir2', 'NDVI', 'NBR', 'BSI', 'HI', 'NDII', 'NDFI', 'NDCI', 'NDRO']);
+var composite;
+var composite_pre;
+
+if(compositingMethod.toLowerCase() === 'median'){
+  composite = lsT.select(minBands).median();
+  composite_pre = ls.select(minBands).median();
+}
+else{
+  composite = medoidMosaicMSD(lsT.select(minBands),medoidBands);
+  composite_pre = medoidMosaicMSD(ls.select(minBands),medoidBands);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// STEP 6: Add data layers into the map window. 
+// Display the Landsat Composite.
+///////////////////////////////////////////////////////////////////////////////
+// vizParams: Options for map visualization
+var vizParams = {
+    'min': 0.05,
+    'max': 0.5, 
+    'bands': 'swir1, nir, red', 
+    'gamma': 1.6
+    };
+var vizParamsTrue = {
+    'min': 0,
+    'max': 0.2, 
+    'bands': 'red, green, blue'
+    };
+    
+///////////////////////////////////////////////////////////////////////////////
+// STEP 7: Reformat data for export. 
+///////////////////////////////////////////////////////////////////////////////
+var compositeBands = composite.bandNames();
+var tempBands = composite.select('temp').bandNames();
+var nonDivideBands = tempBands;
+var composite10000 = composite.select(compositeBands.removeAll(nonDivideBands)).multiply(10000);
+var composite10 = composite.select(tempBands).multiply(10);
+composite = composite10000.addBands(composite10).int16();
+
+// Add metadata, cast to integer, and export composite
+composite = composite.set({
+  'system:time_start': ee.Date.fromYMD(startYear,6,1).millis(),
+  'date': ee.Date.fromYMD(startYear,6,1),
+  'source': toaOrSR.toUpperCase(),
+  'version': versionNumber,
+  'startDate':startDate.millis(),
+  'endDate':endDate.millis(),
+  'compositingMethod': compositingMethod,
+  'toaOrSR': toaOrSR.toUpperCase(),
+  'cloudcloudShadowMaskingMethod':cloudcloudShadowMaskingMethod
+});
+
+///////////////////////////////////////////////////////////////////////////////
+//Function to set nodata
+///////////////////////////////////////////////////////////////////////////////
+function setNull(img, nodataValue){
+  var m = img.mask()
+  img = img.mask(ee.Image(1))
+  img = img.where(m.not(),nodataValue)
+  return img
+}
+
+var outImg = composite.clip(sa)//.resample('bilinear')
+
+setNull(outImg, -32768)
+
+///////////////////////////////////////////////////////////////////////////////
+// STEP 7: Export the composite. 
+///////////////////////////////////////////////////////////////////////////////
+// set up export name and path
+// var exportName = SRname + 'Landsat_'+toaOrSR+'_' + startYear + '_' + endYear;
+
+var exportName = 'Landsat_' + toaOrSR.toUpperCase() + '_' + startYear + '_' + endYear +'_' + startJulian + '_' + endJulian + '_lcmsCONUS_mtbs';
+var exportPath = exportPathRoot + '/' + exportName;
+print(composite, exportPath);
+  
+asyncExportToAssetWrapper(outImg,exportName,exportPath,'mean',
+  studyArea,30,'EPSG:26911');
+
+///////////////////////////////////////////////////////////////////////////////  
+// STEP 8: Display re-formatted Landsat imagery. 
+///////////////////////////////////////////////////////////////////////////////
+var vizParams2 = {
+    'min': 500,
+    'max': 5000, 
+    'bands': 'swir1, nir, red', 
+    'gamma': 1.6
+    };
+var vizParams2True = {
+    'min': 0,
+    'max': 2000, 
+    'bands': 'red, green, blue'
+    };
+Map.addLayer(composite_pre, vizParamsTrue,'Pre Landsat Composite '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' True Color', false);
+Map.addLayer(composite_pre, vizParams,'Pre Landsat Composite '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false);
+Map.addLayer(composite, vizParams2True,'Landsat Composite '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' True Color', false);
+Map.addLayer(composite, vizParams2,'Landsat Composite '+toaOrSR+' '+startYear.toString() + '-' + endYear.toString() + ' False Color', false);
+
+////////////////////////////////////////////////////////////////////////////////
+// Load the study region, with a blue outline.
+// Create an empty image into which to paint the features, cast to byte.
+// Paint all the polygon edges with the same number and width, display.
+var empty = ee.Image().byte();
+var outline = empty.paint({
+  featureCollection: studyArea,
+  color: 1,
+  width: 3
+});
+Map.addLayer(outline, {palette: '0000FF'}, "Study Area", false);
+// Map.centerObject(studyArea, 6);
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to add a string prefix to a list of strings
+function addPrefix(list,prefix){
+  return list.map(function(element){
+    return prefix + element;
+  });
+}
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+print('composite:', composite)
+// Principal components
+
+// Load image, select the bands of interest.
+var image = composite.select(['blue', 'green', 'red', 'nir']);
+
+// Display the input imagery and the region in which to do the PCA.
+var region = sa//image.geometry();
+//Map.centerObject(region, 10);
+//Map.addLayer(ee.Image().paint(region, 0, 2), {}, 'Region');
+//Map.addLayer(image, {bands: ['b7', 'b5', 'b4'], min: 0, max: 20000}, 'Original Image');
+
+// Get some information about the input to be used later.
+var scale = image.projection().nominalScale();
+var bandNames = image.bandNames();
+
+// Mean center the data to enable a faster covariance reducer
+// and an SD stretch of the principal components.
+var meanDict = image.reduceRegion({
+    reducer: ee.Reducer.mean(),
+    geometry: sa,
+    scale: scale,
+    maxPixels: 1e9
+});
+var means = ee.Image.constant(meanDict.values(bandNames));
+var centered = image.subtract(means);
+
+// This helper function returns a list of new band names.
+var getNewBandNames = function(prefix) {
+  var seq = ee.List.sequence(1, bandNames.length());
+  return seq.map(function(b) {
+    return ee.String(prefix).cat(ee.Number(b).int());
+  });
+};
+
+// This function accepts mean centered imagery, a scale and
+// a region in which to perform the analysis.  It returns the
+// Principal Components (PC) in the region as a new image.
+var getPrincipalComponents = function(centered, scale, region) {
+  // Collapse the bands of the image into a 1D array per pixel.
+  var arrays = centered.toArray();
+
+  // Compute the covariance of the bands within the region.
+  var covar = arrays.reduceRegion({
+    reducer: ee.Reducer.centeredCovariance(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e9
+  });
+
+  // Get the 'array' covariance result and cast to an array.
+  // This represents the band-to-band covariance within the region.
+  var covarArray = ee.Array(covar.get('array'));
+
+  // Perform an eigen analysis and slice apart the values and vectors.
+  var eigens = covarArray.eigen();
+
+  // This is a P-length vector of Eigenvalues.
+  var eigenValues = eigens.slice(1, 0, 1);
+  // This is a PxP matrix with eigenvectors in rows.
+  var eigenVectors = eigens.slice(1, 1);
+
+  // Convert the array image to 2D arrays for matrix computations.
+  var arrayImage = arrays.toArray(1);
+
+  // Left multiply the image array by the matrix of eigenvectors.
+  var principalComponents = ee.Image(eigenVectors).matrixMultiply(arrayImage);
+
+  // Turn the square roots of the Eigenvalues into a P-band image.
+  var sdImage = ee.Image(eigenValues.sqrt())
+    .arrayProject([0]).arrayFlatten([getNewBandNames('sd')]);
+
+  // Turn the PCs into a P-band image, normalized by SD.
+  return principalComponents
+    // Throw out an an unneeded dimension, [[]] -> [].
+    .arrayProject([0])
+    // Make the one band array image a multi-band image, [] -> image.
+    .arrayFlatten([getNewBandNames('pc')])
+    // Normalize the PCs by their SDs.
+    .divide(sdImage);
+};
+
+// Get the PCs at the specified scale and in the specified region
+var pcImage = getPrincipalComponents(centered, scale, region);
+
+// Plot each PC as a new layer
+for (var i = 0; i < bandNames.length().getInfo(); i++) {
+  var band = pcImage.bandNames().get(i).getInfo();
+  Map.addLayer(pcImage.select([band]), {min: -2, max: 2}, band,false);
+}
+
+//Function to set nodata
+function setNull(img, nodataValue){
+  var m = img.mask()
+  img = img.mask(ee.Image(1))
+  img = img.where(m.not(),nodataValue)
+  return img
+}
+
+var pcaOutImg = pcImage.select([0,1]).multiply(10000).int16().clip(sa).resample('bicubic')
+
+setNull(pcaOutImg, -32768)
+
+Export.image.toDrive({
+  image: pcaOutImg,
+  description:'bobMarshall_lcmsLandsat_principalComponents', 
+  region: sa, 
+  scale: 10, 
+  crs: 'EPSG:26912', 
+  maxPixels: 1e13 
+  });

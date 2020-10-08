@@ -1,0 +1,96 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      },
+      {
+        "type": "marker"
+      }
+    ] */
+    ee.Geometry({
+      "type": "GeometryCollection",
+      "geometries": [
+        {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -161.1839121836024,
+                25.04265124268217
+              ],
+              [
+                -161.1839121836024,
+                17.179466810580237
+              ],
+              [
+                -152.8343028086024,
+                17.179466810580237
+              ],
+              [
+                -152.8343028086024,
+                25.04265124268217
+              ]
+            ]
+          ],
+          "geodesic": false,
+          "evenOdd": true
+        },
+        {
+          "type": "Point",
+          "coordinates": [
+            -154.87707197851478,
+            19.486303632500633
+          ],
+          "geodesic": false
+        }
+      ],
+      "coordinates": []
+    });
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var img = ee.ImageCollection('COPERNICUS/S1_GRD')
+        .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
+        .filter(ee.Filter.eq('instrumentMode', 'IW'))
+        .select('VH')
+        .map(function(image) {
+          var edge = image.lt(-30.0);
+          var maskedImage = image.mask().and(edge.not());
+          return image.updateMask(maskedImage);
+        });
+        
+
+var timeBand = function(image)
+{
+  var time = ee.Date(image.get('system:time_start'));
+  var year = time.get('year');
+  var proportion = time.getFraction('year');
+  var yrProportion = ee.Image(year.add(proportion)).float();
+  return image.addBands(yrProportion.select([0], ['year']));
+};
+
+var imgSAR = img.map(timeBand);
+
+var desc = imgSAR.filter(ee.Filter.eq('orbitProperties_pass', 'DESCENDING'));
+var asc = imgSAR.filter(ee.Filter.eq('orbitProperties_pass', 'ASCENDING'));
+
+
+var annual = ee.Filter.date('2016-01-01', '2018-12-31');
+
+
+var ascAnn = asc.filter(annual).filterBounds(sa);
+print('ascAnn', ascAnn);
+
+
+var linearFit = ascAnn.select(['year', 'VH']).reduce(ee.Reducer.linearFit());
+//print('linearFit', linearFit)
+Map.addLayer(linearFit, {min:-7500 , max:7500 , bands:['scale', 'offset', 'scale']},  'linearFit');
+
+var actualPredicted = ascAnn.map(function(img){
+  var predicted = img.select(['year']).multiply(linearFit.select(['scale'])).add(linearFit.select(['offset'])).select([0], ['predicted']);
+  var actual = img.select(['VH']).select([0], ['actual']);
+  return actual.addBands(predicted);
+});
+
+Map.addLayer(actualPredicted, {}, 'Actual Predicted', false);
+Map.setCenter(-154.88, 19.49, 13)

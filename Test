@@ -1,0 +1,82 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3"),
+    AK = ee.FeatureCollection("users/rjthomas13/AK_dissolve_buffer");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// step 1: select the variable of interest
+var daymet_precip = daymet.select(1);
+var max_temp = daymet.select(4);
+var min_temp = daymet.select(5);
+//var mean_temp = (max_temp.add(min_temp)).divide(2)
+//print(mean_temp);
+var months = ee.List.sequence(1, 12);
+//////////////////////////////////////////////////////////////////////////////////////////////
+// step 2: get the monthly sum of precip by year
+function monthly_precip(precip,start_year ,end_year){
+  var years = ee.List.sequence(start_year, end_year);
+  var months = ee.List.sequence(1, 12);
+  
+  return ee.ImageCollection(ee.FeatureCollection(years.map(function(year){
+    return ee.ImageCollection.fromImages(months.map(function(month){
+      return precip.filter(ee.Filter.calendarRange(year, ee.Number(year),'year')).filter(ee.Filter.calendarRange(month, ee.Number(month), 'month')).sum().set('system:time_start', ee.Date.fromYMD(year, month,1).millis());
+    }));
+  })).flatten());
+  
+}
+
+var annual_monthly_precip = monthly_precip(daymet_precip, 1981, 2010);
+print(annual_monthly_precip);
+Map.addLayer(annual_monthly_precip);
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// step 3: get the average monthly precip
+
+var test =  ee.ImageCollection(months.map(function(month){
+  return annual_monthly_precip.filter(ee.Filter.calendarRange(month, ee.Number(month),'month'))
+            .reduce(ee.Reducer.mean()).set('system:time_start', ee.Date.fromYMD(2010, month,1).millis());
+}));
+
+print(test, 'test');
+Map.addLayer(test);
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// temperature stuff
+
+function avg_temp(collection,start_year ,end_year){
+  var years = ee.List.sequence(start_year, end_year);
+  var months = ee.List.sequence(1, 12);
+  
+  return ee.ImageCollection(ee.FeatureCollection(years.map(function(year){
+    return ee.ImageCollection.fromImages(months.map(function(month){
+      return collection.filter(ee.Filter.calendarRange(year, ee.Number(year),'year')).filter(ee.Filter.calendarRange(month, ee.Number(month), 'month')).mean().set('system:time_start', ee.Date.fromYMD(year, month,1).millis());
+    }));
+  })).flatten());
+  
+}
+
+var maxTempOut = avg_temp(max_temp, 1981, 2010);
+print(maxTempOut);
+var minTempOut = avg_temp(min_temp, 1981, 2010);
+
+var maxMonthlyTempOut =  ee.ImageCollection(months.map(function(month){
+  return maxTempOut.filter(ee.Filter.calendarRange(month, ee.Number(month),'month'))
+            .reduce(ee.Reducer.mean()).set('system:time_start', ee.Date.fromYMD(2010, month,1).millis());
+}));
+
+print(maxMonthlyTempOut);
+Map.addLayer(maxMonthlyTempOut);
+
+var minMonthlyTempOut =  ee.ImageCollection(months.map(function(month){
+  return minTempOut.filter(ee.Filter.calendarRange(month, ee.Number(month),'month'))
+            .reduce(ee.Reducer.mean()).set('system:time_start', ee.Date.fromYMD(2010, month,1).millis());
+}));
+
+print(minMonthlyTempOut);
+Map.addLayer(minMonthlyTempOut);
+
+var size = minMonthlyTempOut.size();
+minMonthlyTempOut = minMonthlyTempOut.toList(1000);
+ee.List.sequence(0,size.subtract(1)).getInfo().map(function(n){
+  var img = ee.Image(minMonthlyTempOut.get(n));
+  Export.image.toDrive({image:img, description:'AvgMinTemp_'+(n+1).toString(), region: AK.geometry(), scale: 1000, crs: 'EPSG:5070', maxPixels: 1e13 });
+});
+

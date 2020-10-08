@@ -1,0 +1,51 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var probabilities = ee.Image("users/thinkbetween/Dixie_Probabilities"),
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-114.106875156466, 38.262770066503286],
+          [-114.0574366799035, 37.1852667462559],
+          [-111.1680323830285, 37.222456333092204],
+          [-111.173525547091, 38.29295560877655]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// import probabilities asset
+
+// reduce the data
+var variance = probabilities.reduce(ee.Reducer.stdDev());
+var sum = probabilities.reduce(ee.Reducer.sum()); 
+print('variance', variance);
+print('sum', sum);
+Map.addLayer(variance, {min:0.06, max:0.289}, 'variance');
+Map.addLayer(sum, {min:0.75, max:2.02}, 'sum');
+
+var sumVar = sum.add(variance);
+Map.addLayer(sumVar,{min: 0.7, max: 1.8}, 'sum plus variance');
+//var uncertainty = regression.subtract(classification).abs().rename(['uncertainty'])
+sumVar = sumVar.clip(sa)
+//Create training data
+var training = sumVar.sample({
+  scale: 30,
+  numPixels: 10000
+  });
+//print(training)
+//Create the clusterer
+var kmeans = ee.Clusterer.wekaKMeans({nClusters: 15})
+  .train({
+    features: training
+  });
+  //print('kmeans:', kmeans);
+  
+//Get kmeans clusters
+var clusterImage = sumVar.cluster(kmeans, 'kmeans');
+//print('clusterImage:', clusterImage); 
+
+Map.addLayer(clusterImage.randomVisualizer(), {min:1, max:100}, 'clusters');
+
+
+
+// create a stratified randomm sample
+// var updateSampleImage = classOut.addBands(predictors);
+
+// var sampUpdate = updateSampleImage.stratifiedSample({
+//   numPoints: 10, 
+//   classValues:[], 
+//   classPoints:[], 
+// });

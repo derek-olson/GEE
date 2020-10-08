@@ -1,24 +1,35 @@
-var bound = ee.FeatureCollection('ft:1a8hq6X4cv_OMkx4QKYYsWpbPR_to6sDsJRVESCQW', 'geometry');
-Map.addLayer(bound, {}, 'bound');
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = ee.FeatureCollection("users/thinkbetween/GMUG_Boundary");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var bound = sa;
 
-var resolution = 30
-var projection = 'EPSG:26912'
+var resolution = 30;
+var projection = 'EPSG:26912';
 
-var topo = addNEDTopography();
+var topo = getTopography();
 topo = topo.resample('bicubic');
 
 // Function to add USGS 1/3 arc second topography and derive slope, aspect,
 // and hillshade
-function addNEDTopography(){
+function getTopography(){
   // Import NED elevation data
   var elevation = ee.Image('USGS/NED');
   // Calculate slope and aspect
   var topo = ee.Algorithms.Terrain(elevation);
+  
+  //get % slope
+  var slopeDeg = topo.select(1).int16();
+  var slopeRads = slopeDeg.multiply(Math.PI).divide(ee.Number(180));
+  var slopeTan = slopeRads.tan();
+  var slopePCT = slopeTan.multiply(ee.Number(100)).rename('slopePCT');
+  
   // Add 8-direction aspect
   var aspect = topo.select('aspect');
-  var aspectRad = aspect.multiply(Math.PI).divide(180)
-  var aspectSin = aspectRad.sin()
-  var aspectCos = aspectRad.cos()
+  var aspectRad = aspect.multiply(Math.PI).divide(180);
+  var aspectSin = aspectRad.sin();
+  aspectSin = aspectSin.multiply(10000).int16()
+  var aspectCos = aspectRad.cos();
+  aspectCos = aspectCos.multiply(10000).int16()
   var aspect_8 = (aspect.multiply(8).divide(360)).add(1).floor().uint8().rename('aspect_8');
   // Add 3 equally-spaced sun azimuth hillshades
   var hill_1 = ee.Terrain.hillshade(elevation,30).rename('hill_1');
@@ -26,11 +37,13 @@ function addNEDTopography(){
   var hill_3 = ee.Terrain.hillshade(elevation,270).rename('hill_3');
   // Add topography bands to image
   topo = topo.select('elevation','slope')
-    .addBands(aspectSin).addBands(aspectCos)
+    .addBands(slopePCT).addBands(aspectSin).addBands(aspectCos)
     .addBands(aspect_8).addBands(hill_1).addBands(hill_2).addBands(hill_3);
   topo = topo.int16();
   return topo;
-};
+}
+print(topo);
+Export.image.toDrive({image: topo, description: 'topoComposite', region: bound, scale: resolution, crs: projection,  maxPixels: 1e13});
 
+Map.addLayer(topo, {min:0, max:10000}, 'elevation');
 
-Export.image.toDrive({image: topo, description: 'topoComposite', region: bound, scale: resolution, crs: projection,  maxPixels: 1e13})

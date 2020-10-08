@@ -1,0 +1,70 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var cc_points = ee.FeatureCollection("users/thinkbetween/Dixie_CC_RefPoints"),
+    harmonics = ee.Image("users/thinkbetween/Dixie_Harmonics"),
+    composite = ee.Image("users/thinkbetween/Dixie_Composite"),
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-114.06901855468749, 37.186314362307705],
+          [-111.16313476562499, 37.23006430781082],
+          [-111.17412109374999, 38.30692029997279],
+          [-114.10747070312499, 38.26380255178378]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//  get the classification library
+var classificationLib = require('users/USFS_GTAC/modules:classificationLib.js')
+
+// get predictor rasters as multi-band image
+var predictors = composite.addBands(harmonics.clip(sa));
+
+// get reference data
+var referenceData = cc_points;
+
+// choose whether to use 'points' or 'polygons'.
+//If the referece data are points than the classification will result in a raster output.
+// If the referece data are points than the classification reqires the polygons to be split into training and
+//apply datasets. The result will be classified polygons. Computations will time out with too many polygons. 
+var referenceDataType = 'points';
+
+// get column name of reference field as a string
+var responseField = 'FinalCall';
+
+// choose the polygons to apply classifier to if the reference data type is polygons otherwise choose null
+var applyPolygons = null;
+
+// choose classifier 
+var classifier = ee.Classifier.randomForest;
+
+// choose classifier parameters
+var classifierParameters = {numberOfTrees: 200};
+
+// choose classifier output mode: CLASSIFICATION, REGRESSION, PROBABILITY
+var mode = 'REGRESSION'
+
+// choose projection
+var crs = 'EPSG:26912';
+
+// choose resolution
+var scale = 30;
+
+// choose export name
+var exportName = 'Dixie_CC';
+
+// polygon reducers
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.stdDev(),
+  sharedInputs: true
+});
+
+// execute the wrapper from the classification library
+var out = classificationLib.classificationWrapper(predictors, referenceData, referenceDataType, responseField, classifier, classifierParameters, mode, reducers, crs, null, scale);
+print('out', out);
+
+// export the classified result
+if(referenceDataType === 'points'){
+  Export.image.toDrive({image: out[1], description: exportName, region: sa, scale: scale, crs: crs, maxPixels: 1e13});
+  } else {
+    Export.table.toDrive({collection: out[1], description: exportName, fileFormat: 'KML'});
+  }
+
+// add the classified result to the map
+Map.addLayer(out[1], {min:6, max:65}, 'out');
+
+ 

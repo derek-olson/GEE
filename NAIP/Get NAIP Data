@@ -1,40 +1,27 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: #98ff00 */ee.Geometry.Polygon(
+        [[[-124.12009536838372, 42.26767156923949],
+          [-123.93332779025872, 42.26360643790399],
+          [-123.93332779025872, 42.41384169249042],
+          [-124.12558853244622, 42.41384169249042]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
 /////////////////////////////////////////////////////
 //Get NAIP data
 /////////////////////////////////////////////////////
-//Add the mapping boundary
-var bound = ee.FeatureCollection('ft:166J6dwWluxbb3g15e3k2hhiRvUkyd6lXUO4NPzdV');
-Map.addLayer(bound, {}, 'boundary', false);
-
+// make sure NAIP exists for the naip_year indicated
 var naip_year = 2016;
 var crs = "EPSG:26912"
 var naip_factor = 10
 var outputName = 'Dixie'
-var region = bound
+var region = sa
 
 var naip = ee.ImageCollection('USDA/NAIP/DOQQ')
   .filterDate(ee.Date.fromYMD(naip_year,1,1),ee.Date.fromYMD(naip_year,12,31))
-  .filterBounds(bound);
+  .filterBounds(region);
 var naip_proj = ee.Image(naip.first()).projection();
 var naip_mosaic = naip.mosaic().reproject(naip_proj);
 naip_mosaic = naip_mosaic.reduceResolution(ee.Reducer.mean(),true,1024);
-var naip_name = outputName + '_NAIP_' + naip_factor + 'm';
-exportToDriveWrapper(naip_mosaic,naip_name,bound,region,naip_factor,crs);
 
 Map.addLayer(naip,{},'NAIP',false);
 
-////////////////////////////////////////////////////////////////////////////////
-// Function to export a provided image to an Google Drive
-function exportToDriveWrapper(imageForExport,fileName,roi,region,scale,crs){
-  //Make sure image is clipped to roi in case it's a multi-part polygon
-  imageForExport = imageForExport.clip(roi);
-  fileName = fileName.replace(/\s+/g,'-');//Get rid of any spaces
-  
-  Export.image.toDrive({
-    image: imageForExport,
-    description: fileName,
-    region: region,
-    scale: scale,
-    crs: crs,
-    maxPixels: 1e13
-  });
-}
+Export.image.toDrive({image: naip_mosaic, description: outputName, region: region, scale: naip_factor, crs: crs, maxPixels: 1e13});

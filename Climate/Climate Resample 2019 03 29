@@ -1,0 +1,170 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var srtm = ee.Image("users/thinkbetween/srtm30v21_NA_LCC_Final"),
+    sa = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-114.18361714078492, 46.85464155878533],
+          [-114.18361714078492, 46.67685314049481],
+          [-113.87119343473023, 46.67685314049481],
+          [-113.87119343473023, 46.85464155878533]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//////////////////////////////////////////////////////////////////////////
+//Downscale Climate Data https://www.wsl.ch/staff/niklaus.zimmermann/biophys.html#Meth
+//////////////////////////////////////////////////////////////////////////
+var scale = 30;
+var crs = 'EPSG:26912';
+var yearStart = 1989;
+var yearEnd = 2018;
+var exportName = 'precipDownscale';
+var kernalSize = 6.5;
+var kern = ee.Kernel.square(kernalSize, 'pixels', false);
+
+// Choose a study area boundary
+var bound = sa; //ee.FeatureCollection('ft:1a8hq6X4cv_OMkx4QKYYsWpbPR_to6sDsJRVESCQW', 'geometry');
+Map.addLayer(bound, {}, 'bound', false);
+
+//Create a random raster with values between 0 and 1
+var randRast = ee.Image.random(0);
+
+//Add the random raster to the SRTM data to avoid null models in flat areas
+srtm = srtm.add(randRast);
+
+// Get the NED data and add random noise to avoid null models in flat areas
+var ned = ee.Image('USGS/NED');
+ned = ned.add(randRast);
+
+// Create a list of weights for a 7x7 kernel.
+/*var list = [ 0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25];
+// The center of the kernel is zero.
+var centerList = [0.25, 0.5, 0.75, 0, 0.75, 0.5, 0.25];
+// Assemble a list of lists: the 7x7 kernel weights as a 2-D matrix.
+var lists = [list, list, list, centerList, list, list, list];
+// Create the kernel from the weights.
+var kern = ee.Kernel.fixed(7, 7, lists, -3, -3, false);
+print(kern); */
+
+//////////////////////////////////////////////
+// Filter DAYMET by date and band
+var prcp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(yearStart,1,1),ee.Date.fromYMD(yearEnd,12,31))
+          .select(1);
+var minTemp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(yearStart,1,1),ee.Date.fromYMD(yearEnd,2,28))
+          .select(5);
+
+var maxTemp = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(yearStart,1,1),ee.Date.fromYMD(yearEnd,12,31))
+          .select(5);
+
+// Get the DAYMET projection 
+var daymetProj = ee.Image(prcp.first()).projection();
+
+// Annualize the collections and reproject/resample
+var minTempIn = annualizeCollection(minTemp, ee.Reducer.mean());
+minTempIn = minTempIn.mean().reproject(daymetProj);
+
+var maxTempIn = annualizeCollection(maxTemp, ee.Reducer.mean());
+maxTempIn = maxTempIn.mean().reproject(daymetProj);
+
+var prcpIn = annualizeCollection(prcp, ee.Reducer.sum());
+prcpIn = prcpIn.mean().reproject(daymetProj);
+
+minTempIn = minTempIn.resample('bilinear');
+minTempIn = minTempIn.reproject(crs, null, scale);
+
+maxTempIn = maxTempIn.resample('bilinear');
+maxTempIn = maxTempIn.reproject(crs, null, scale);
+
+prcpIn = prcpIn.resample('bilinear');
+prcpIn = prcpIn.reproject(crs, null, scale);
+
+// resample and reproject the NED data
+var inds = ned.addBands(srtm).resample('bilinear').reproject(crs, null, scale);
+
+
+//////////////////////////////////////////////////////
+function downscaler(independents, dependent, sa,kernel,scale,crs){ 
+ 
+  //Get info about how many independents (number of provided independent bands + 1 for the constant band)
+  var nInds = independents.bandNames().length().getInfo()+1;
+  
+  //Total number of bands in the stack that goes into the linear regression model
+  var nTotal = nInds+1;
+
+  //Set up the stack for the model
+  //Constant band plus the independents
+  var independentStack =ee.Image(1).addBands(independents);
+  
+  //Add the dependent to it
+  var pred = independentStack.addBands(dependent);
+  
+  //Get the bandnames for later use
+  var predBandNames = pred.bandNames();
+  
+  //Convert neighborhood to a stack of bands (nbands = nbandsPred * kernalDiameter^2)
+  pred = pred.neighborhoodToBands(kernel).float();
+  //Get client-side number of bands of big big stack
+  var stackBands = pred.bandNames().length().getInfo();
+  Map.addLayer(pred, {}, 'pred', false);
+  //Find number of images needed in collection for model
+  var imageN = stackBands/nTotal;
+  
+  var predBands = pred.bandNames();
+  var coords = [];
+  ee.List.sequence(-6,6).getInfo().map(function(i1){
+    ee.List.sequence(-6,6).getInfo().map(function(i2){
+      coords.push('_'+i1.toString()+'_'+i2.toString());
+    });
+  });
+ 
+  
+  //Reshape ind/pred stack
+  var stackC = coords.map(function(coord){
+    var i = pred.select('.*'+coord).rename(predBandNames);
+    return i;
+  });
+
+  //Convert to collection
+  stackC = ee.ImageCollection(stackC);
+
+  //Fit model
+  var fit = stackC.reduce(ee.Reducer.linearRegression(nInds, 1));
+
+  //Pull off coefficients
+  fit = fit.select([0]).arrayProject([0]);
+  fit = fit.arrayFlatten([independentStack.bandNames()]);
+  Map.addLayer(fit,{},'model',false);
+  
+  //Apply model
+  var predicted = independentStack.multiply(fit).reduce(ee.Reducer.sum());
+  Map.addLayer(predicted,{min:100, max:1400},'oversampled');
+  return predicted;
+
+}
+
+//Get precip and temp for PCA - choose which variable to downscale (prcpIn, minTempIn, maxTempIn)
+var downscaled = downscaler(inds, prcpIn, bound, kern, scale, crs);
+
+
+Export.image.toDrive({image: downscaled, description: exportName, region: bound, scale: scale, crs: crs, maxPixels: 1e13});
+//////////////////////////////////////////////////////////////////////////////////////
+//Function to annualize
+//////////////////////////////////////////////////////////////////////////////////////
+function annualizeCollection(x, reducer){
+  x = x.sort('system:time_start');
+  var startDate = ee.Date(ee.Image(x.first()).get('system:time_start'));
+  var endDate = ee.Date(ee.Image(x.sort('system:time_start', false).first())
+    .get('system:time_start'));
+  var years = ee.List.sequence(startDate.get('year'), endDate.get('year'));
+  
+  return ee.ImageCollection.fromImages(years.map(function(yr){
+    return x.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31))
+      .reduce(reducer);
+  }));
+}
+

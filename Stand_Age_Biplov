@@ -1,0 +1,92 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var tcc = ee.ImageCollection("projects/servir-mekong/UMD/tree_canopy"),
+    mekong = ee.FeatureCollection("users/biplov/gadm-mekong"),
+    sa = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[106.38686276174349, 11.649042681592276],
+          [106.38686276174349, 11.183454616915078],
+          [106.91111660695833, 11.183454616915078],
+          [106.91111660695833, 11.649042681592276]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var startYear = 1989;
+var endYear = 2018;
+var tccThreshold = 10;
+
+var collection = ee.List([ee.Image(0).toUint8().select([0], ['b1'])]);
+var bareCollection = ee.List([]);
+var untouchedCollection = ee.List([]);
+var regrowthCollection = ee.List([ee.Image(0).toUint8().select([0], ['b1'])]);
+
+for (var j = endYear; j >= startYear; --j) {
+
+  var tccYear = ee.Image(tcc.filterDate(j + '-01-01', j + '-12-31').first());
+  var tccPreviousYear = ee.Image(tcc.filterDate(j-1 + '-01-01', j-1 + '-12-31').first());
+
+  var yearlyDisturbance = tccYear.lt(tccThreshold).and(tccPreviousYear.gte(tccThreshold));
+  var lastYearDisturbance = ee.Image(ee.List(collection).get(-1));
+  var condition = yearlyDisturbance.where(yearlyDisturbance.eq(1), j);
+  var finalDisturbance = lastYearDisturbance.where(lastYearDisturbance.eq(0), condition).cast({'b1': 'uint16'});
+  collection = collection.add(finalDisturbance);
+
+  for (var k = j+1; k <= endYear; ++k) {
+    var tccFuture = ee.Image(tcc.filterDate(k + '-01-01', k + '-12-31').first());
+    var forest = tccFuture.gte(tccThreshold);
+    var last = ee.Image(regrowthCollection.get(-1));
+    var replaceValue = forest.where(forest.eq(1), k);
+    var value = finalDisturbance.where(finalDisturbance.eq(j), replaceValue);
+    var regrow = last.where(last.eq(0), value);
+    regrowthCollection = regrowthCollection.add(regrow);
+  }
+
+  // loss till last year, regrow this year
+  var yearlyDisturbance1 = tccPreviousYear.lt(tccThreshold).and(tccYear.gte(tccThreshold));
+  var lastYearDisturbance1 = ee.Image(ee.List(collection).get(-1));
+  var condition1 = yearlyDisturbance1.where(yearlyDisturbance1.eq(1), j-1);
+  var finalDisturbance1 = lastYearDisturbance1.where(lastYearDisturbance1.eq(0), condition1).cast({'b1': 'uint16'});
+
+  for (var k = j; k <= endYear; ++k) {
+    var tccFuture1 = ee.Image(tcc.filterDate(k + '-01-01', k + '-12-31').first());
+    var forest1 = tccFuture1.gte(tccThreshold);
+    var last1 = ee.Image(regrowthCollection.get(-1));
+    var replaceValue1 = forest1.where(forest1.eq(1), k-1);
+    var value1 = finalDisturbance.where(finalDisturbance.eq(j-1), replaceValue1);
+    var regrow1 = last1.where(last1.eq(0), value1);
+    regrowthCollection = regrowthCollection.add(regrow1);
+  }
+
+  collection = collection.add(finalDisturbance1);
+
+  bareCollection = bareCollection.add(tccYear.lt(tccThreshold));
+  untouchedCollection = untouchedCollection.add(tccYear.gt(tccThreshold));
+}
+
+var bareLayer = ee.ImageCollection(bareCollection).sum().eq(endYear-startYear+1);
+var untouchedLayer = ee.ImageCollection(untouchedCollection).sum().eq(endYear-startYear+1);
+
+var disturbance = ee.ImageCollection(collection.remove(collection.get(0))).mosaic();
+var regrowth = ee.ImageCollection(regrowthCollection.remove(regrowthCollection.get(0))).mosaic();
+
+var diff = regrowth.subtract(disturbance);
+
+var age = ee.Image(endYear).subtract(regrowth).add(1);
+age = age.where(diff.eq(0), 0);
+age = age.where(disturbance.neq(regrowth).and(regrowth.eq(endYear)), 1);
+age = age.where(bareLayer.eq(1), 0);
+age = age.where(untouchedLayer.eq(1), 31);
+age = age.updateMask(age.gt(0));
+age = age.clip(mekong);
+
+Map.addLayer(age, {min:1, max:31, palette:'teal,blue,orange,green,red'}, 'age');
+
+// --------------------------------------------------------------------
+// Author: Biplov Bhandari
+// Contact: bionicbiplov45@gmail.com
+// --------------------------------------------------------------------
+
+Export.image.toAsset({image:age, description:'Stand_Age_Study_Area', assetId:'Stand_Age_Study_Area', region:sa, scale:30, crs:'EPSG:32648', maxPixels:1e13});

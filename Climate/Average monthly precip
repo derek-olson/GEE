@@ -1,0 +1,38 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3"),
+    sa = ee.FeatureCollection("users/thinkbetween/GEE_Clip_Bound_SC");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var tmin = daymet.select(5);
+var tmax = daymet.select(4);
+var prcp = daymet.select(1);
+
+function annualizeCollection(image, reducer){
+  var startDate = ee.Date.fromYMD(1988,1,1);
+  var endDate = ee.Date.fromYMD(2017, 12,31);
+  var years = ee.List.sequence(startDate.get('year'), endDate.get('year'));
+  var months = ee.List.sequence(1,12);
+  
+  return ee.ImageCollection.fromImages(years.map(function(yr){
+    return ee.ImageCollection.fromImages(months.map(function(month){
+      return image.filterDate(ee.Date.fromYMD(yr,month,1), ee.Date.fromYMD(yr,month,31)).reduce(reducer);
+    }));
+ }));
+} 
+
+
+var min_temp = annualizeCollection(tmin,ee.Reducer.mean());
+var avg_min_temp = min_temp.mean();
+print(avg_min_temp);
+Export.image.toDrive({image: avg_min_temp, description: 'SC_min_temp', region: sa, scale: 30, crs: 'EPSG:26911', maxPixels: 1e13});
+
+var max_temp = annualizeCollection(tmax,ee.Reducer.mean());
+var avg_max_temp = max_temp.mean();
+print(avg_max_temp);
+Export.image.toDrive({image: avg_max_temp, description: 'SC_max_temp', region: sa, scale: 30, crs: 'EPSG:26911', maxPixels: 1e13});
+
+var sum_prcp = annualizeCollection(prcp,ee.Reducer.sum());
+var mean_prcp = sum_prcp.mean();
+print(mean_prcp);
+Export.image.toDrive({image: mean_prcp, description: 'SC_mean_prcp', region: sa, scale: 30, crs: 'EPSG:26911', maxPixels: 1e13});
+
+Map.addLayer(mean_prcp)

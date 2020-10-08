@@ -1,0 +1,75 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var RattleSnake = ee.FeatureCollection("users/thinkbetween/RattlesnakeBoundary"),
+    sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-116.48003237844449, 45.15894095540318],
+          [-116.26167910696012, 45.15700419071756],
+          [-116.2609924614523, 45.31560027523626],
+          [-116.47041934133512, 45.31511742327324]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+Map.addLayer(RattleSnake, {}, 'RattleSnake');
+
+// set study area
+var StudyRegion = sa;
+
+// set the projection
+var crs = 'EPSG:26911';
+ 
+
+// Specify start and end years for all analyses
+// Generally, these years do not need changed
+var startYear = 1988;
+var endYear = 2017;
+
+// Set up Names for the export
+var outputName = 'Rattle_Snake'; 
+
+// STEP 1: Load study region 
+var studyArea = sa;
+
+var dmet = ee.ImageCollection('NASA/ORNL/DAYMET_V3')
+          .filterDate(ee.Date.fromYMD(1998,1,1),ee.Date.fromYMD(2017,12,31));
+
+// Mean total yearly precipitation
+var precip = dmet.select('prcp');
+var annualPrecipSum = annualizeCollection(precip,ee.Reducer.sum());
+var annualMeanPrecip = annualPrecipSum.mean().rename('precip');
+
+// Daily average solar radiation
+var DailyAverageRadiation = dmet.select('srad').mean().rename('average_rad');
+
+// Daily average temperature
+var DailyAverageTemp = dmet.map(function(image){
+  var tmax = image.select('tmax');
+  var tmin = image.select('tmin');
+  var tavg = tmax.add(tmin).divide(2);
+  return tavg;
+}).mean().rename('average_temp');
+
+// Daily average min temperature
+var DailyAverageMinTemp = dmet.select('tmin').mean().rename('average_MinTemp');
+var DailyAverageMaxTemp = dmet.select('tmax').mean().rename('average_MaxTemp');
+
+var daymet = annualMeanPrecip.addBands(DailyAverageRadiation).addBands(DailyAverageTemp).addBands(DailyAverageMinTemp).addBands(DailyAverageMaxTemp).int16();
+//daymet = daymet.resample('bilinear')
+daymet = daymet.clip(sa)//.reproject(crs, null, 30)
+print('daymet', daymet);
+
+Map.addLayer(daymet.clip(sa), {}, 'daymet');
+
+Export.image.toDrive({image: daymet, description: 'rattleSnakeDaymet', region: sa, scale: 1000, crs: 'EPSG:26911', maxPixels: 1e13});
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to annualize an image collection, applying a reducer to each year:
+// e.g. sum, average
+function annualizeCollection(c,reducer){
+  c = c.sort('system:time_start');
+  var startDate = ee.Date(ee.Image(c.first()).get('system:time_start'));
+  var endDate = ee.Date(ee.Image(c.sort('system:time_start',false).first())
+    .get('system:time_start'));
+  var years = ee.List.sequence(startDate.get('year'),endDate.get('year'));
+  
+  return ee.ImageCollection.fromImages(years.map(function(yr){
+    return c.filterDate(ee.Date.fromYMD(yr,1,1),ee.Date.fromYMD(yr,12,31))
+      .reduce(reducer).set('system:time_start',ee.Date.fromYMD(yr,6,1).millis());
+  }));
+}

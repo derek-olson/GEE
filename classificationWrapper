@@ -1,0 +1,156 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var yData = ee.FeatureCollection("users/thinkbetween/Reference_Data"),
+    DixieRefData = ee.FeatureCollection("users/thinkbetween/Dixie_segments_refData_training"),
+    image = ee.Image("users/thinkbetween/Dixie_Harmonics"),
+    image2 = ee.Image("users/thinkbetween/Dixie_Composite"),
+    DixieApplyPolygons = ee.FeatureCollection("users/thinkbetween/Dixie_segments_refData_predict");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// import predictor rasters as multi-band image
+var predictors = image.addBands(image2);
+
+// import reference data
+var referenceData = DixieRefData;
+print('referenceData:', referenceData)
+// get column name of reference field as a string
+var responseField = 'L1'
+
+// choose whether to use points or polygons
+var referenceDataType = 'polygons';
+
+// set the polygon reducers
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.stdDev(),
+  sharedInputs: true
+});
+
+// choose the polygons to apply classifier to if the reference data type is polygons
+var applyPolygons = DixieApplyPolygons;
+
+////////////////////////////////////////////////////////////////////////////////////////////// 
+/*var applyImgSegs = applyPolygons.reduceToImage(['FID_Model'], ee.Reducer.first());
+var imgStack = applyImgSegs.addBands(predictors);
+var zstats = imgStack.reduceConnectedComponents({
+  reducer: reducers
+});
+print('zstats',zstats);
+
+var testTraining = namesToNumbers(referenceData, responseField,'refVal');
+var testProperties = ee.Feature(testTraining.first()).propertyNames();
+var testClass = ee.Classifier.randomForest().train({
+    features: testTraining,
+    classProperty: 'refVal',
+    inputProperties: testProperties, 
+    subsampling: 1,
+    subsamplingSeed: 0});
+print('testClass', testClass)
+var testOut = zstats.classify(testClass);
+print('testOut', testOut);*/
+//////////////////////////////////////////////////////////////////////////////////////////////    
+
+// choose classifier parameters
+var classifier = ee.Classifier.randomForest;
+
+// choose classifier parameters
+var classifierParameters = {};
+
+// choose projection
+var projection = 'EPSG:26912';
+
+// choose resolution
+var scale = 30;
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// classification wrapper
+///////////////////////////////////////////////////////////////////////////////////////////////
+function classificationWrapper(predictors, referenceData, referenceDataType, responseField, reducers, classifier, mode, classifierParameters, crs, transform, scale){
+    //create if statement that identifies if reference data is numeric and doesn't apply remap
+  var refValType = referenceData.getInfo().columns[responseField]
+  print('refValType:', refValType)
+  
+  if (refValType === 'String'){
+    //remap values to numbers
+    referenceData = namesToNumbers(referenceData, responseField, responseField+'_number')}else{}
+  print('referenceData:', referenceData)
+  // get predictors with reference data
+  if(referenceDataType ==='points'){
+    var trainingData = predictors.sampleRegions({
+      collection: referenceData, properties: null, scale: scale, projection: projection, tileScale: 1});
+  }else{
+    trainingData = predictors.reduceRegions({
+      collection: referenceData, reducer: reducers, scale: scale, crs: projection, tileScale: 1});
+    }
+  
+  if(referenceDataType === 'polygons'){
+    var applyOutPolygons = predictors.reduceRegions({
+      collection: applyPolygons.limit(500), reducer: reducers, scale: scale, crs: projection, tileScale: 1});
+    }else{}
+  
+  // get a list of the predictor bands
+  var inputProperties = ee.Feature(trainingData.first()).propertyNames();
+  var refDataProperties = ee.Feature(referenceData.first()).propertyNames();
+  print('inputProperties:', inputProperties);
+  print('refDataProperties:', refDataProperties);
+  inputProperties = inputProperties.removeAll(refDataProperties);
+  print('inputProperties:', inputProperties);
+  
+  var model = classifier(classifierParameters).setOutputMode(mode).train({
+    features: trainingData,
+    classProperty: responseField+'_number',
+    inputProperties: inputProperties, 
+    subsampling: 1,
+    subsamplingSeed: 0});
+    
+  if(referenceDataType === 'points'){ 
+  var rasterApplyModel = predictors.classify(model)
+  Map.addLayer(rasterApplyModel, {}, 'Classified Raster')
+  return [model, rasterApplyModel]}else if(referenceDataType === 'polygons'){
+    var polygonsApplyModel = applyOutPolygons.classify(model)
+    //print('polygonsApplyModel', polygonsApplyModel)
+    return [model, polygonsApplyModel]
+    
+  }
+}
+
+var out = classificationWrapper(predictors, referenceData, referenceDataType, responseField, reducers, classifier, 'CLASSIFICATION', classifierParameters, projection, null, scale)
+print('out', out)
+Export.table.toDrive({collection: out[1], description: 'dixieClassifiedPolygons',fileFormat: 'KML'})
+Map.addLayer(out[1], {}, 'out')
+
+///////////////////////////////////////////////////////////////////////////////
+// FUNCTIONS
+///////////////////////////////////////////////////////////////////////////////
+// Function to duplicate a value to a column with a new name (used to simplify
+// names)
+function renameColumn(feature,oldColumn,newColumn){
+  feature = ee.Feature(feature);
+  var value = feature.get(oldColumn);
+  feature = feature.set(newColumn,value);
+  return feature;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Function to remap class names to class numbers (starting at 0)
+function namesToNumbers(collection,nameColumn,numberColumn){
+  // Get list of names
+  var hist = collection.reduceColumns({
+    reducer:ee.Reducer.frequencyHistogram(),
+    selectors:[nameColumn]
+  }).get('histogram');
+  var names = ee.Dictionary(hist).keys();
+  
+  // Get corresponding numbers
+  var numbers = ee.List.sequence(0,names.length().subtract(1));
+  // Copy name column to number column
+  collection = collection.map(function(feature){
+    feature = renameColumn(feature,nameColumn,numberColumn);
+    return feature;
+  });
+  // Remap names to numbers in the number column
+  collection = collection.remap(names,numbers,numberColumn);
+  print('name number list:',names,numbers)
+  return collection; 
+}
+
+//exports.classificationWrapper = classificationWrapper
+//exports.renameColmn = renameColmn
+//exports.namesToNumbers = namesToNumbers

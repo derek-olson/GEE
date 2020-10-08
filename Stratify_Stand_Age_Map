@@ -1,0 +1,57 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var forest_age = ee.Image("users/thinkbetween/Stand_Age_Study_Area");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+////////////////////////////////////////////////////////////////////////// 
+//user defined variables
+var strata_start_values = ee.List([1,3,6,14,18]);
+var number_strata = 5;
+var max_val = 31;
+var no_data_value = 255;
+var crs = 'EPSG:32648';
+var scale = 30;
+var out_name = 'forest_age_strata';
+var region = forest_age.geometry().bounds();
+//////////////////////////////////////////////////////////////////////////
+
+//initiate empty lists 
+var from_lists = ee.List([]);
+var to_lists = ee.List([]);
+
+//create from and to lists
+for(var j = 0; j < number_strata; ++j){
+  var start = strata_start_values.get(j);
+  var next_index = j+1;
+  if(next_index < number_strata){
+  var end_index = strata_start_values.get(next_index);
+    var end = ee.Number(end_index).subtract(1);
+  } else{
+    var end = max_val;
+  }
+  var value_list = ee.List.sequence(start, end);
+  from_lists = from_lists.add(value_list);
+  var strata_list = ee.List.repeat(j, ee.Number(value_list.length()));
+  to_lists = to_lists.add(strata_list);
+}
+
+print('from_lists', from_lists);
+print('to_lists', to_lists);
+
+//remap values to strata
+var strata = forest_age.remap(from_lists.flatten(), to_lists.flatten());
+print('strata', strata);
+
+//add images to the map
+Map.addLayer(forest_age,{min:0, max:31}, 'stand age');
+Map.addLayer(strata, {min:0, max:4, palette:'teal,blue,orange,green,red'}, 'strata');
+Map.centerObject(strata, 11);
+
+//export strata image
+function setNoData(image,noDataValue){
+  var m = image.mask();
+  image = image.mask(ee.Image(1));
+  image = image.where(m.not(),noDataValue);
+  return image;
+}
+var strata_export = setNoData(strata, no_data_value);
+
+Export.image.toDrive({image:strata_export, description:out_name, region:region, scale:scale, crs:crs, maxPixels:1e13});

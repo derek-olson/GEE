@@ -1,0 +1,137 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var topo = ee.Image("users/thinkbetween/RB_topoComposite"),
+    harmonics = ee.Image("users/thinkbetween/RB_Harmonics"),
+    composite = ee.Image("users/thinkbetween/RB_Landsat_SR_1984_2018_190_250_lcmsCONUS_mtbs"),
+    refPoints = ee.FeatureCollection("users/thinkbetween/Fire_Scar_Data_final_for_GEE");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// set study area
+var sa = topo.geometry();
+
+// get predictor rasters as multi-band image
+//topo = topo.select(0,1,4);
+var predictors = topo.addBands(composite).addBands(harmonics);//.addBands(topo).clip(sa);
+
+// get reference data
+var referenceData = refPoints;
+
+// get column name of reference field as a string
+var responseField = 'MeanFRI';
+
+// set output name
+var outName = 'RB_FRI_Predict';
+
+// // get all reference values
+// var aggHist = referenceData.aggregate_histogram(responseField);
+// print('aggHist', aggHist);
+
+// // remap reference data
+// var refList = ee.Dictionary(aggHist).keys();
+// var maxVal = refList.length();
+// referenceData = referenceData.remap(refList, ee.List.sequence(1,maxVal), responseField);
+
+// choose projection
+var projection = 'EPSG:26910';
+
+// choose resolution
+var scale = 30;
+
+var sample = predictors.sampleRegions({
+  collection: referenceData,
+  scale: 30, 
+  projection: projection
+  });
+
+// choose classifier 
+var classifier = ee.Classifier.randomForest({numberOfTrees: 1000}).setOutputMode('REGRESSION');
+
+// get a list of the predictor bands
+var inputProperties = ee.Feature(sample.first()).propertyNames();
+var refDataProperties = ee.Feature(referenceData.first()).propertyNames();
+inputProperties = inputProperties.removeAll(refDataProperties);
+  
+// train a model  
+var classModel = classifier.train({
+  features: sample, 
+  classProperty: responseField, 
+  inputProperties: inputProperties, 
+});
+ 
+print('class model', classModel);
+
+// apply model 
+var classOut = predictors.classify(classModel);
+//Map.addLayer(classOut, {min:0, max:2, palette:'8B4513 , 006400, 0000CD'},  'class predict');
+classOut = classOut.reproject(projection, null, scale);
+Map.addLayer(classOut, {min:9, max:48,palette:'FF0,F00'},  'FRI predict');
+
+/*// create a probability classifier 
+var probabilityClassifier = ee.Classifier.randomForest({numberOfTrees: 100}).setOutputMode('PROBABILITY');
+
+// create a list of numbers with as many as there are types to predict
+// these must correspond to the remapped reference values
+var responseList = ee.List.sequence(1, maxVal);
+
+// create a list of zeros with the same length as the response list
+var mapToList = ee.List.repeat(0, maxVal.subtract(1));
+
+// map through all variables and get a prediction
+var probabilityImages = responseList.map(function(response){
+  //set up the reference data so that there are only two classes
+  var features = referenceData.filter(ee.Filter.eq(responseField, response));
+  var featsGT = referenceData.filter(ee.Filter.gt(responseField, response));
+  var featsLT = referenceData.filter(ee.Filter.lt(responseField, response));
+  var listGT = ee.List.sequence(ee.Number(response).add(1), maxVal);
+  var listLT = ee.List.sequence(1, ee.Number(response).subtract(1));
+  var mapFromList = listLT.cat(listGT);
+  var feats = featsLT.merge(featsGT).remap(mapFromList,mapToList,responseField);
+  var sampleFeatures = features.merge(feats);
+  
+  // resample the explanatory data with the new reference data - could this be global
+  var samp = predictors.sampleRegions({
+    collection: sampleFeatures,
+    scale: scale, 
+    projection: projection
+    });
+  
+  // create a model
+  var probModel = probabilityClassifier.train({
+    features: samp, 
+    classProperty: responseField, 
+    inputProperties: inputProperties, 
+  });
+  
+  // apply the model
+  var probOut = predictors.classify(probModel);
+  
+  return probOut;
+});
+print('probabilityImages', probabilityImages);
+
+// get list of images into a multiband image
+var tempCollection = ee.ImageCollection(probabilityImages);
+var probabilities = newCollectionToImage(tempCollection);
+Map.addLayer(tempCollection.first(), {}, 'tempCollection');*/
+
+// export data
+// Export.image.toAsset({
+//   image: probabilities, 
+//   description: outName, 
+//   region: sa, 
+//   scale: scale, 
+//   crs: projection, 
+//   maxPixels: 1e13});
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to convert image collection into stack of image bands
+////////////////////////////////////////////////////////////////////////////////
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
+
+
+Export.image.toDrive({image: classOut, description:'RB_FRI', region: sa, scale: scale, crs: projection, maxPixels:1e13})

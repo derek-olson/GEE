@@ -1,0 +1,33 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var aqua = ee.ImageCollection("MODIS/006/MYD09A1"),
+    terra = ee.ImageCollection("MODIS/006/MOD09A1");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var startDate = ee.Date.fromYMD(2014, 01, 01);
+var endDate = ee.Date.fromYMD(2017, 12, 31);
+
+var primary = 'system:time_start';
+var secondary = 'system:time_start';
+
+var joinInner = ee.Join.inner();
+
+var filter = ee.Filter.equals({leftField: primary, rightField: secondary});
+
+var join = joinInner.apply(aqua, terra, filter);
+
+var modis = join.map(function(feature){
+  var joinFeat = ee.Image.cat(feature.get('primary'), feature.get('secondary'));
+  return joinFeat;
+});
+
+var modisCollection = ee.ImageCollection(modis).filterDate(startDate, endDate);
+print(modisCollection);
+
+// get NDVI band
+
+// create a baseline
+var mean = ee.Reducer.mean()
+
+// 
+//var algorithm = 'v'
+
+//var test = modisCollection.iterate()

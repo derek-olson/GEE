@@ -1,0 +1,247 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-115.37947566649376, 35.82321554955738],
+          [-114.20943172118126, 35.86774309369763],
+          [-114.17097957274376, 36.43548275937867],
+          [-115.51131160399376, 36.41338264355378]]]),
+    psi = ee.FeatureCollection("users/thinkbetween/PSI_Admin_Bound");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var dummy = true; // If true, replaces NA's (masked values) in the exported image with a dummy value
+var dummyVal = 1; // Dummy value
+var scale = 30;
+var epsg = 'EPSG:4326';//'EPSG:26906';//'EPSG:26912'; //
+var epsgTransform = null;//[30,0,505022,0,-30,4428076];
+
+// STEP 1: Load Study Region
+var region = sa;
+
+// STEP 2: Load images
+var master = ee.Image('LANDSAT/LC08/C01/T1_RT_TOA/LC08_034033_20180915');
+var slave = ee.Image('LANDSAT/LC08/C01/T1_RT_TOA/LC08_033033_20170921');
+
+var sensorBandDict = {
+  'L8TOA' : ee.List([1,2,3,4,5,6])
+};
+var sensorBandNameDict = {
+  'TOA' : ee.List(['blue','green','red','nir','swir1','swir2'])
+};
+
+var l8sTOA_master = ee.Image(master).select(sensorBandDict.L8TOA,sensorBandNameDict.TOA);
+var l8sTOA_slave = ee.Image(slave).select(sensorBandDict.L8TOA,sensorBandNameDict.TOA);
+print('l8sTOA_master', l8sTOA_master);
+print('l8sTOA_slave', l8sTOA_slave);
+
+master = rescale(l8sTOA_master);
+slave = rescale(l8sTOA_slave);
+
+print('master', master);
+print('slave', slave);
+
+Map.addLayer(master,{},'Master',false);
+Map.addLayer(slave,{},'Slave Pre',false);
+
+
+// STEP 3: Normalize scenes and mosaic
+var z = 0.5;
+var bandsPIF = ['blue','green','red','nir','swir1','swir2'];
+
+var PIFpixels = getPIFsPair(slave, master, bandsPIF,z);
+print('pif', PIFpixels);
+Map.addLayer(PIFpixels,{},'PIFpixels',false);
+
+var corrected = imgNormalizerMultiConstant(slave, master, PIFpixels);
+Map.addLayer(corrected,{},'Slave corrected',false);
+
+///////////////////////////////////////////////////////////////////////////////
+//FUNCTIONS
+///////////////////////////////////////////////////////////////////////////////
+// Function to rescale values of an image
+function rescale(img){
+  img = img.select([0,1,2,3,4,5],['blue','green','red','nir','swir1',
+    'swir2']);
+  var img_main = img.select(['blue','green','red','nir','swir1',
+    'swir2']).divide(10000).float();
+  //var img_date_pathrow = img.select(['date','year','pathrow']);
+  var mask = img.select('blue').neq(0);
+  return img_main.updateMask(mask);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Function for getting the pseudo-invariant features (PIFs)
+function getPIFsPair(img1, img2, bandsPIF,z) {
+  // Compute the difference to find unchanged pixels 
+  var diff = img1.subtract(img2).select(bandsPIF);
+  var inter = img1.geometry().intersection(img2.geometry(),1000);
+  diff = diff.set('system:footprint',inter);
+  var region = diff.geometry();
+  var calcParamsAll = {     
+          'reducer': ee.Reducer.mean().forEachBand(diff).combine(ee.Reducer.stdDev().forEachBand(diff),'s_',true),
+          'geometry': region, 
+          'scale': 90, 
+          'bestEffort': true,
+          'maxPixels': 500000000,
+          'tileScale': 2
+        };
+  var s_bandsPIF = addPrefix(bandsPIF,'s_');
+  // Compute the mean/stdDev value for the band
+  var dict = diff.reduceRegion(calcParamsAll);
+  var diffMean = ee.Image.constant(dict.select(bandsPIF).values()).rename(dict.select(bandsPIF).keys()).float();
+  var StdDevTH = ee.Image.constant(dict.select(s_bandsPIF).values()).multiply(z).rename(dict.select(bandsPIF).keys()).float();
+  var THupper = diffMean.add(StdDevTH);
+  var THlower = diffMean.subtract(StdDevTH);
+  // Where the difference value is less than the threshold, add a 1
+  var maskedTemp =  diff.lt(THupper).and(diff.gt(THlower));
+  // Find the pixels that are have low variance in all the given bands and clip
+  // this image to the region to avoid extrapolation 
+  var potentialPIFs = maskedTemp.reduce(ee.Reducer.max()).clip(region);
+  // Return these locations -Value of 1 with non PIFs masked out
+  return potentialPIFs.mask(potentialPIFs);//.clip(geometry3);//.clip(water_removed);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// NORMALIZE W SIMPLE REGRESSION
+// This function returns one corrected image and can be mapped across the stack
+// to return a corrected stack
+// function imgNormalizer(slave, master, PIFpixels, dropBands){
+//   var diff = slave.subtract(master);
+//   var inter = slave.geometry().intersection(master.geometry(),1000);
+//   diff = diff.set('system:footprint',inter);
+//   var region = diff.geometry();
+//   var calcParamsLF = {     
+//         'reducer': ee.Reducer.linearFit(),
+//         'geometry': region, 
+//         'scale': 90, 
+//         'bestEffort': true,
+//         'maxPixels': 500000000,
+//         'tileScale': 2
+//       };
+//   var PIFslave = slave.mask(PIFpixels);
+//   var PIFmaster = master.mask(PIFpixels);
+  
+//   // Loop through bands, get regression coeffs and correct
+//   var bandnames = master.bandNames().removeAll(dropBands);
+//   var contArray = ee.List(bandnames).map(function(band){
+//     band = ee.String(band);
+//     // Make a 2 band image for regression
+//     var regImg = ee.Image([PIFslave.select(band),PIFmaster
+//       .select(band)]);
+//     // Get the intercept and slope
+//     var LF = regImg.reduceRegion(calcParamsLF);
+//     var intercept = LF.get('offset'); 
+//     var slope = LF.get('scale');
+//     // Use the coefficients to create constant images that could then be used 
+//     // for the band math correction functions. 
+//     var SlopeImg = ee.Image.constant(slope);
+//     var IntImg = ee.Image.constant(intercept);
+//     // Select the corresponding band to correct
+//     var band2Correct = slave.select(band);
+//     // Linear correction = y = int + slope*x
+//     var corrBand = band2Correct.multiply(SlopeImg).add(IntImg);
+//     return corrBand;//.toUint16();
+//   });
+//   // Concatenate the bands to form the corrected slave image
+//   contArray = ee.ImageCollection(contArray);
+//   var corrected = newCollectionToImage(contArray).rename(bandnames);
+//   // Add back in the dropped bands
+//   corrected = corrected.addBands(slave.select(dropBands));
+//   // Add the slave image footprint to the corrected image
+//   corrected = corrected.set('system:footprint',slave.geometry());
+  
+//   return corrected;
+// }
+
+////////////////////////////////////////////////////////////////////////////////
+// NORMALIZE W MULTIVARIATE REGRESSION WITH A CONSTANT BAND
+// This function returns one corrected image and can be mapped across the stack
+// to return a corrected stack
+function imgNormalizerMultiConstant(slave, master, PIFpixels){
+  var slave_mask = slave.select([0]).mask();
+  var master_mask = master.select([0]).mask();
+  var diff = slave.subtract(master);
+  var inter = slave.geometry().intersection(master.geometry(),1000);
+  diff = diff.set('system:footprint',inter);
+  var region = diff.geometry();
+  var bandnames = master.bandNames();//.removeAll(dropBands);
+  master = master.addBands(ee.Image(1).rename('constant')).updateMask(master_mask);
+  slave = slave.addBands(ee.Image(1).rename('constant')).updateMask(slave_mask);
+  var bandnamesPlus = bandnames.add('constant');
+  var PIFslave = slave.mask(PIFpixels);
+  var PIFmaster = master.mask(PIFpixels);
+  // Loop through bands, get regression coeffs and correct
+  var calcParamsLR = {     
+        'reducer': ee.Reducer.linearRegression(bandnamesPlus.length(),1),
+        'geometry': region, 
+        'scale': 90, 
+        'bestEffort': true,
+        'maxPixels': 500000000,
+        'tileScale': 2
+      };
+  var contArray = ee.List(bandnames).map(function(band){
+    band = ee.String(band);
+    var regImg = PIFslave.select(bandnamesPlus).addBands(PIFmaster.select(band).rename('master'));
+    var LR = regImg.reduceRegion(calcParamsLR);
+    var coeffs = ee.Array(LR.get('coefficients')).project([0]).toList();
+    coeffs = ee.Image.constant(coeffs).rename(bandnamesPlus);
+    var corrBand = slave.select(bandnamesPlus).multiply(coeffs).reduce('sum');
+    return corrBand;//.toUint16();
+  });
+  // Concatenate the bands to form the corrected slave image
+  contArray = ee.ImageCollection(contArray);
+  var corrected = newCollectionToImage(contArray).rename(bandnames);
+  // Add back in the dropped bands
+  corrected = corrected.updateMask(slave_mask);
+  // Add the slave image footprint to the corrected image
+  corrected = corrected.set('system:footprint',slave.geometry());
+  
+  return corrected; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to mosaic a master and corrected slave image using the negative of
+// a band as the quality band
+function mosaicPair(master,correctedSlave,band) {
+  var bandnames = master.bandNames();
+  master = master.addBands(master.select(band).multiply(-1).rename('quality'));
+  correctedSlave = correctedSlave
+    .addBands(correctedSlave.select(band).multiply(-1).rename('quality'));
+  var pairCollection = ee.ImageCollection([master,correctedSlave]);
+  var mosaic = pairCollection.qualityMosaic('quality').select(bandnames);
+  var mosaicFootprint = master.geometry().union(correctedSlave.geometry());
+  mosaic = mosaic.set('system:footprint',mosaicFootprint);
+  return mosaic;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to convert image collection into stack of image bands
+function newCollectionToImage(collection){
+  var stack = ee.Image(collection.iterate(function(img, prev) {
+    return ee.Image(prev).addBands(img);
+  }, ee.Image(1)));
+
+  stack = stack.select(ee.List.sequence(1, stack.bandNames().size().subtract(1)));
+  return stack;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper function to add a string prefix to a list of strings
+function addPrefix(list,prefix){
+  return list.map(function(element){
+    return prefix + element;
+  });
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+//Layers to review
+// var neast = ee.Image('LANDSAT/LC08/C01/T1_RT_TOA/LC08_033033_20170921');
+// var north = ee.Image('LANDSAT/LC08/C01/T1_RT_TOA/LC08_034033_20180915');
+// var south = ee.Image('LANDSAT/LC08/C01/T1_RT_TOA/LC08_034034_20180830');
+// var east = ee.Image('LANDSAT/LC08/C01/T1_RT_TOA/LC08_033034_20170921');
+
+// Map.addLayer(neast, {bands: ['B5', 'B4', 'B3'],min:0.039668332785367966, max:0.483522891998291}, 'north east')
+// Map.addLayer(south, {bands: ['B5', 'B4', 'B3'],min:0.039668332785367966, max:0.483522891998291}, 'south');
+// Map.addLayer(east, {bands: ['B5', 'B4', 'B3'], min:0.0499422661960125, max:0.5720008015632629}, 'east');
+// Map.addLayer(north, {bands: ['B5', 'B4', 'B3'], min:0.01692918688058853, max:0.35812556743621826}, 'north');
+// Map.addLayer(psi);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+Export.image.toDrive({image:master, description: 'master', region: sa, scale: scale, crs: crs, maxPixels: 1e13})

@@ -1,0 +1,38 @@
+// Load the Sentinel-1 ImageCollection.
+var sentinel1 = ee.ImageCollection('COPERNICUS/S1_GRD');
+
+// Filter VH, IW
+var vh = sentinel1
+  // Filter to get images with VV and VH dual polarization.
+  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
+  // Filter to get images collected in interferometric wide swath mode.
+  .filter(ee.Filter.eq('instrumentMode', 'IW'))
+  // reduce to VH polarization
+  .select('VH')
+  // filter 10m resolution
+  .filter(ee.Filter.eq('resolution_meters', 10));
+// Filter to orbitdirection Descending
+var vhDescending = vh.filter(ee.Filter.eq('orbitProperties_pass', 'DESCENDING'));
+// Filter time 2015
+var vhDesc2015 = vhDescending.filterDate(ee.Date('2015-01-01'), ee.Date('2015-12-31'));
+
+var roi = ee.Geometry.Polygon(
+        [[[104.39967317142975, 8.648797299726574],
+          [104.97136816724105, 8.42750154669911],
+          [105.44386722890897, 8.433739470974832],
+          [106.66892316475673, 9.522314436594979],
+          [107.25187226402818, 10.336446225915548],
+          [106.80624398899499, 11.138468981755926],
+          [104.38860737239793, 10.944315053122876]]]);
+// Filter to MKD roi
+var s1_mkd = vhDesc2015.filterBounds(roi);
+
+var p90 = s1_mkd.reduce(ee.Reducer.percentile([90]));
+var p10 = s1_mkd.reduce(ee.Reducer.percentile([10]));
+var s1_mkd_perc_diff = p90.subtract(p10);
+
+Map.addLayer(s1_mkd_perc_diff, {min: [2], max: [17]}, 'p90-p10 2015', 1);
+
+var amplitude_mask = s1_mkd_perc_diff.gt(7.5);
+var amplitude_mask = amplitude_mask.updateMask(amplitude_mask);
+Map.addLayer(amplitude_mask, {palette: 'FF0000'}, 'amplitude_mask', 1);

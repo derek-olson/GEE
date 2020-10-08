@@ -1,0 +1,15 @@
+var y = ee.Number(1970);
+var m = ee.Number(1);
+
+function zeroPad(n){
+  var out = ee.Algorithms.If(n.lt(10),ee.String('0').cat(ee.String(n)),ee.String(n))
+  return out
+}
+
+function getYearMonth(y,m){
+  m = ee.Number(m)
+  m = zeroPad(m)
+  
+  y = ee.String(y);
+  return ee.Number(y.cat(m))
+}

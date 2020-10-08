@@ -1,10 +1,9 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var sa = /* color: #0b4a8b */ee.Geometry.Polygon(
-        [[[-106.8804931640625, 31.98944183792288],
-          [-104.2767333984375, 31.95216223802497],
-          [-104.2437744140625, 32.008075959291055],
-          [-104.5294189453125, 33.99347299511967],
-          [-106.80908203125, 34.00258128543371]]]);
+var sa = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-120.66630859374999, 42.053125287543644],
+          [-120.09501953124999, 35.607915249933406],
+          [-113.83281249999999, 35.964400699975805],
+          [-113.87675781249999, 42.11835266299873]]]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //var Bound = ee.FeatureCollection('ft:1GR_j4u_nljOdoZ_eSwsJkd7mdmLni1Fus2RTJiHU', 'geometry');
 //Map.addLayer(Bound,{}, 'Bound')
@@ -885,7 +884,7 @@ var customQualityMosaic = function(inCollection,qualityBand,percentile){
 var customMosaic = allImages.median();
 Map.addLayer(customMosaic,vizParams,'Median Composite')
 Map.addLayer(allImages.select([0]).count(),{'min':1,'max':10,'palette':'F00,00F'},'Count',false);
-var OutImageName = "Landsat_Lincoln_TOA_5pct_Composite_2012_2017_152_258"
+var OutImageName = "Landsat_HT_TOA_50pct_Composite_2012_2017_152_258"
  Export.image(customMosaic.select('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'NDVI', 'NBR', 'NDMI', 'Brightness', 'Greenness', 'Wetness', 'Angle').multiply(10000).int16(), OutImageName,
        {'maxPixels': 2e9,
          'region': sa,//.geometry().bounds().getInfo().coordinates[0],

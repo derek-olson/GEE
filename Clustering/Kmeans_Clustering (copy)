@@ -37,8 +37,8 @@ print('composite:', composite);
 
 //Get a list of the band names
 var bands = composite.bandNames().getInfo()
-//var bandsLength = composite.bandNames().length()//.getInfo();
-//var bands = ee.List.sequence({start:0, end: bandsLength.subtract(1)})
+var bandsLength = composite.bandNames().length()//.getInfo();
+bandsLength = ee.List.sequence({start:1, end: bandsLength.subtract(1)})
 //print('bands:', bands);
 
 //Rescale the composite for segmentation
@@ -99,7 +99,7 @@ function newCollectionToImage(collection){
 //Create training data
 var training = scaledImage.sample({
   scale: 30,
-  numPixels: 1000
+  numPixels: 10000
   });
 
 /*var kmeansTest = ee.Clusterer.wekaKMeans({nClusters: 10})
@@ -131,159 +131,62 @@ var kVar = kvals.map(function(kval){
   .train({
     features: training
   });
-  //print('kmeans:', kmeans);
+  print('kmeans:', kmeans);
   
   //Get kmeans clusters
   var clusterImage = scaledImage.cluster(kmeans, 'kmeans');
-  //print('clusterImage:', clusterImage);  
+  print('clusterImage:', clusterImage);  
   
   var kmeansComposite = clusterImage.addBands(scaledImage);
   //print('kmeansComposite:', kmeansComposite);
   
-  //Get the variance for each band
-  var bandVar = bands.map(function(band){
+  //Get the variance for each band by kvalue
+  var avgBandVar = bands.map(function(band){
     //print('band:', band);
     var tempComposite = kmeansComposite.select([0, band]);
     //print('tempComposite:', tempComposite);
-    var bandReducer = tempComposite.reduceConnectedComponents({
-      reducer: ee.Reducer.variance().combine({
-      reducer2: ee.Reducer.mean(), sharedInputs: true}),
+    var bandVar = tempComposite.reduceConnectedComponents({
+      reducer: ee.Reducer.variance(),
       labelBand: 'kmeans',
       maxSize: 256
     });
-    return bandReducer;
+    //print('bandReducer:', bandReducer)
+    //Get the average variance for each band
+    var bandVarMean = bandVar.reduceRegion({
+      reducer: ee.Reducer.mean(),
+      geometry: bandVar.geometry(),
+      scale: 30,
+      maxPixels: 1e13
+    });
+    return ee.List(bandVarMean.values()).get(0);
   });
-  print('band variance:', bandVar);
-  
-  var varBands = ee.ImageCollection(bandVar);
-  //varBands = newCollectionToImage(varBands);
-  print('varBands:', varBands)
-  
-  var kSum = varBands.reduce(ee.Reducer.sum());
-  print('ksum:', kSum)
+  print('band variance:', avgBandVar);
+
+  var kSum = ee.List(avgBandVar).reduce(ee.Reducer.mean());
+  //print('ksum:', kSum)
   
   return kSum;
 });
 
 print('kvar:', kVar);
 
+// Define customization options.
+var options = {
+  title: 'Variance by cluster size',
+  hAxis: {title: 'kvalues'},
+  vAxis: {title: 'variance'},
+  lineWidth: 1,
+  pointSize: 4,
+  series: {
+    0: {color: '00FF00'},
 
+}};
 
-//Get the variance for each band
-/*var bandVar = bands.map(function(band){
-  print('band:', band);
-  var tempComposite = kmeansComposite.select([0, band]);
-  print('tempComposite:', tempComposite);
-  var bandReducer = tempComposite.reduceRegion({
-    reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
-    maxPixels: 1e13
-  });
-  return bandReducer;
-});
-print('band variance:', bandVar);
+var kVarArray = ee.Array(kVar);
 
-  //Extract computed stat from nested list.
-function lookup_stat(list){
-  var pixelstat = ee.Dictionary(ee.List(ee.Dictionary(list).get('groups')).get(0)).get('variance');
-  return pixelstat;
-}
-
-var stat_list = ee.List(bandVar).map(lookup_stat);
-print('stat_list',stat_list);*/
+var chart = ui.Chart.array.values(kVarArray,0, kvals).setChartType('LineChart').setOptions(options);
+print(chart);
 
 
 
 
-
-
-
-//For each value of k and for each cluster get the variance
-/*var kvals = ee.List.sequence({start:1, end:clustNum}).getInfo();
-print(kvals);
-
-var varianceSumList = kvals.map(function(kval){
-  var kmeans = ee.Clusterer.wekaKMeans({nClusters: 10})
-  .train({
-    features: training
-  });
-  
-  var clusterImage = composite.cluster(kmeans, 'kmeans');
-  
-  var kmeansComposite = clusterImage.addBands(composite);
-  
-  var bands = composite.bandNames();
-
-  //Get the variance for each band
-  var bandVar = bands.map(function(band){
-    
-    var tempComposite = kmeansComposite.select([0, band]);
-    
-    var bandReducer = tempComposite.reduceRegion({
-      reducer: ee.Reducer.variance().group({groupField: 0, groupName: 'kmeans'}),
-      maxPixels: 1e13
-    });
-    return bandReducer;
-  });
-  
-  var averageVar = t
-
-});*/
-
-
-
-
-
-
-
-
-
-/*var varianceSumList = kvals.map(function(kval){
-  //print(kval)
-  //Create clusterer
-  var kmeans = ee.Clusterer.wekaKMeans({nClusters: kval})
-    .train({
-     features: training
-    });
-  //print(kmeans)
-  //Get kmeans clusters
-  var clusterImage = composite.cluster(kmeans, 'kmeans');
-  //print(clusterImage);
-
-  var compositeVariance = composite.reduce(ee.Reducer.variance());
-  //print(compositeVariance);
-
-  var KmeansVarianceComposite = clusterImage.addBands(compositeVariance);
-
-  var clusterVariance = KmeansVarianceComposite.reduceRegion({
-    reducer: ee.Reducer.mean().unweighted().group({
-      groupField:0,
-      groupName: 'kmeans'
-    }),
-    geometry: clusterImage.geometry(),
-    scale: 30,
-    maxPixels: 1e13
-  });
-  //print(clusterVariance);
-
-  //Try to turn the dictionary into a list; may not be necessary
-  var clustVarSum = clusterVariance.get('groups')
-  //print(clustVarSum)
-
-  //Extract computed stat from nested list.
-  function lookup_stat(list) {
-    var pixelstat = ee.Dictionary(list).get('mean');
-    return pixelstat;
-  }
-
-  var stat_list = ee.List(clustVarSum).map(lookup_stat);
-  //print('stat_list',stat_list);
-
-  var varianceSum = stat_list.reduce(ee.Reducer.sum())
-  //print(varianceSum)
-  
-  return varianceSum; 
-});
-
-print(varianceSumList);
-
-*/

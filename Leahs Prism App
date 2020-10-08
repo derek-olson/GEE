@@ -1,0 +1,539 @@
+// View PRISM Variables
+
+//------------------------------------------------------------
+//          Lookup Tables
+//------------------------------------------------------------
+var month_names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var month_shortnames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var monthlist = ee.List.sequence(1,12);
+var monthDict = monthlist.zip(ee.List(month_names));
+print('monthDict',monthDict);
+
+// To Rename Bands
+var annualShortNameList = ee.List([
+  'AnnualPrecipitation',             
+  'AnnualMeanTemperature',             
+  'AnnualMinTemperature',               
+  'AnnualMaxTemperature',                
+  'AnnualDewpointTemperature',       
+  'AnnualMinVaporPressureDeficit',     
+  'AnnualMaxVaporPressureDeficit',
+]);
+var monthlyShortNameList = ee.List([
+  'MonthlyPrecipitation',             
+  'MonthlyMeanTemperature',             
+  'MonthlyMinTemperature',               
+  'MonthlyMaxTemperature',                
+  'MonthlyDewpointTemperature',       
+  'MonthlyMinVaporPressureDeficit',     
+  'MonthlyMaxVaporPressureDeficit',
+]);
+
+// Color Palettes
+var precip_colorscale = ['red', 'yellow', 'green', 'cyan', 'purple'];
+var temp_colorscale = ['purple', 'cyan', 'green', 'yellow', 'red'];
+
+// Long Names of Bands and Plotting Parameters
+var bandDict = {
+  // Annual Bands
+  AnnualPrecipitation:            {longname: 'Annual Accumulated Precipitation (mm)',               params: {min: 0.0,  max: 3000.0,palette: precip_colorscale}}, 
+  AnnualMeanTemperature:          {longname: 'Annual Mean Temperature (C)',                         params: {min: 0.0,  max: 26.0,  palette: temp_colorscale}},    
+  AnnualMinTemperature:           {longname: 'Annual Mean Minimum Daily Temperature (C)',           params: {min: -7.0, max: 20.0,  palette: temp_colorscale}},     
+  AnnualMaxTemperature:           {longname: 'Annual Mean Maximum Daily Temperature (C)',           params: {min: 5.0,  max: 30.0,  palette: temp_colorscale}},     
+  AnnualDewpointTemperature:      {longname: 'Annual Mean Dewpoint Temperature (C)',                params: {min: -10.0,max: 20.0,  palette: temp_colorscale}},   
+  AnnualMinVaporPressureDeficit:  {longname: 'Annual Mean Minimum Daily Dewpoint Depression (hPa)', params: {min: 0.0,  max: 10.0,  palette: temp_colorscale}},   
+  AnnualMaxVaporPressureDeficit:  {longname: 'Annual Mean Maximum Daily Dewpoint Depression (hPa)', params: {min: 5.0,  max: 40.0,  palette: temp_colorscale}},   
+  // Monthly Bands
+  MonthlyPrecipitation:           {longname: 'Monthly Accumulated Precipitation (mm)',              params: {min: 0.0,  max: 400.0, palette: precip_colorscale}},           
+  MonthlyMeanTemperature:         {longname: 'Monthly Mean Temperature (C)',                        params: {min: -15.0,max: 35.0,  palette: temp_colorscale}},         
+  MonthlyMinTemperature:          {longname: 'Monthly Minimum Daily Temperature (C)',               params: {min: -20.0,max: 30.0,  palette: temp_colorscale}},          
+  MonthlyMaxTemperature:          {longname: 'Monthly Maximum Daily Temperature (C)',               params: {min: -10.0,max: 45.0,  palette: temp_colorscale}},          
+  MonthlyDewpointTemperature:     {longname: 'Monthly Mean Dewpoint Temperature (C)',               params: {min: -20.0,max: 25.0,  palette: temp_colorscale}},        
+  MonthlyMinVaporPressureDeficit: {longname: 'Monthly Minimum Daily Dewpoint Depression (hPa)',     params: {min: 0.0,  max: 20.0,  palette: temp_colorscale}},        
+  MonthlyMaxVaporPressureDeficit: {longname: 'Monthly Maximum Daily Dewpoint Depression (hPa)',     params: {min: 0.0,  max: 60.0,  palette: temp_colorscale}}        
+};
+  
+//------------------------------------------------------------
+//          Upload Prism Data
+//------------------------------------------------------------
+//load prism and add month property
+var prism = ee.ImageCollection("OREGONSTATE/PRISM/Norm81m");
+var prism = prism.map(function(img){
+  return img.set('month',ee.Date(img.get('system:time_start')).get('month'))
+  });
+print('prism',prism)
+
+// Get annual mean of all bands
+var annual_prism = prism.reduce(ee.Reducer.mean()).addBands(prism.select('ppt').reduce(ee.Reducer.sum()));
+// Delete Precipitation Mean Band 
+annual_prism = annual_prism.select(['ppt_sum','tmean_mean','tmin_mean','tmax_mean','tdmean_mean','vpdmin_mean','vpdmax_mean']);
+// Rename with annual image with easier names for selector
+annual_prism = annual_prism.rename(annualShortNameList)
+
+// Create new image collection with renamed temp variables for Chart Labels
+var temp_prism = prism.map(function(image){
+  image = image.select(['tmean','tmin','tmax']);
+  return image.rename(['Mean','Min','Max'])
+});
+// Rename monthly collection with easier names
+prism = prism.map(function(image){
+  return image.rename(monthlyShortNameList)});
+
+// Function to make separate image for chosen month
+var getMonthImage = function(monthNum){
+  var thisMonthImage = ee.Image(prism.filter(ee.Filter.eq('month',monthNum)).first());
+  return thisMonthImage
+};
+//-------------------------------------------------------------------
+//          Set up Panels/Widgets
+//--------------------------------------------------------------------
+// --------------SET UP PRIMARY PANELS--------------------------------
+// Control Panel
+var controlPanel = ui.Panel({
+  layout: ui.Panel.Layout.flow('vertical'),
+  style: {width: '340px'}
+});
+
+// Map Panel
+var map = ui.Map();
+map.style().set({cursor:'crosshair'});
+map.setOptions('HYBRID');
+
+// Plot Panel
+var plotPanel = ui.Panel({
+  layout: ui.Panel.Layout.flow('vertical'),
+  //style: {height: '200px', position: 'bottom-right'}
+  style: {width: '400px'}
+});
+
+// -------------- Widget Functions --------------------------------
+// Drop-Down Menu - Band Selector and Legend (activated when Band is selected)
+var legendPanel = ui.Panel(null, null, {stretch: 'horizontal'});
+var bandSelect = ui.Select({
+  onChange: function(value) {
+    var layer = ui.Map.Layer(imageSelect.getValue().select(value), bandDict[value]['params'], bandDict[value]['longname']);   
+    var thisvalue = value;
+    map.layers().set(0, layer);
+    
+    // Legend
+    var low = bandDict[value]['params']['min'];
+    var high = bandDict[value]['params']['max'];
+    var mid = Math.round((high-low)/2);
+    legendPanel = legendPanel.clear();
+    legendPanel.add(ui.Label(bandDict[value]['longname'], {margin: '10px 10px', textAlign: 'center', stretch: 'horizontal'}));
+    legendPanel.add(makeLegend(low, mid, high, bandDict[value]['params']['palette']))
+    return thisvalue
+  },
+  style:{stretch: 'horizontal'}  
+});
+
+// Drop-Down Menu - Image Selector (monthly vs. annual)
+var imageSelect = ui.Select({
+  items: [
+    {label: 'Annual', value: annual_prism},
+    {label: 'January', value: getMonthImage(1)},
+    {label: 'February', value: getMonthImage(2)},
+    {label: 'March', value: getMonthImage(3)},
+    {label: 'April', value: getMonthImage(4)},
+    {label: 'May', value: getMonthImage(5)},
+    {label: 'June', value: getMonthImage(6)},
+    {label: 'July', value: getMonthImage(7)},
+    {label: 'August', value: getMonthImage(8)},
+    {label: 'September', value: getMonthImage(9)},
+    {label: 'October', value: getMonthImage(10)},
+    {label: 'November', value: getMonthImage(11)},
+    {label: 'December', value: getMonthImage(12)},
+  ],
+  style:{stretch: 'horizontal', fontSize: 20},
+  onChange: function(value) {
+    value.bandNames().evaluate(function(bands) {
+      bandSelect.items().reset(bands);
+      bandSelect.setValue(bandSelect.items().get(0));
+    });
+  }
+});
+
+// Coordinate Panel
+var makeCoordsPanel = function(){
+  var coordSectionLabel = ui.Label('Define Pixel Coordinates (optional)',{fontWeight: 'bold'});  
+  var latLabel = ui.Label('Latitude:');
+  var latBox = ui.Textbox({value:45.6});
+  latBox.style().set('stretch', 'horizontal');  
+  var lonLabel = ui.Label('Longitude:');
+  var lonBox = ui.Textbox({value:-114.4});
+  lonBox.style().set('stretch', 'horizontal');  
+  return ui.Panel(
+    [coordSectionLabel,
+      ui.Panel([lonLabel, lonBox, latLabel, latBox],ui.Panel.Layout.Flow('horizontal'))],
+    null,
+    {stretch: 'horizontal'}
+  );
+};
+var coordsPanel = makeCoordsPanel();
+
+var getCoords = function(coordsPanel){
+    return {
+      lon:parseFloat(coordsPanel.widgets().get(1).widgets().get(1).getValue()),
+      lat:parseFloat(coordsPanel.widgets().get(1).widgets().get(3).getValue())
+  };
+};
+
+// -------------- Chart Functions --------------------------------
+
+// Set up Chart on Click
+var chartPanel = ui.Panel(null, null, {stretch: 'horizontal'});
+var submitButton = ui.Button({
+  label: 'Submit',
+  style: {stretch: 'horizontal', width: '150px', margin: '5px 120px 5px'}
+});
+
+// Chart plotting function, activated by submit button or clicking map, with functions below
+var plotChart = function(pixel){
+  // Get annual precip for this point
+  var annual_pixel_precip = annual_prism.select('AnnualPrecipitation').reduceRegion({
+    reducer: 'first',
+    geometry: pixel,
+    scale: 200}).getInfo();
+  var precipLabel = ui.Label('Total Annual Precipitation:  '+Number(Math.round(annual_pixel_precip.AnnualPrecipitation+'e2')+'e-2')+' mm');
+  
+  // Options for Charts
+  var precipOptions = {
+    'title': 'Monthly Mean Precipitation',// at '+coords.lat+' N',
+    'vAxis': {
+      'title': 'Precipitation (mm)',
+      'minValue': 0
+      },
+    'hAxis': {
+      'title': 'Month',
+      'format': 'MMM'
+      }
+    };
+  var tempOptions = {
+    title: 'Temperature - Mean, Min, & Max',// at '+coords.lat+' N',
+    vAxis: {
+      'title': 'Temperature (C)',
+      },
+    hAxis: {
+      'title': 'Month',
+      'format': 'MMM'
+      },
+    colors: ['red','green','blue'],
+    labels: ['Max','Mean','Min']
+    };
+  
+  // Create chart objects
+  var precip_chart = ui.Chart.image.series(prism.select('MonthlyPrecipitation'), pixel)
+    .setOptions(precipOptions);
+  var temp_chart = ui.Chart.image.series(temp_prism , pixel)
+    .setOptions(tempOptions);
+  
+  // Add charts to panel
+  chartPanel = chartPanel.clear();
+  chartPanel.add(precipLabel);
+  chartPanel.add(precip_chart);
+  chartPanel.add(temp_chart);
+};
+
+// Get coordinates from submit button, then plot charts
+submitButton.onClick(function() {  
+  var point = ee.Geometry.Point(getCoords(coordsPanel).lon, getCoords(coordsPanel).lat);
+  var pixel = point.buffer(200).bounds();
+  plotChart(pixel);
+});
+
+// Get coordinates from map click, then plot charts
+map.onClick(function(coords) {
+  // Get coordinates from click
+  var point = ee.Geometry.Point(coords.lon, coords.lat);
+  var pixel = point.buffer(200).bounds();
+  coordsPanel.widgets().get(1).widgets().get(1).setValue(coords.lon);
+  coordsPanel.widgets().get(1).widgets().get(3).setValue(coords.lat);
+  plotChart(pixel);
+});
+
+// -------------- Color Bar / Legend --------------------------------
+// Color bar
+function ColorBar(palette) {
+  return ui.Thumbnail({
+    image: ee.Image.pixelLonLat().select(0),
+    params: {
+      bbox: [0, 0, 1, 0.1],
+      dimensions: '150x15',
+      format: 'png',
+      min: 0,
+      max: 1,
+      palette: palette,
+    },
+    style: {stretch: 'horizontal', margin: '0px 8px'},
+  });
+}
+
+function makeLegend(low, mid, high, palette) {
+  var labelPanel = ui.Panel(
+      [
+        ui.Label(low, {margin: '4px 8px'}),
+        ui.Label(mid, {margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
+        ui.Label(high, {margin: '4px 8px'})
+      ],
+      ui.Panel.Layout.flow('horizontal'));
+  return ui.Panel([ColorBar(palette), labelPanel])
+}
+
+// -------------- Labels and Instructions --------------------------------
+var YearMonthLabel = ui.Label('Select Annual or Monthly Climatology:', {fontWeight: 'bold'});
+var BandLabel = ui.Label('Select Variable:',{fontWeight: 'bold'});
+var instructions = ui.Panel([
+  ui.Label('Instructions', {fontWeight: 'bold'}),
+  ui.Label('1) Select climatology time period and variable below to plot plan view'),
+  ui.Label('2) Click a point on map or enter coordinates at right for graph of monthly climatology')
+]);
+var blackline = ui.Label('____________________________________________________');
+var blackline2 = ui.Label('_____________________________________________________________');
+
+
+//------------------------------------------------------------
+//                      Plot 
+//------------------------------------------------------------
+// Add to control panel
+controlPanel.add(instructions);
+controlPanel.add(blackline);
+controlPanel.add(YearMonthLabel);
+controlPanel.add(imageSelect);
+controlPanel.add(BandLabel);
+controlPanel.add(bandSelect);
+controlPanel.add(legendPanel);
+
+plotPanel.add(coordsPanel);
+plotPanel.add(submitButton);
+plotPanel.add(blackline2);
+plotPanel.add(chartPanel);
+
+ui.root.clear();
+ui.root.add(controlPanel);
+ui.root.add(map);
+ui.root.add(plotPanel);
+Map.setCenter(-100.55, 40.71, 4);
+
+
+/*
+//------------------------------------------------------------
+//          Plot Annual Layers
+//------------------------------------------------------------
+Map.setCenter(-100.55, 40.71, 4);
+Map.addLayer(annual_prism.select('ppt_sum'),    precip_aparams,   'Annual Precipitation (mm)');
+Map.addLayer(annual_prism.select('tmean_mean'), mean_temp_aparams,'Annual Mean Temperature (C)', false);
+Map.addLayer(annual_prism.select('tmin_mean'),  min_temp_aparams, 'Annual Avg. Min Temperature (C)', false);
+Map.addLayer(annual_prism.select('tmax_mean'),  max_temp_aparams, 'Annual Avg. Max Temperature (C)', false);
+Map.addLayer(annual_prism.select('tdmean_mean'),td_aparams,       'Annual Avg. Dewpoint Temperature (C)', false);
+Map.addLayer(annual_prism.select('vpdmin_mean'),vpdmin_aparams,   'Annual Avg. Min Vapor Pressure Deficit (hPa)', false);
+Map.addLayer(annual_prism.select('vpdmax_mean'),vpdmax_aparams,   'Annual Avg. Max Vapor Pressure Deficit (hPa)', false);
+*/
+//------------------------------------------------------------
+//          Plot Monthly Layers
+//------------------------------------------------------------
+var startmonth = ee.Image(prism.first()).date()
+var endmonth = ee.Image(prism.sort('system:index',false).first()).date()
+/*
+var display = function(range) {
+  range.start().get('month').evaluate(function(name) {
+    var thisplot = ee.Image(prism.filter(ee.Filter.eq('month',name)).first());
+    var layer = ui.Map.Layer(thisplot.select('ppt'), precip_params, 'Precip');
+    Map.layers().set(0, layer);
+  });
+};
+
+var dateRange = ee.DateRange(startmonth, endmonth).evaluate(function(range) {
+  var dateSlider = ui.DateSlider({
+    start: range['dates'][0],
+    end:   range['dates'][1],
+    value: range['dates'][0],
+    period: 28,
+    onChange: display
+  });
+  Map.add(dateSlider);
+});
+print('dateRange',dateRange)
+
+
+var display = num.evaluate(function(num) {
+  var thisplot = ee.Image(prism.filter(ee.Filter.eq('month',num)).first());
+  print('thisplot',thisplot)
+  var layer = ui.Map.Layer(thisplot.select('tmean'), mean_temp_mparams, 'TMean');
+  Map.layers().set(0, layer);
+});
+
+var slider = ui.Slider({
+  min: 1,
+  max: 12,
+  value: 1,
+  onChange: display
+})
+Map.add(slider)
+*/
+
+
+//------------------------------------------------------------
+//          Other
+//------------------------------------------------------------
+/*
+var us = ee.Geometry.Polygon(
+        [[[-131.1853936873382, 18.938519611520416],
+          [-62.806487437338205, 17.43557486642419],
+          [-59.466643687338205, 48.77864788594017],
+          [-131.5369561873382, 49.810351466337686]]]);
+
+var pscale = annual_precip.select('ppt_sum').projection().nominalScale();
+print('scale',pscale)
+
+
+var affine = [0.00026949458523585647, 0, -180, 0, -0.00026949458523585647, 86.0000269494563];
+var ap_max = annual_precip.reduceRegion({
+  reducer: ee.Reducer.max(),
+  geometry: geometry,
+  crs: 'EPSG:4326', 
+  crsTransform: affine,
+  maxPixels: 40000000000
+});
+print('ap_max',ap_max)
+
+//Adds the float year with julian proportion to image
+function addDateBand(img){
+  var fulldate = ee.Date(img.get('system:time_start'));
+  var m = fulldate.get('month');
+  //d = y.add(d.getFraction('year'));
+  var db = ee.Image.constant(m).rename(['month']).float();  
+  return img.addBands(db);
+}
+// precipitation (mm)
+//var precip = prism.select('ppt');
+//print('precip',precip)
+//var annual_precip = precip.reduce(ee.Reducer.sum());
+
+//print('annual_precip',annual_precip)
+
+//var thisdate = ee.Date(378691200000)
+//print('thisdate',thisdate)
+//var range = ee.DateRange(startmonth, endmonth);
+//var thismonth = range.start().get('month');
+//print('thismonth',thismonth);
+
+
+//var a = ee.List(var_colors.get('ppt')).get(0);
+
+var num = ee.List(annual_crange.get('ppt')).get(0)
+print('num',num)
+precip_params = {
+  min: ee.Number(ee.List(annual_crange.get('ppt')).get(0)),
+  max: ee.Number(ee.List(annual_crange.get('ppt')).get(1)), 
+  palette: precip_colorscale};
+print('precip_params',precip_params)
+
+// Ranges for Color Scales
+var monthly_crange = ee.Dictionary({
+  ppt:    [0, 500],
+  tmean:  [-15, 35],
+  tmin:   [-20, 30],
+  tmax:   [-10, 45],
+  tdmean: [-20, 25],
+  vpdmax: [0, 30],
+  vpdmin: [0, 95]
+});
+var annual_crange = ee.Dictionary({
+  ppt: [0.0, 3000.0],
+  tmean:  [0, 26],
+  tmin:   [-7, 20],
+  tmax:   [5, 30],
+  tdmean: [-10, 20],
+  vpdmin: [0, 10],
+  vpdmax: [5, 40]
+});
+
+// Make separate image for each month
+var jan = ee.Image(prism.filter(ee.Filter.eq('month',1)).first())
+print('jan',jan)
+
+monthlist.getInfo().map(function(month){
+  print('month',month)
+  var thismonth_image = ee.Image(prism.filter(ee.Filter.eq('month',month)).first())
+  print(thismonth_image)
+  return thismonth_image
+});
+
+var precip_aparams =    {min: 0.0,  max: 3000.0,palette: precip_colorscale};
+var mean_temp_aparams = {min: 0.0,  max: 26.0,  palette: temp_colorscale};
+var min_temp_aparams =  {min: -7.0, max: 20.0,  palette: temp_colorscale};
+var max_temp_aparams =  {min: 5.0,  max: 30.0,  palette: temp_colorscale};
+var td_aparams =        {min: -10.0,max: 20.0,  palette: temp_colorscale};
+var vpdmin_aparams =    {min: 0.0,  max: 10.0,  palette: temp_colorscale};
+var vpdmax_aparams =    {min: 5.0,  max: 40.0,  palette: temp_colorscale,};
+
+// Monthly Parameters
+var precip_mparams =    {min: 0.0,  max: 500.0, palette: precip_colorscale};
+var mean_temp_mparams = {min: -15.0,max: 35.0,  palette: temp_colorscale};
+var min_temp_mparams =  {min: -20.0,max: 30.0,  palette: temp_colorscale};
+var max_temp_mparams =  {min: -10.0,max: 45.0,  palette: temp_colorscale};
+var td_mparams =        {min: -20.0,max: 25.0,  palette: temp_colorscale};
+var vpdmin_mparams =    {min: 0.0,  max: 30.0,  palette: temp_colorscale};
+var vpdmax_mparams =    {min: 0.0,  max: 95.0,  palette: temp_colorscale,};
+
+// Long Names of Bands 
+var annualLongNames = ee.List([
+  // Annual Bands
+  'Annual Accumulated Precipitation (mm)', //ppt_sum:      
+  'Annual Mean Temperature (C)', //tmean_mean:   
+  'Annual Mean Minimum Daily Temperature (C)', //tmin_mean:    
+  'Annual Mean Maximum Daily Temperature (C)', //tmax_mean:    
+  'Annual Mean Dewpoint Temperature (C)', //tdmean_mean:  
+  'Annual Mean Minimum Daily Dewpoint Depression (hPa)', //vpdmin_mean:  
+  'Annual Mean Maximum Daily Dewpoint Depression (hPa)', //vpdmax_mean:  
+  // Monthly Bands
+var monthlyLongNames = ee.List([
+  'Monthly Accumulated Precipitation (mm)', // ppt:          
+  'Monthly Mean Temperature (C)', //tmean:        
+  'Monthly Minimum Daily Temperature (C)', //tmin:         
+  'Monthly Maximum Daily Temperature (C)', //tmax:         
+  'Monthly Mean Dewpoint Temperature (C)', //tdmean:       
+  'Monthly Minimum Daily Dewpoint Depression (hPa)', //vpdmin:       
+  'Monthly Maximum Daily Dewpoint Depression (hPa)' //vpdmax:       
+]);
+
+// Define a region of interest as a buffer around a point.
+var geom = ee.Geometry.Point(-114.4, 45.6).buffer(200);
+// Create and print the chart.
+print(ui.Chart.image.series(prism, geom));
+
+var thislayer = map.layers().get(0);
+  print('thislayer',thislayer)
+  
+  
+// Plotting Parameters
+var paramDict = {
+  // Annual Bands
+  ppt_sum:      {min: 0.0,  max: 3000.0,palette: precip_colorscale},
+  ppt_mean:     {min: 0.0,  max: 300.0, palette: precip_colorscale},
+  tmean_mean:   {min: 0.0,  max: 26.0,  palette: temp_colorscale},
+  tmin_mean:    {min: -7.0, max: 20.0,  palette: temp_colorscale},
+  tmax_mean:    {min: 5.0,  max: 30.0,  palette: temp_colorscale},
+  tdmean_mean:  {min: -10.0,max: 20.0,  palette: temp_colorscale},
+  vpdmin_mean:  {min: 0.0,  max: 10.0,  palette: temp_colorscale},
+  vpdmax_mean:  {min: 5.0,  max: 40.0,  palette: temp_colorscale},
+  // Monthly Bands
+  ppt:          {min: 0.0,  max: 400.0, palette: precip_colorscale},
+  tmean:        {min: -15.0,max: 35.0,  palette: temp_colorscale},
+  tmin:         {min: -20.0,max: 30.0,  palette: temp_colorscale},
+  tmax:         {min: -10.0,max: 45.0,  palette: temp_colorscale},
+  tdmean:       {min: -20.0,max: 25.0,  palette: temp_colorscale},
+  vpdmin:       {min: 0.0,  max: 30.0,  palette: temp_colorscale},
+  vpdmax:       {min: 0.0,  max: 95.0,  palette: temp_colorscale}
+};
+// Annual Bands
+var annualShortNameDict = ee.Dictionary({
+  ppt_sum:      'Precipitation',             
+  tmean_mean:   'MeanTemperature',             
+  tmin_mean:    'MinTemperature',               
+  tmax_mean:    'MaxTemperature',                
+  tdmean_mean:  'DewpointTemperature',       
+  vpdmin_mean:  'MinVaporPressureDeficit',     
+  vpdmax_mean:  'MaxVaporPressureDeficit',     
+});
+*/

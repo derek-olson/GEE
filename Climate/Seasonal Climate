@@ -1,0 +1,84 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var daymet = ee.ImageCollection("NASA/ORNL/DAYMET_V3"),
+    sa = ee.FeatureCollection("users/thinkbetween/GMUG_Boundary");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+// Export parameters
+var crs = 'EPSG:26912';
+var scale = 30;
+
+// Get DAYMET precip and temp bands
+var daymet_precip = daymet.select(1);
+var daymet_minTemp = daymet.select(5);
+var daymet_maxTemp = daymet.select(4);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get the monthly sums or means for all months and all years
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var monthly_precip = filterReduceByMonthYear(daymet_precip, 1988, 2017, ee.Reducer.sum());
+print('monthly precip', monthly_precip);
+Map.addLayer(monthly_precip.select(0), {min: 20, max:550}, 'monthly precip', false);
+
+var monthly_minTemp = filterReduceByMonthYear(daymet_minTemp, 1988, 2017, ee.Reducer.mean());
+print('monthly min temp', monthly_minTemp);
+Map.addLayer(monthly_minTemp.select(0), {min: -35, max:20}, 'monthly min temp', false);
+
+var monthly_maxTemp = filterReduceByMonthYear(daymet_maxTemp, 1988, 2017, ee.Reducer.mean());
+print('monthly max temp', monthly_maxTemp);
+Map.addLayer(monthly_maxTemp.select(0), {min: 3, max:35}, 'monthly max temp', false);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function filterReduceByMonthYear(collection, start_year, end_year, reducer){
+  var years = ee.List.sequence(start_year, end_year);
+  var months = ee.List.sequence(1, 12);
+  
+  return ee.ImageCollection(ee.FeatureCollection(years.map(function(year){
+    return ee.ImageCollection.fromImages(months.map(function(month){
+      return collection.filter(ee.Filter.date(ee.Date.fromYMD(year,month,1), ee.Date.fromYMD(year,month,28))).reduce(reducer).set('system:time_start', ee.Date.fromYMD(year, month,1).millis());
+    }));
+  })).flatten());
+  
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var reduceByMonth = function(months, collection, reducer){
+  var forMonth = months.map(function(month){
+    return collection.filter(ee.Filter.calendarRange(month, ee.Number(month).add(1),'month')).reduce(reducer).set('system:time_start', ee.Date.fromYMD(2018, month,1).millis());
+  });
+  return forMonth;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get seasonal temperatures
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var winterMonths = ee.List.sequence(1, 2);
+var summerMonths = ee.List.sequence(7, 9);
+var precipMonths = ee.List.sequence(1, 12);
+
+var summer_maxTemp = ee.ImageCollection(reduceByMonth(summerMonths, monthly_maxTemp, ee.Reducer.mean()));
+print('summer_maxTemp', summer_maxTemp);
+var summer_maxTempImg = summer_maxTemp.mean();
+Map.addLayer(summer_maxTempImg, {min: 3, max:35}, 'summer max temp');
+
+var winter_minTemp = ee.ImageCollection(reduceByMonth(winterMonths, monthly_minTemp, ee.Reducer.mean()));
+print('winter_minTemp', winter_minTemp);
+var winter_minTempImg = winter_minTemp.mean();
+Map.addLayer(winter_minTemp, {min: -15, max:15}, 'winter min temp');
+
+var annual_precip = ee.ImageCollection(reduceByMonth(precipMonths, monthly_precip, ee.Reducer.mean()));
+print('annual_precip', annual_precip);
+var annual_precipImg = annual_precip.sum();
+Map.addLayer(annual_precip, {min: 10, max:400}, 'precip');
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Export Data
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//summer_maxTempImg = summer_maxTempImg.resample('bicubic');
+//winter_minTempImg = winter_minTempImg.resample('bicubic');
+//annual_precipImg = annual_precipImg.resample('bicubic');
+
+Export.image.toDrive({image: summer_maxTempImg, description: 'BT_Summer_Max_Temp', region: sa, scale: scale, crs: crs, maxPixels: 1e13});
+Export.image.toDrive({image: winter_minTempImg, description: 'BT_Winter_Min_Temp', region: sa, scale: scale, crs: crs, maxPixels: 1e13});
+Export.image.toDrive({image: annual_precipImg, description: 'BT_Annual_Precip', region: sa, scale: scale, crs: crs, maxPixels: 1e13});

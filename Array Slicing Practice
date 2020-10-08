@@ -1,0 +1,77 @@
+// THIS SCRIPT IS TO PRACTICE SLICING ARRAYS
+
+//Arrays are useful because each pixel can contain varying observation lengths which result from the 
+// difference between the number of years in the time series and the number of masked observations in that time series.
+//Arrays are also allow slicing in 2 dimensions (row/column), which is useful for extracting observations 
+
+//The Landtrendr module outputs an image array with 4 rows containing the year, raw value, fitted value, and vertex or not.
+//This example array represents a single pixel from a collection of annual composites that range in date from 1986 to 2000. 
+var lt_array = ee.Array([
+  [1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000],
+  [0.82, 0.84, 0.78, 0.77, 0.08, 0.10, 0.11, 0.16, 0.22, 0.61, 0.63, 0.59, 0.64, 0.66, 0.69],
+  [0.81, 0.80, 0.79, 0.78, 0.10, 0.13, 0.16, 0.19, 0.20, 0.58, 0.60, 0.61, 0.63, 0.65, 0.70],
+  [1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1],
+]);
+
+//There are three parameters to understand when using slice or arraySlice.
+//The first parameter can either be a 0 or 1. A 0 slices on the horizontal axis,
+// and a 1 slices on the vertical axis.
+//The next two parameters are the start and end of the slice. The start parameter 
+// is inclusive and the end parameter is exclusive.
+var year_values = lt_array.slice(0,0,1);      // slice off the first row to get the year values 
+print('year values', year_values);
+var fitted_values = lt_array.slice(0,2,3);    // slice off the third row to get the fitted values
+print('fitted values', fitted_values);
+var vertex_mask = lt_array.slice(0,3,4);      // slice off the fourth row to get the vertices
+print('vertex mask', vertex_mask);
+var vertices = lt_array.mask(vertex_mask);    // mask out all values that do not correspond to a vertex
+print('vertices', vertices);
+var left = vertices.slice(1,0,-1);      // get year dimension of LT data from the segment start vertices
+print('left', left);
+var right = vertices.slice(1,1,null);   // get year dimension of LT data from the segment start vertices
+print('right', right);
+var startYear = left.slice(0, 0, 1);    // get year dimension of LT data from the segment start vertices
+print('startYear', startYear);
+var startVal = left.slice(0, 2, 3);     // get spectral index dimension of LT data from the segment start vertices
+print('startVal',startVal);
+var endYear = right.slice(0, 0, 1);     // get year dimension of LT data from the segment end vertices 
+print('endYear', endYear);
+var endVal = right.slice(0, 2, 3);      // get spectral index dimension of LT data from the segment end vertices
+print('endVal', endVal);
+var dur = endYear.subtract(startYear);       // subtract the segment start year from the segment end year to calculate the duration of segments 
+print('duration', dur);
+var mag = endVal.subtract(startVal);         // substract the segment start index value from the segment end index value to calculate the delta of segments
+print('magnitude', mag);
+var rate = mag.divide(dur);                  // calculate the rate of spectral change
+print('rate', rate);
+
+//Make an image array that holds all the segment attributes
+var segInfo = ee.Image.cat([startYear, endYear, startVal, endVal, mag, dur, rate]).toArray(0);
+//By adding it to the map we can inspect the values
+Map.addLayer(segInfo, {}, 'segment information', false);
+
+//In this next section we will sort the array to extract information about the largest change
+
+//Indicate the direction of the scalar if you need to invert values (1 or -1)
+var distDir = 1;
+
+var sortByThis = segInfo.arraySlice(0,4,5).toArray(0).multiply(distDir);  //Slice off the magnitudes
+Map.addLayer(sortByThis, {}, 'sort by this', false);
+var segInfoSorted = segInfo.arraySort(sortByThis);                        //Sort the array image by the magnitudes 
+Map.addLayer(segInfoSorted, {}, 'segment info sorted', false);
+var bigDelta = segInfoSorted.arraySlice(1,0,1);                           //Slice of the first column
+Map.addLayer(bigDelta, {}, 'big delta', false);
+
+//Create an image of the largest disturbance and attribute it with all the information about the segment
+var bigDeltaImg = ee.Image.cat(bigDelta.arraySlice(0,0,1).arrayProject([1]).arrayFlatten([['yod']]),
+                               bigDelta.arraySlice(0,1,2).arrayProject([1]).arrayFlatten([['endYr']]),
+                               bigDelta.arraySlice(0,2,3).arrayProject([1]).arrayFlatten([['startVal']]).multiply(distDir),
+                               bigDelta.arraySlice(0,3,4).arrayProject([1]).arrayFlatten([['endVal']]).multiply(distDir),
+                               bigDelta.arraySlice(0,4,5).arrayProject([1]).arrayFlatten([['mag']]).multiply(distDir),
+                               bigDelta.arraySlice(0,5,6).arrayProject([1]).arrayFlatten([['dur']]),
+                               bigDelta.arraySlice(0,6,7).arrayProject([1]).arrayFlatten([['rate']]).multiply(distDir));
+
+Map.addLayer(bigDeltaImg, {}, 'biggest change', false);
+
+// What is the definition of fast change? Slow Change?
+// How do we extract fast vs slow change in the direction of interest?
